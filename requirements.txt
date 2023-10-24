@@ -1,6 +1,5 @@
 gunicorn
 pandas
 plotly
-os
 openai
 io
