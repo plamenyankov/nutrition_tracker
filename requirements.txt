@@ -2,4 +2,3 @@ gunicorn
 pandas
 plotly
 openai
-io
