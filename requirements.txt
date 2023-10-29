@@ -3,3 +3,5 @@ gunicorn
 pandas
 plotly
 openai
+psycopg2
+sqlite3

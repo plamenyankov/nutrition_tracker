@@ -1,0 +1,40 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<header>
+    <h1 class="center mt-5">Preview Nutrition</h1>
+</header>
+<div class="row">
+    <div class="col">
+        {% if data %}
+
+        <form method="post" action="/update-data">
+        <input type="date" name="date"/>
+
+        <table class="table table-striped mt-5 mb-5">
+            <thead>
+            <tr>
+                {% for column in columns %}
+                <th scope="col">{{ column }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for row in data %}
+            <tr>
+                {% for _, value in row.items() %}
+                <td>{{ value }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+            <input type="submit" value="Save" class="btn btn-primary">
+        </form>
+
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

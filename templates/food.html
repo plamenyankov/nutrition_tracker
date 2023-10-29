@@ -1,0 +1,151 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<div class="row justify-content-md-center">
+    <h1 class="text-center mt-5">Nutrition Tracker</h1>
+
+    <div class="col col-md-8 center-block">
+        <form action="/submit" method="post">
+            <div class="form-group mb-2">
+                <label for="user_input">OpenAi API:</label>
+                <textarea class="form-control" id="user_input" name="foods" rows="4"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Preview</button>
+
+        </form>
+    </div>
+
+    {% if data %}
+    <div class="row justify-content-md-center">
+        <div class="col col-md-8 center-block">
+            <h2 class="center mt-5">Preview Nutrition</h2>
+
+            <form method="post" action="/save_food">
+                <input type="date" name="date"/>
+                <input type="text" name="recipe" placeholder="Recipe name"/>
+                <input type="number" name="serv" placeholder="Serv."/>
+
+                <input type="checkbox" name="consumption" id="consumption" class="form-check-input" placeholder="Consume"/>
+                <label class="form-check-label" for="consumption">Consume:</label>
+                <table class="table table-striped mt-5 mb-5">
+                    <thead>
+                    <tr>
+                        {% for column in columns %}
+                        <th scope="col">{{ column }}</th>
+                        {% endfor %}
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in data %}
+                    <tr>
+                        {% for _, value in row.items() %}
+                        <td>{{ value }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+
+
+                <input type="submit" name="action" value="Save Ingredients" class="btn btn-primary">
+                <input type="submit" name="action" value="Save as Recipe" class="btn btn-primary">
+                <input type="submit" name="action" value="Cancel" class="btn btn-primary">
+            </form>
+
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row justify-content-md-center">
+        <div class="col col-md-8 center-block mb-5">
+              <h2 class="center mt-5">Consumption</h2>
+            <form action="/remove_consumption" method="post">
+                <table class="table table-striped mt-5 mb-5">
+                    <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Unit</th>
+                        <th scope="col">Ingredient</th>
+                        <th scope="col">Kcal</th>
+                        <th scope="col">Fat</th>
+                        <th scope="col">Carb</th>
+                        <th scope="col">Fiber</th>
+                        <th scope="col">Net Carb</th>
+                        <th scope="col">Protein</th>
+                        <th scope="col">Remove</th> <!-- New column header -->
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for nutrition in consumption %}
+                    <tr>
+                        <td>{{ nutrition.date }}</td>
+                        <td>{{ nutrition.qty }}</td>
+                        <td>{{ nutrition.unit }}</td>
+                        <td>{{ nutrition.ingredient }}</td>
+                        <td>{{ nutrition.kcal }}</td>
+                        <td>{{ nutrition.fat }}</td>
+                        <td>{{ nutrition.carb }}</td>
+                        <td>{{ nutrition.fiber }}</td>
+                        <td>{{ nutrition.net_carb }}</td>
+                        <td>{{ nutrition.protein }}</td>
+                        <td>
+                            <input type="checkbox" name="remove_ids[]" value="{{ nutrition.consumption_id }}">
+                            <!-- New checkbox column -->
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <input type="submit" value="Delete" class="btn btn-danger"> <!-- New delete button -->
+            </form>
+        </div>
+    </div>
+       <div class="row justify-content-md-center">
+        <div class="col col-md-8 center-block mb-5">
+              <h2 class="center mt-5">Ingredients</h2>
+            <form action="/remove_ingredient" method="post">
+                <table class="table table-striped mt-5 mb-5">
+                    <thead>
+                    <tr>
+                        <th scope="col">Ingredient Name</th>
+                        <th scope="col">Ingredient ID</th>
+                        <th scope="col">Unit ID</th>
+                        <th scope="col">Kcal</th>
+                        <th scope="col">Fat</th>
+                        <th scope="col">Carb</th>
+                        <th scope="col">Fiber</th>
+                        <th scope="col">Net Carb</th>
+                        <th scope="col">Protein</th>
+                        <th scope="col">Remove</th> <!-- New column header -->
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for nutrition in nutritions %}
+                    <tr>
+                        <td>{{ nutrition.ingredient_name }}</td>
+                        <td>{{ nutrition.ingredient_id }}</td>
+                        <td>{{ nutrition.unit_id }}</td>
+                        <td>{{ nutrition.kcal }}</td>
+                        <td>{{ nutrition.fat }}</td>
+                        <td>{{ nutrition.carb }}</td>
+                        <td>{{ nutrition.fiber }}</td>
+                        <td>{{ nutrition.net_carb }}</td>
+                        <td>{{ nutrition.protein }}</td>
+                        <td>
+                            <input type="checkbox" name="remove_ids[]" value="{{ nutrition.ingredient_id }}">
+                            <!-- New checkbox column -->
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <input type="submit" value="Delete" class="btn btn-danger"> <!-- New delete button -->
+            </form>
+        </div>
+    </div>
+
+
+</div>
+{% endblock %}
