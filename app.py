@@ -1,116 +1,178 @@
-from flask import Flask
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+import pandas as pd
+from datetime import datetime
+import io
+import sqlite3
+from models import openai_utils
+# from models.food import save_to_database, fetch_all_nutritions
+from models.food import FoodDatabase
+
+
+
+
 
 app = Flask(__name__)
+app.secret_key = 'secret'  # This is for flash messaging
+temp_df = None
+food_db = FoodDatabase()
+@app.route('/ingr')
+def get_unit():
+    unit_id = food_db.save_ingredient('chicken')
+    return jsonify(unit_id)
 
-@app.route('/')
+@app.route('/nutrition', methods=['GET'])
+def get_nutrition():
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM nutrition')
+        results = cursor.fetchall()
+    return jsonify(results)
+@app.route('/', methods=["GET", "POST"])
 def home():
-    return "Hello, World!"
 
-if __name__ == '__main__':
-    app.run()
+    df = pd.read_csv('data/data.csv')
+    df2 = pd.read_csv('data/iwatch.csv')
+    data = df.to_dict(orient='records')
+    columns = df.columns
+
+    # Create a bar chart
+    # Group by date and sum up the necessary columns
+    grouped_data = df.groupby('date').agg({
+        'protein': 'sum',
+        'fats': 'sum',
+        'carbs': 'sum'
+    }).reset_index()
+    kcals = df2.groupby('date')['kcal'].sum().tolist()
+    dates = grouped_data['date'].tolist()
+    proteins = grouped_data['protein'].tolist()
+    fats = grouped_data['fats'].tolist()
+    carbs = grouped_data['carbs'].tolist()
+
+    return render_template('input_form.html', data=data, columns=columns, dates=dates, kcals=kcals, proteins=proteins, fats=fats, carbs=carbs)
+
+@app.route('/food', methods=['GET','POST'])
+def food():
+    global temp_df
+    data = None
+    columns = None
+    if temp_df is not None:
+        current_date = datetime.now().strftime('%d.%m.%Y')
+        temp_df['date'] = current_date
+        data = temp_df.to_dict(orient='records')
+        columns = temp_df.columns
+    all_nutritions = food_db.fetch_all_nutrition()
+    all_consumption = food_db.fetch_all_consumption()
+    return render_template('food.html', data=data, columns=columns,  nutritions= all_nutritions, consumption=all_consumption)
+@app.route('/preview', methods=["GET", "POST"])
+def preview():
+    global temp_df
+    data = None
+    columns = None
+    if temp_df is not None:
+        current_date = datetime.now().strftime('%d.%m.%Y')
+        temp_df['date'] = current_date
+        data = temp_df.to_dict(orient='records')
+        columns = temp_df.columns
+    return render_template('preview.html', data=data, columns=columns)
+@app.route('/submit', methods=['POST'])
+def submit():
+    global temp_df
+
+    user_input = request.form['foods']
+
+    # Call OpenAI API here
+    response = openai_utils.get_openai_response(user_input)
+
+    print('Response', response)
+    # Convert the response to a DataFrame
+    data_io = io.StringIO(response)
+    temp_df = pd.read_csv(data_io)
+
+    return redirect(url_for('food'))
+
+@app.route('/remove_ingredient', methods=['POST'])
+def remove_ingredient():
+    # This will return a list of all the ingredient_ids from the checked checkboxes
+    ingredient_ids_to_remove = request.form.getlist('remove_ids[]')
+
+    # Now you can iterate over this list and process each ID as needed
+    for ingredient_id in ingredient_ids_to_remove:
+        # Your logic to delete or process the ingredient_id goes here
+        food_db.delete_ingredient(ingredient_id)
+
+    return redirect(url_for('food'))
+
+@app.route('/remove_consumption', methods=['POST'])
+def remove_consumption():
+    # This will return a list of all the ingredient_ids from the checked checkboxes
+    ingredient_ids_to_remove = request.form.getlist('remove_ids[]')
+
+    # Now you can iterate over this list and process each ID as needed
+    for ingredient_id in ingredient_ids_to_remove:
+        # Your logic to delete or process the ingredient_id goes here
+        food_db.delete_consumption(ingredient_id)
+
+    return redirect(url_for('food'))
+
+
+def save_ingredients(date, form):
+    global temp_df
+
+    temp_df.columns = temp_df.columns.str.strip()
+
+    ingredient_quantity_ids = food_db.save_to_database(temp_df.to_csv(index=False))
+    return ingredient_quantity_ids
+def save_recipe(date, form):
+    global temp_df
+    serv = 1
+
+    if form['recipe'] is None:
+        return redirect(url_for('food'))
+    if form['serv'] is not None:
+        serv = form['serv']
+
+    recipe = form['recipe']
+
+    temp_df.columns = temp_df.columns.str.strip()
+
+    ingredient_quantity_ids = food_db.save_recipe(date, recipe, serv, temp_df.to_csv(index=False))
+    return ingredient_quantity_ids
+@app.route('/save_food', methods=['POST'])
+def save_food():
+    global temp_df
+    button_clicked = request.form['action']
+    ingredient_quantity_ids = []
+    date = datetime.now().strftime('%d.%m.%Y')
+    if request.form['date'] is None:
+        date = request.form['date']
+
+    if button_clicked == "Save Ingredients":
+        ingredient_quantity_ids = save_ingredients(date, request.form)
+    elif button_clicked == "Save as Recipe":
+        ingredient_quantity_ids = save_recipe(date, request.form)
+    else:
+        # Logic for cancel, e.g., redirect to another page
+        temp_df = None
+        return redirect(url_for('food'))
+
+    if request.form['consumption'] is not None:
+        for ingredient_quantity_id in ingredient_quantity_ids:
+            food_db.save_consumption(date, ingredient_quantity_id)
+    temp_df = None
+    return redirect(url_for('food'))
 
 
 
+@app.route('/chart')
+def chart():
+    # Load data from CSV
+    df = pd.read_csv('data/data.csv')
 
-# # app.py
-#
-# import streamlit as st
-# import pandas as pd
-# import plotly.express as px
-# import openai
-# from io import StringIO
-#
-# openai.api_key = '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'
-# # Check if the session state properties exist. If not, initialize them.
-# if 'df_response' not in st.session_state:
-#     st.session_state.df_response = False
-# if 'saved' not in st.session_state:
-#     st.session_state.saved = False
-# # Function to interact with OpenAI (dummy function; replace with actual API call)
-# def get_completion(prompt, model="gpt-3.5-turbo"):
-#     messages = [{"role": "user", "content": prompt}]
-#     response = openai.ChatCompletion.create(
-#         model=model,
-#         messages=messages,
-#         temperature=0.2, # this is the degree of randomness of the model's output
-#     )
-#     return response.choices[0].message["content"]
-#
-# def get_openai_response(user_input):
-#     return 'qty, unit, ingr, carbs, fats, protein, kcal\n1, large, banana, 27, 0.4, 1.3, 121\n100, gr, oats, 66, 8, 17, 389\n1, large, egg, 0.6, 5, 6, 78\n20, gr, cocoa powder, 3.6, 1.8, 2.2, 98\n100, ml, milk, 4.8, 3.4, 3.3, 60'
-#     # prompt = f"""
-#     #     calculate calories and macronutrients of the following recipe into the triple backquotes:
-#     #     ```{user_input}```
-#     #     Write in the csv format: quantity,measurement, ingredient, carbs, fats, proteins, kcal.
-#     #     Examples: 1 large banana
-#     #     qty, unit, ingr, carbs, fats, protein, kcal
-#     #     1, large, banana, 27, 0.4, 1.3, 121
-#     #     """
-#     # return get_completion(prompt)
-# # @st.cache_data
-# def load_data(file_name):
-#     return pd.read_csv(file_name)
-#
-# # Start of the Streamlit app
-# st.title("Nutrition Tracker with OpenAI")
-# df_master = load_data('data.csv')
-# st.dataframe(df_master)
-#
-# # Text area for user to input the list of foods consumed
-# user_input = st.text_area("Enter the list of foods consumed:")
-#
-# if st.button("Preview"):
-#     response = get_openai_response(user_input)
-#     st.subheader("Preview OpenAI Response:")
-#     # Use StringIO to simulate a file object
-#     data_io = StringIO(response)
-#
-#     # Read the data into a pandas DataFrame
-#     df_response = pd.read_csv(data_io)
-#     df_response.to_csv('data2.csv', index=False)
-#     st.success("Data saved!")
-#     st.session_state.df_response = True
-# if st.session_state.df_response:
-#     if st.session_state.saved != True:
-#         df = load_data('data2.csv')
-#         st.dataframe(df)
-#     if st.button("Approve"):
-#         try:
-#             df = load_data('data2.csv')
-#             df_master = load_data('data.csv')
-#             df_master = pd.concat([df_master, df], ignore_index=True)
-#             st.dataframe(df_master)
-#             st.session_state.saved = True
-#         except Exception as e:
-#             print(e)
-#             st.error(f"An error occurred: {e}")
-#
-#     # if st.button("Approve") and st.session_state.df_response is not None:
-#     #     st.session_state.df_response.to_csv('data2.csv', index=False)
-#     #     df = pd.read_csv('data2.csv')
-#     #     st.dataframe(df)
-#     #     st.success("Data saved!")
-#         # Convert the response to a DataFrame and save to a CSV
-#         # df_response = pd.read_csv(pd.StringIO(response))
-#         # Append to existing CSV or create a new one
-#         # try:
-#         # df_master = pd.read_csv('data.csv')
-#         # df_master = pd.concat([df_master, df_response], ignore_index=True)
-#         # st.dataframe(df_master)
-#         # except FileNotFoundError:
-#         #     df_master = df_response
-#
-#         # df_master.to_csv('data.csv', index=False)
-#
-#
-# # Visualize data
-# st.subheader("Macronutrient Visualization")
-# # try:
-# #     df = pd.read_csv('data.csv')
-# #     # Grouping and summarizing data
-# #     summary = df.groupby('date').sum()
-# #     fig = px.bar(summary, x=summary.index, y="kcal", title="Calories Consumed Over Time")
-# #     st.plotly_chart(fig)
-# # except FileNotFoundError:
-# #     st.write("No data available for visualization.")
-#
+    # Data processing for chart (group by date, summarize, etc.) goes here
+
+    # Render chart - you can use a library like Plotly or Matplotlib to generate and show charts
+    return "Chart goes here!"
+
+
+if __name__ == "__main__":
+    app.run(debug=True)
