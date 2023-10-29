@@ -4,4 +4,4 @@ pandas
 plotly
 openai
 psycopg2
-sqlite3
+sqlite3=3.40.0
