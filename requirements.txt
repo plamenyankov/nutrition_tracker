@@ -1,7 +1,7 @@
 flask
+sqlite3==3.40.0
 gunicorn
 pandas
 plotly
 openai
 psycopg2
-sqlite3=>3.40.0
