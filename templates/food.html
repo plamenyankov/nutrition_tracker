@@ -6,12 +6,12 @@
     <h1 class="text-center mt-5">Nutrition Tracker</h1>
 
     <div class="col col-md-8 center-block">
-        <form action="/submit" method="post">
+        <form action="/preview_openai_response" method="post">
             <div class="form-group mb-2">
                 <label for="user_input">OpenAi API:</label>
                 <textarea class="form-control" id="user_input" name="foods" rows="4"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary">Preview</button>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Preview</button>
 
         </form>
     </div>
@@ -21,14 +21,16 @@
         <div class="col col-md-8 center-block">
             <h2 class="center mt-5">Preview Nutrition</h2>
 
-            <form method="post" action="/save_food">
+            <form method="post" action="/handle_food_actions">
                 <input type="date" name="date"/>
                 <input type="text" name="recipe" placeholder="Recipe name"/>
                 <input type="number" name="serv" placeholder="Serv."/>
 
-                <input type="checkbox" name="consumption" id="consumption" class="form-check-input" placeholder="Consume"/>
+                <input type="checkbox" name="consumption" id="consumption" class="form-check-input"
+                       placeholder="Consume"/>
+
                 <label class="form-check-label" for="consumption">Consume:</label>
-                <table class="table table-striped mt-5 mb-5">
+                <table class="table table-bordered border-primary mt-5 mb-2">
                     <thead>
                     <tr>
                         {% for column in columns %}
@@ -48,23 +50,28 @@
                 </table>
 
 
-                <input type="submit" name="action" value="Save Ingredients" class="btn btn-primary">
-                <input type="submit" name="action" value="Save as Recipe" class="btn btn-primary">
-                <input type="submit" name="action" value="Cancel" class="btn btn-primary">
+                <input type="submit" name="action" value="Save Ingredients" class="btn btn-outline-primary">
+                <input type="submit" name="action" value="Save as Recipe" class="btn btn-outline-primary">
+                <input type="submit" name="action" value="Cancel" class="btn btn-outline-primary">
             </form>
 
         </div>
     </div>
     {% endif %}
-
     <div class="row justify-content-md-center">
-        <div class="col col-md-8 center-block mb-5">
-              <h2 class="center mt-5">Consumption</h2>
-            <form action="/remove_consumption" method="post">
-                <table class="table table-striped mt-5 mb-5">
+        <div class="col col-md-8 center-block">
+            <h2 class="center mt-5">Add Food</h2>
+
+            <form method="post" action="/handle_food_actions">
+
+
+
+                <label class="form-check-label" for="consumption"><b>Consume:</b> <input type="checkbox" name="consumption"  class="form-check-input"
+                       placeholder="Consume"/></label>
+                <table class="table table-bordered border-primary mt-1 mb-2">
                     <thead>
                     <tr>
-                        <th scope="col">Date</th>
+
                         <th scope="col">Qty</th>
                         <th scope="col">Unit</th>
                         <th scope="col">Ingredient</th>
@@ -74,7 +81,52 @@
                         <th scope="col">Fiber</th>
                         <th scope="col">Net Carb</th>
                         <th scope="col">Protein</th>
-                        <th scope="col">Remove</th> <!-- New column header -->
+
+                    </tr>
+                    </thead>
+                    <tbody>
+
+                    <tr>
+                        <td> <input type="number" name="qty" class="form-control"/></td>
+                        <td> <input type="text" name="unit" class="form-control"/></td>
+                        <td> <input type="text" name="ingr" class="form-control"/></td>
+                        <td> <input type="text" name="kcal" class="form-control"/></td>
+                        <td> <input type="text" name="fat" class="form-control"/></td>
+                        <td> <input type="text" name="carb" class="form-control"/></td>
+                        <td> <input type="text" name="fiber" class="form-control"/></td>
+                        <td> <input type="text" name="net_carb" class="form-control"/></td>
+                        <td> <input type="text" name="protein" class="form-control"/></td>
+
+                    </tr>
+
+                    </tbody>
+                </table>
+
+
+                <input type="submit" name="action" value="Save Ingredient" class="btn btn-outline-primary">
+            </form>
+
+        </div>
+    </div>
+    <div class="row justify-content-md-center">
+        <div class="col col-md-8 center-block mb-5">
+            <h2 class="center mt-5">Daily Consumption</h2>
+            <form action="/remove_consumption" method="post">
+                <table class="table table-bordered border-info mt-2 mb-2">
+                    <thead>
+                    <tr>
+                        <th scope="col">Date</th>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Unit</th>
+                        <th scope="col">Por.</th>
+                        <th scope="col">Ingredient</th>
+                        <th scope="col">Kcal</th>
+                        <th scope="col">Fat</th>
+                        <th scope="col">Carb</th>
+                        <th scope="col">Fiber</th>
+                        <th scope="col">Net Carb</th>
+                        <th scope="col">Protein</th>
+                        <th scope="col">Select</th> <!-- New column header -->
                     </tr>
                     </thead>
                     <tbody>
@@ -83,6 +135,7 @@
                         <td>{{ nutrition.date }}</td>
                         <td>{{ nutrition.qty }}</td>
                         <td>{{ nutrition.unit }}</td>
+                        <td>{{ nutrition.iqp }}</td>
                         <td>{{ nutrition.ingredient }}</td>
                         <td>{{ nutrition.kcal }}</td>
                         <td>{{ nutrition.fat }}</td>
@@ -98,35 +151,40 @@
                     {% endfor %}
                     </tbody>
                 </table>
-                <input type="submit" value="Delete" class="btn btn-danger"> <!-- New delete button -->
+                <input type="submit" value="Delete" class="btn btn-sm btn-outline-danger"
+                       onclick="return confirmSubmit()">
+                <!-- New delete button -->
             </form>
         </div>
     </div>
-       <div class="row justify-content-md-center">
+    <div class="row justify-content-md-center">
         <div class="col col-md-8 center-block mb-5">
-              <h2 class="center mt-5">Ingredients</h2>
-            <form action="/remove_ingredient" method="post">
-                <table class="table table-striped mt-5 mb-5">
+            <h2 class="center mt-5">Recipe List</h2>
+            <small class="form-text text-muted">
+                <span class="text-danger">*</span> All values are per Serving.
+            </small>
+            <form action="/handle_recipe_action" method="post">
+                <table class="table table-bordered border-danger mt-2 mb-2">
                     <thead>
                     <tr>
-                        <th scope="col">Ingredient Name</th>
-                        <th scope="col">Ingredient ID</th>
-                        <th scope="col">Unit ID</th>
+                        <th scope="col">Date</th>
+                        <th scope="col">Recipe</th>
+                        <th scope="col">Serv.</th>
                         <th scope="col">Kcal</th>
                         <th scope="col">Fat</th>
                         <th scope="col">Carb</th>
                         <th scope="col">Fiber</th>
                         <th scope="col">Net Carb</th>
                         <th scope="col">Protein</th>
-                        <th scope="col">Remove</th> <!-- New column header -->
+                        <th scope="col">Select</th> <!-- New column header -->
                     </tr>
                     </thead>
                     <tbody>
-                    {% for nutrition in nutritions %}
+                    {% for nutrition in recipes %}
                     <tr>
-                        <td>{{ nutrition.ingredient_name }}</td>
-                        <td>{{ nutrition.ingredient_id }}</td>
-                        <td>{{ nutrition.unit_id }}</td>
+                        <td>{{ nutrition.date }}</td>
+                        <td>{{ nutrition.recipe_name }}</td>
+                        <td>{{ nutrition.serv }}</td>
                         <td>{{ nutrition.kcal }}</td>
                         <td>{{ nutrition.fat }}</td>
                         <td>{{ nutrition.carb }}</td>
@@ -134,14 +192,66 @@
                         <td>{{ nutrition.net_carb }}</td>
                         <td>{{ nutrition.protein }}</td>
                         <td>
-                            <input type="checkbox" name="remove_ids[]" value="{{ nutrition.ingredient_id }}">
+                            <input type="checkbox" name="remove_ids[]" value="{{ nutrition.recipe_id }}">
                             <!-- New checkbox column -->
                         </td>
                     </tr>
                     {% endfor %}
                     </tbody>
                 </table>
-                <input type="submit" value="Delete" class="btn btn-danger"> <!-- New delete button -->
+                <input type="submit" name="action" value="Consume" class="btn btn-sm btn-outline-primary"
+                       onclick="return confirmSubmit()">
+                <input type="submit" name="action" value="Delete" class="btn btn-sm btn-outline-danger"
+                       onclick="return confirmSubmit()">
+
+            </form>
+
+        </div>
+    </div>
+    <div class="row justify-content-md-center">
+        <div class="col col-md-8 center-block mb-5">
+            <h2 class="center mt-5">Ingredients Quantity</h2>
+            <form action="/handle_ingredients_action" method="post">
+                <table class="table table-bordered border-warning mt-2 mb-2">
+                    <thead>
+                    <tr>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Unit</th>
+                        <th scope="col">Ingredient</th>
+                        <th scope="col">Kcal</th>
+                        <th scope="col">Fat</th>
+                        <th scope="col">Carb</th>
+                        <th scope="col">Fiber</th>
+                        <th scope="col">Net Carb</th>
+                        <th scope="col">Protein</th>
+                        <th scope="col">Select</th> <!-- New column header -->
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for nutrition in nutritions %}
+                    <tr>
+                        <td>{{ nutrition.qty }}</td>
+                        <td>{{ nutrition.unit }}</td>
+                        <td>{{ nutrition.ingredient }}</td>
+                        <td>{{ nutrition.kcal }}</td>
+                        <td>{{ nutrition.fat }}</td>
+                        <td>{{ nutrition.carb }}</td>
+                        <td>{{ nutrition.fiber }}</td>
+                        <td>{{ nutrition.net_carb }}</td>
+                        <td>{{ nutrition.protein }}</td>
+                        <td>
+                            <input type="checkbox" name="remove_ids[]" value="{{ nutrition.id }}">
+                            <!-- New checkbox column -->
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                <input type="submit" name="action" value="consume" class="btn btn-sm btn-outline-primary"
+                       onclick="return confirmSubmit()"> <!-- New delete button -->
+                <input type="submit" name="action" value="delete" class="btn btn-sm btn-outline-danger"
+                       onclick="return confirmSubmit()"> <!-- New delete button -->
+
             </form>
         </div>
     </div>

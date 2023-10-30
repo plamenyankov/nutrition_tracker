@@ -32,7 +32,10 @@ class FoodDatabase:
             if ingredient_id:
                 return ingredient_id[0]
 
-    def save_ingredient_quantity(self, quantity, ingredient_id, unit_id):
+    def save_ingredient_qty(self, quantity, ingredient_id, unit_id, serv=None):
+        if serv is not None:
+            quantity = float(quantity)/float(serv)
+
         with self.conn:
             cursor = self.conn.cursor()
             cursor.execute('INSERT OR IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (?,?,?)', (quantity, ingredient_id, unit_id,))
@@ -61,17 +64,7 @@ class FoodDatabase:
             else:
                 cursor.execute('INSERT OR IGNORE INTO Consumption (ingredient_quantity_id, consumption_date) VALUES (?,?)', (ingredient_quantity_id, date,))
             return cnt
-    def converter_base_unit(self, qty, kcal, fats, carbs, fiber, net_carbs, protein, serv):
 
-        qty = float(qty)/serv
-        kcal = float(kcal)
-        fats = float(fats)
-        carbs = float(carbs)
-        fiber = float(fiber)
-        net_carbs = float(net_carbs)
-        protein = float(protein)
-
-        return round(kcal/qty,4), round(fats/qty,4), round(carbs/qty,4), round(fiber/qty,4), round(net_carbs/qty,4), round(protein/qty,4)
     def delete_consumption(self, ingredient_id):
         try:
             with self.conn:
@@ -121,6 +114,28 @@ class FoodDatabase:
             if cursor:
                 cursor.close()
 
+    def delete_ingredient_qty(self, ingredient_id):
+        try:
+            with self.conn:
+                cursor = self.conn.cursor()
+
+                # Delete from ingredient_quantity
+                cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_quantity_id= ?', (ingredient_id,))
+
+                # Commit the changes
+                self.conn.commit()
+
+                # Ideally, return a success message or status
+                return "Deletion successful"
+
+        except sqlite3.Error as e:
+            # Handle the error and perhaps return a meaningful message
+            return f"Error: {e}"
+
+        finally:
+            if cursor:
+                cursor.close()
+
     def save_recipe_ingredient(self, recipe_id, ingredient_quantity_id):
         with self.conn:
             cursor = self.conn.cursor()
@@ -131,26 +146,48 @@ class FoodDatabase:
 
             # Ideally, return a success message or status
             return "Added Ingredient successful"
+
+    def converter_base_unit(self, qty, kcal, fats, carbs, fiber, net_carbs, protein):
+
+        qty = float(qty)
+        kcal = float(kcal)
+        fats = float(fats)
+        carbs = float(carbs)
+        fiber = float(fiber)
+        net_carbs = float(net_carbs)
+        protein = float(protein)
+
+        return round(kcal / qty, 4), round(fats / qty, 4), round(carbs / qty, 4), round(fiber / qty, 4), round(
+            net_carbs / qty, 4), round(protein / qty, 4)
+
     def save_to_database(self, data, serv=1):
         lines = data.strip().split("\n")
         headers = lines[0].split(',')
         entries = [dict(zip(headers, line.split(','))) for line in lines[1:]]
         ingredients_qty_list = []
+
         for entry in entries:
             # Insert into Unit table
             unit_id = self.save_unit(entry['unit'])
+
             # Insert into Ingredient table
             ingredient_id = self.save_ingredient(entry['ingr'])
+
             # save ingredient quantity and get the id
-            ingredient_quantity_id = self.save_ingredient_quantity(entry['qty'], ingredient_id, unit_id)
+            ingredient_quantity_id = self.save_ingredient_qty(entry['qty'], ingredient_id, unit_id, serv)
             ingredients_qty_list.append(ingredient_quantity_id)
+
             # Convert Nutrition to Base Unit
-            kcal, fats, carbs, fiber, net_carbs, protein = self.converter_base_unit(entry['qty'], entry['kcal'], entry['fats'], entry['carbs'], entry['fiber'], entry['net_carbs'], entry['protein'],serv)
+            kcal, fats, carbs, fiber, net_carbs, protein = self.converter_base_unit(entry['qty'], entry['kcal'], entry['fats'], entry['carbs'], entry['fiber'], entry['net_carbs'], entry['protein'])
+
             # Save Nutritions
-            nutrition = self.save_nutrition(ingredient_id, unit_id, kcal, fats, carbs, fiber, net_carbs, protein)
+            self.save_nutrition(ingredient_id, unit_id, kcal, fats, carbs, fiber, net_carbs, protein)
         return ingredients_qty_list
 
     def save_recipe(self, date, recipe, serv, data):
+        # 1st Save Ingredients and Use Servings to scale down IQ and Nutrition's
+        # 2nd use the IQ_ids to save the ingredients to recipe_ingredients
+
         try:
             ingredients_qty_list = self.save_to_database(data, serv)
 
@@ -167,7 +204,7 @@ class FoodDatabase:
                 self.conn.commit()
 
             for ingredient_quantity_id in ingredients_qty_list:
-                result = self.save_recipe_ingredient(recipe_id, ingredient_quantity_id)  # Pass individual ID
+                self.save_recipe_ingredient(recipe_id, ingredient_quantity_id)  # Pass individual ID
 
             # Ideally, return a success message or status
             return ingredients_qty_list
@@ -183,7 +220,22 @@ class FoodDatabase:
     def fetch_all_nutrition(self):
         with self.conn:
             cursor = self.conn.cursor()
-            query = "SELECT * FROM Nutrition n LEFT JOIN Ingredient i ON n.ingredient_id = i.ingredient_id"
+            query = """SELECT
+                    iq.ingredient_quantity_id id,
+                    iq.quantity qty,
+                    U.unit_name unit,
+                    I.ingredient_name ingredient,
+                    round(IQ.quantity*N.kcal, 2) kcal,
+                    round(IQ.quantity*N.fat, 2) fat,
+                    round(IQ.quantity*N.carb, 2) carb,
+                    round(IQ.quantity*N.fiber, 2) fiber,
+                    round(IQ.quantity*N.net_carb, 2) net_carb,
+                    round(IQ.quantity*N.protein, 2) protein
+                FROM Ingredient_Quantity iq
+                    LEFT JOIN Ingredient I ON I.ingredient_id = iq.ingredient_id
+                    LEFT JOIN Unit U ON U.unit_id = iq.unit_id
+                    LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND U.unit_id = N.unit_id
+                ORDER BY iq.ingredient_quantity_id DESC LIMIT 50"""
             cursor.execute(query)
 
             # Fetch all rows
@@ -193,17 +245,16 @@ class FoodDatabase:
             nutrition_data = []
             for nutrition in nutrition:
                 nutrition_data.append({
-
-                    "ingredient_name": nutrition[9],
-                    "ingredient_id": nutrition[8],
-                    "unit_id": nutrition[1],
-                    "kcal": nutrition[2],
-                    "fat": nutrition[3],
-                    "carb": nutrition[4],
-                    "fiber": nutrition[5],
-                    "net_carb": nutrition[6],
-                    "protein": nutrition[7]
-
+                    "id":nutrition[0],
+                    "qty": nutrition[1],
+                    "unit": nutrition[2],
+                    "ingredient": nutrition[3],
+                    "kcal": nutrition[4],
+                    "fat": nutrition[5],
+                    "carb": nutrition[6],
+                    "fiber": nutrition[7],
+                    "net_carb": nutrition[8],
+                    "protein": nutrition[9],
                 })
 
             return nutrition_data
@@ -214,22 +265,23 @@ class FoodDatabase:
             cursor = self.conn.cursor()
             query = """SELECT                        
                         c.consumption_date date,
-                        IQ.quantity qty,
+                        IQ.quantity*c.ingredient_quantity_portions qty,
                         U.unit_name unit,
                         I.ingredient_name ingredient,
-                        round(IQ.quantity*N.kcal, 2) kcal,
-                        round(IQ.quantity*N.fat, 2) fat,
-                        round(IQ.quantity*N.carb, 2) carb,
-                        round(IQ.quantity*N.fiber, 2) fiber,
-                        round(IQ.quantity*N.net_carb, 2) net_carb,
-                        round(IQ.quantity*N.protein, 2) protein,
-                        c.consumption_id consumption_id
+                        round(IQ.quantity*N.kcal*c.ingredient_quantity_portions, 2) kcal,
+                        round(IQ.quantity*N.fat*c.ingredient_quantity_portions, 2) fat,
+                        round(IQ.quantity*N.carb*c.ingredient_quantity_portions, 2) carb,
+                        round(IQ.quantity*N.fiber*c.ingredient_quantity_portions, 2) fiber,
+                        round(IQ.quantity*N.net_carb*c.ingredient_quantity_portions, 2) net_carb,
+                        round(IQ.quantity*N.protein*c.ingredient_quantity_portions, 2) protein,
+                        c.consumption_id consumption_id,
+                        c.ingredient_quantity_portions iqp
                         FROM Consumption c
                     LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
                     LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
                     LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
                     LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
-                    ORDER BY date ASC"""
+                    ORDER BY date DESC LIMIT 20"""
 
             cursor.execute(query)
 
@@ -250,8 +302,70 @@ class FoodDatabase:
                     "fiber": nutrition[7],
                     "net_carb": nutrition[8],
                     "protein": nutrition[9],
-                    "consumption_id": nutrition[10]
+                    "consumption_id": nutrition[10],
+                    "iqp": nutrition[11],
                 })
 
             return nutrition_data
 
+    def fetch_all_recipes(self):
+        with self.conn:
+            cursor = self.conn.cursor()
+            query = """SELECT
+                            r.recipe_name,
+                            r.recipe_date,
+                            r.servings,
+                            round(sum(N.kcal*IQ.quantity),0) kcal,
+                            round(sum(N.fat*IQ.quantity),0) fat,
+                            round(sum(N.carb*IQ.quantity),0) carb,
+                            round(sum(N.fiber*IQ.quantity),0) fiber,
+                            round(sum(N.net_carb*IQ.quantity),0) net_carb,
+                            round(sum(N.protein*IQ.quantity),0) protein,
+                            r.recipe_id
+                         FROM Recipe r LEFT JOIN Recipe_Ingredients RI ON r.recipe_id = RI.recipe_id
+                                 LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = RI.ingredient_quantity_id
+                                 LEFT OUTER JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
+                                 LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
+                                 LEFT JOIN Nutrition N ON IQ.unit_id = N.unit_id AND IQ.ingredient_id = N.ingredient_id
+                         GROUP BY r.recipe_name
+                         ORDER BY recipe_date ASC LIMIT 20"""
+
+            cursor.execute(query)
+
+            # Fetch all rows
+            nutrition = cursor.fetchall()
+
+            # Convert tuple data to list of dictionaries for better readability
+            nutrition_data = []
+            for nutrition in nutrition:
+                nutrition_data.append({
+                    "recipe_name": nutrition[0],
+                    "date": nutrition[1],
+                    "serv": nutrition[2],
+                    "kcal": nutrition[3],
+                    "fat": nutrition[4],
+                    "carb": nutrition[5],
+                    "fiber": nutrition[6],
+                    "net_carb": nutrition[7],
+                    "protein": nutrition[8],
+                    "recipe_id": nutrition[9]
+                })
+
+            return nutrition_data
+
+    def fetch_recipe_ingredients(self, recipe_id):
+        with self.conn:
+            cursor = self.conn.cursor()
+            query ="""
+            SELECT ri.ingredient_quantity_id iq 
+            FROM Recipe r
+            LEFT JOIN Recipe_Ingredients ri ON r.recipe_id = ri.recipe_id
+            WHERE r.recipe_id=?
+            """
+            cursor.execute(query, (recipe_id,))
+            ingredient_ids = cursor.fetchall()
+            ingredient_ids_list = []
+            for ingredient_id in ingredient_ids:
+                ingredient_ids_list.append(ingredient_id[0])
+
+            return ingredient_ids_list
