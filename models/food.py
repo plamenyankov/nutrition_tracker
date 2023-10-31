@@ -1,7 +1,5 @@
 import sqlite3
-import pandas as pd
-import math
-import numpy as np
+
 DATABASE_PATH = 'sqlite:///../database.db'
 
 
