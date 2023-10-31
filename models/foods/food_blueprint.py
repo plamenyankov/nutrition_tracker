@@ -10,21 +10,26 @@ food_blueprint = Blueprint('foods', __name__)
 food_db = FoodDatabase()
 temp_df = None
 
+def transform_date_format(date_str):
+    # Parse the input date string to a datetime object
+    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    # Format the datetime object to the desired string format
+    return date_obj.strftime("%d.%m.%Y")
+
 def add_foods_to_consumption(date, ingredient_quantity_ids):
     for ingredient_quantity_id in ingredient_quantity_ids:
         food_db.save_consumption(date, ingredient_quantity_id)
+
 def get_ingredients_from_recipes(recipes_ids):
     ingredients_quantity_ids = None
     for recipes_id in recipes_ids:
         ingredients_quantity_ids = food_db.fetch_recipe_ingredients(recipes_id)
     return ingredients_quantity_ids
+
 def save_ingredients():
     global temp_df
-
     temp_df.columns = temp_df.columns.str.strip()
-
     ingredient_quantity_ids = food_db.save_to_database(temp_df.to_csv(index=False))
-
     return ingredient_quantity_ids
 
 def save_recipe(date, form):
@@ -38,14 +43,36 @@ def save_recipe(date, form):
         serv = form['serv']
 
     recipe_name = form['recipe']
-
     temp_df.columns = temp_df.columns.str.strip()
-
     ingredient_quantity_ids = food_db.save_recipe(date, recipe_name, serv, temp_df.to_csv(index=False))
 
     return ingredient_quantity_ids
 
 
+@food_blueprint.route('/nutrition/<int:nutrition_id>', methods=['GET','POST'])
+def nutrition(nutrition_id):
+    if 'action' in request.form:
+        action = request.form['action']
+        if action == "Edit Food":
+            updated_nutrition = {
+                "qty": request.form["qty"],
+                "carb": request.form["carb"],
+                "fat": request.form["fat"],
+                "protein": request.form["protein"],
+                "net_carb": request.form["net_carb"],
+                "fiber": request.form["fiber"],
+                "kcal": request.form["kcal"]
+            }
+            food_db.update_nutrition(nutrition_id, updated_nutrition)
+        elif action == "Consume":
+            if request.form['date'] != '':
+                date = transform_date_format(request.form['date'])
+            else:
+                date = datetime.now().strftime('%d.%m.%Y')
+            add_foods_to_consumption(date, [nutrition_id])
+
+    nutrition = food_db.fetch_nutrition(nutrition_id)
+    return render_template('nutrition.html', nutrition=nutrition)
 
 @food_blueprint.route('/food', methods=['GET','POST'])
 def food():
@@ -57,8 +84,8 @@ def food():
         temp_df['date'] = current_date
         data = temp_df.to_dict(orient='records')
         columns = temp_df.columns
-    all_nutritions = food_db.fetch_all_nutrition()
-    all_consumption = food_db.fetch_all_consumption()
+    all_nutritions = food_db.fetch_all_nutrition()[:20]
+    all_consumption = food_db.fetch_all_consumption()[:20]
     all_recipes = food_db.fetch_all_recipes()
     return render_template('food.html', data=data, columns=columns,  nutritions= all_nutritions, consumption=all_consumption, recipes=all_recipes)
 
@@ -75,13 +102,9 @@ def recipe():
 @food_blueprint.route('/preview_openai_response', methods=['POST'])
 def preview_openai_response():
     global temp_df
-
     user_input = request.form['foods']
-
     # Call OpenAI API here
     response = openai_utils.get_openai_response(user_input)
-
-    print('Response', response)
     # Convert the response to a DataFrame
     data_io = io.StringIO(response)
     temp_df = pd.read_csv(data_io)
@@ -116,7 +139,7 @@ def handle_recipe_action():
 
     action = request.form['action']
     ingredient_ids = get_ingredients_from_recipes(recipe_ids)
-    print('Ingredients IDS: ',ingredient_ids)
+
     if action == "Consume":
         date = datetime.now().strftime('%d.%m.%Y')
         add_foods_to_consumption(date, ingredient_ids)
@@ -151,8 +174,8 @@ def handle_food_actions():
 
     date = datetime.now().strftime('%d.%m.%Y')
 
-    if 'date' in request.form:
-        date = request.form['date']
+    if 'date' in request.form and request.form['date'] != '':
+        date = transform_date_format(request.form['date'])
 
     if button_clicked == "Save Ingredients":
         ingredient_quantity_ids = save_ingredients()
@@ -160,11 +183,11 @@ def handle_food_actions():
     elif button_clicked == "Save as Recipe":
         ingredient_quantity_ids = save_recipe(date, request.form)
 
-    elif button_clicked == "Save Ingredient":
+    elif button_clicked == "Save Food":
         ingredient_obj = {
             "qty":request.form["qty"],
             "unit":request.form["unit"],
-            "ingr":request.form["ingr"],
+            "ingr":request.form["ingredient"],
             "carbs":request.form["carb"],
             "fats":request.form["fat"],
             "protein":request.form["protein"],

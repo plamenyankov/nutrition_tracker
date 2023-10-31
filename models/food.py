@@ -214,8 +214,19 @@ class FoodDatabase:
         finally:
             if cursor:
                 cursor.close()
+    def update_nutrition(self, iq_id, n):
+        kcal, fats, carbs, fiber, net_carbs, protein = self.converter_base_unit(n['qty'], n['kcal'],n['fat'],n['carb'],n['fiber'],n['net_carb'],n['protein'])
+        with self.conn:
+            cursor = self.conn.cursor()
+            query ="""
+            UPDATE Nutrition Set kcal=?, fat=?, carb=?, fiber=?, net_carb=?, protein=?
+            WHERE ingredient_id=(SELECT ingredient_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=?)
+            AND unit_id=(SELECT unit_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=?)
+            """
+            cursor.execute(query,(kcal, fats, carbs, fiber, net_carbs, protein,iq_id,iq_id,))
+            cursor.close()
 
-    def fetch_all_nutrition(self):
+    def fetch_all_nutrition(self, iq_id=None):
         with self.conn:
             cursor = self.conn.cursor()
             query = """SELECT
@@ -258,6 +269,46 @@ class FoodDatabase:
             return nutrition_data
 
 
+    def fetch_nutrition(self, iq_id):
+        with self.conn:
+            cursor = self.conn.cursor()
+            query = """SELECT
+                    iq.ingredient_quantity_id id,
+                    iq.quantity qty,
+                    U.unit_name unit,
+                    I.ingredient_name ingredient,
+                    round(IQ.quantity*N.kcal, 2) kcal,
+                    round(IQ.quantity*N.fat, 2) fat,
+                    round(IQ.quantity*N.carb, 2) carb,
+                    round(IQ.quantity*N.fiber, 2) fiber,
+                    round(IQ.quantity*N.net_carb, 2) net_carb,
+                    round(IQ.quantity*N.protein, 2) protein
+                FROM Ingredient_Quantity iq
+                    LEFT JOIN Ingredient I ON I.ingredient_id = iq.ingredient_id
+                    LEFT JOIN Unit U ON U.unit_id = iq.unit_id
+                    LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND U.unit_id = N.unit_id
+                    WHERE iq.ingredient_quantity_id=?"""
+            cursor.execute(query,(iq_id,))
+
+            # Fetch all rows
+            nutrition = cursor.fetchall()[0]
+
+            nutrition_data = {
+                "id":nutrition[0],
+                "qty": nutrition[1],
+                "unit": nutrition[2],
+                "ingredient": nutrition[3],
+                "kcal": nutrition[4],
+                "fat": nutrition[5],
+                "carb": nutrition[6],
+                "fiber": nutrition[7],
+                "net_carb": nutrition[8],
+                "protein": nutrition[9],
+            }
+
+            return nutrition_data
+
+
     def fetch_all_consumption(self):
         with self.conn:
             cursor = self.conn.cursor()
@@ -273,13 +324,14 @@ class FoodDatabase:
                         round(IQ.quantity*N.net_carb*c.ingredient_quantity_portions, 2) net_carb,
                         round(IQ.quantity*N.protein*c.ingredient_quantity_portions, 2) protein,
                         c.consumption_id consumption_id,
-                        c.ingredient_quantity_portions iqp
+                        c.ingredient_quantity_portions iqp,
+                        IQ.ingredient_quantity_id
                         FROM Consumption c
                     LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
                     LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
                     LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
                     LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
-                    ORDER BY date DESC LIMIT 20"""
+                    ORDER BY date DESC"""
 
             cursor.execute(query)
 
@@ -302,6 +354,7 @@ class FoodDatabase:
                     "protein": nutrition[9],
                     "consumption_id": nutrition[10],
                     "iqp": nutrition[11],
+                    "iq_id":nutrition[12]
                 })
 
             return nutrition_data

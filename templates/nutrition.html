@@ -1,0 +1,59 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row justify-content-md-center">
+    <div class="col col-md-8 center-block mb-5">
+        <h2 class="center mt-5">Nutrition Table</h2>
+        {% if nutrition %}
+
+            <form method="post" action="/nutrition/{{nutrition.id}}">
+
+
+                <div class="input-group mb-1">
+                    <span class="input-group-text" id="basic-addon1">Qty</span>
+                    <input type="text" class="form-control" name="qty" aria-label="Qty"
+                           aria-describedby="basic-addon1" value="{{nutrition.qty}}">
+                    <span class="input-group-text" id="basic-addon2">Unit</span>
+                    <input type="text" class="form-control" name="unit" aria-label="Unit"
+                           aria-describedby="basic-addon2" value="{{nutrition.unit}}" disabled="disabled" >
+                </div>
+
+                <div class="input-group mb-1">
+                    <span class="input-group-text" id="basic-addon3">Ingredient</span>
+                    <input type="text" class="form-control" name="ingredient" aria-label="Ingredient"
+                           aria-describedby="basic-addon3" value="{{nutrition.ingredient}}" disabled="disabled">
+                    <span class="input-group-text" id="basic-addon4">Date</span>
+                    <input type="date" class="form-control" name="date" aria-label="Date"
+                           aria-describedby="basic-addon4" >
+                </div>
+                <div class="input-group mb-1">
+                    <span class="input-group-text" id="basic-addon5">Kcal</span>
+                    <input type="text" class="form-control" name="kcal" aria-label="Kcal"
+                           aria-describedby="basic-addon5" value="{{nutrition.kcal}}">
+                    <span class="input-group-text" id="basic-addon6">Carb</span>
+                    <input type="text" class="form-control" name="carb" aria-label="Carb"
+                           aria-describedby="basic-addon6" value="{{nutrition.carb}}">
+                    <span class="input-group-text" id="basic-addon7">Fat</span>
+                    <input type="text" class="form-control" name="fat" aria-label="Fat"
+                           aria-describedby="basic-addon7" value="{{nutrition.fat}}">
+                </div>
+                <div class="input-group mb-2">
+                    <span class="input-group-text" id="basic-addon8">Fiber</span>
+                    <input type="text" class="form-control" name="fiber" aria-label="Fiber"
+                           aria-describedby="basic-addon8" value="{{nutrition.fiber}}">
+                    <span class="input-group-text" id="basic-addon9">Net Carb</span>
+                    <input type="text" class="form-control" name="net_carb" aria-label="Net Carb"
+                           aria-describedby="basic-addon9" value="{{nutrition.net_carb}}">
+                    <span class="input-group-text" id="basic-addon10">Protein</span>
+                    <input type="text" class="form-control" name="protein" aria-label="Protein"
+                           aria-describedby="basic-addon10" value="{{nutrition.protein}}">
+                </div>
+
+                <input type="submit" name="action" value="Edit Food" class="btn btn-sm btn-outline-primary" onclick="return confirmSubmit()">
+                <input type="submit" name="action" value="Consume" class="btn btn-sm btn-outline-success" onclick="return confirmSubmit()">
+            </form>
+
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
