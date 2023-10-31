@@ -65,45 +65,52 @@
             <form method="post" action="/handle_food_actions">
 
 
+                <div class="input-group mb-1">
+                    <span class="input-group-text" id="basic-addon0">Consume &nbsp;<input type="checkbox"
+                                                                                           name="consumption"
+                                                                                           class="form-check-input"
+                                                                                           placeholder="Consume"
+                                                                                           aria-describedby="basic-addon0"/></span>
+                    <span class="input-group-text" id="basic-addon1">Qty</span>
+                    <input type="text" class="form-control" name="qty" aria-label="Qty"
+                           aria-describedby="basic-addon1">
+                    <span class="input-group-text" id="basic-addon2">Unit</span>
+                    <input type="text" class="form-control" name="unit" aria-label="Qty"
+                           aria-describedby="basic-addon2">
+                </div>
 
-                <label class="form-check-label" for="consumption"><b>Consume:</b> <input type="checkbox" name="consumption"  class="form-check-input"
-                       placeholder="Consume"/></label>
-                <table class="table table-bordered border-primary mt-1 mb-2">
-                    <thead>
-                    <tr>
+                <div class="input-group mb-1">
+                    <span class="input-group-text" id="basic-addon3">Ingredient</span>
+                    <input type="text" class="form-control" name="ingredient" aria-label="Ingredient"
+                           aria-describedby="basic-addon3">
+                    <span class="input-group-text" id="basic-addon4">Date</span>
+                    <input type="date" class="form-control" name="date" aria-label="Date"
+                           aria-describedby="basic-addon4">
+                </div>
+                <div class="input-group mb-1">
+                    <span class="input-group-text" id="basic-addon5">Kcal</span>
+                    <input type="text" class="form-control" name="kcal" aria-label="Kcal"
+                           aria-describedby="basic-addon5">
+                    <span class="input-group-text" id="basic-addon6">Carb</span>
+                    <input type="text" class="form-control" name="carb" aria-label="Carb"
+                           aria-describedby="basic-addon6">
+                    <span class="input-group-text" id="basic-addon7">Fat</span>
+                    <input type="text" class="form-control" name="fat" aria-label="Fat"
+                           aria-describedby="basic-addon7">
+                </div>
+                <div class="input-group mb-2">
+                    <span class="input-group-text" id="basic-addon8">Fiber</span>
+                    <input type="text" class="form-control" name="fiber" aria-label="Fiber"
+                           aria-describedby="basic-addon8">
+                    <span class="input-group-text" id="basic-addon9">Net Carb</span>
+                    <input type="text" class="form-control" name="net_carb" aria-label="Net Carb"
+                           aria-describedby="basic-addon9">
+                    <span class="input-group-text" id="basic-addon10">Protein</span>
+                    <input type="text" class="form-control" name="protein" aria-label="Protein"
+                           aria-describedby="basic-addon10">
+                </div>
 
-                        <th scope="col">Qty</th>
-                        <th scope="col">Unit</th>
-                        <th scope="col">Ingredient</th>
-                        <th scope="col">Kcal</th>
-                        <th scope="col">Fat</th>
-                        <th scope="col">Carb</th>
-                        <th scope="col">Fiber</th>
-                        <th scope="col">Net Carb</th>
-                        <th scope="col">Protein</th>
-
-                    </tr>
-                    </thead>
-                    <tbody>
-
-                    <tr>
-                        <td> <input type="number" name="qty" class="form-control"/></td>
-                        <td> <input type="text" name="unit" class="form-control"/></td>
-                        <td> <input type="text" name="ingr" class="form-control"/></td>
-                        <td> <input type="text" name="kcal" class="form-control"/></td>
-                        <td> <input type="text" name="fat" class="form-control"/></td>
-                        <td> <input type="text" name="carb" class="form-control"/></td>
-                        <td> <input type="text" name="fiber" class="form-control"/></td>
-                        <td> <input type="text" name="net_carb" class="form-control"/></td>
-                        <td> <input type="text" name="protein" class="form-control"/></td>
-
-                    </tr>
-
-                    </tbody>
-                </table>
-
-
-                <input type="submit" name="action" value="Save Ingredient" class="btn btn-outline-primary">
+                <input type="submit" name="action" value="Save Food" class="btn btn-sm btn-outline-primary">
             </form>
 
         </div>
@@ -136,7 +143,7 @@
                         <td>{{ nutrition.qty }}</td>
                         <td>{{ nutrition.unit }}</td>
                         <td>{{ nutrition.iqp }}</td>
-                        <td>{{ nutrition.ingredient }}</td>
+                        <td><a href="/nutrition/{{nutrition.iq_id}}" >{{ nutrition.ingredient }}</a></td>
                         <td>{{ nutrition.kcal }}</td>
                         <td>{{ nutrition.fat }}</td>
                         <td>{{ nutrition.carb }}</td>
@@ -232,7 +239,7 @@
                     <tr>
                         <td>{{ nutrition.qty }}</td>
                         <td>{{ nutrition.unit }}</td>
-                        <td>{{ nutrition.ingredient }}</td>
+                         <td><a href="/nutrition/{{nutrition.id}}" >{{ nutrition.ingredient }}</a></td>
                         <td>{{ nutrition.kcal }}</td>
                         <td>{{ nutrition.fat }}</td>
                         <td>{{ nutrition.carb }}</td>

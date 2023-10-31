@@ -1,0 +1,115 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="row justify-content-md-center">
+    <div class="col col-md-6 center-block mb-5">
+        <h2 class="center mt-5">Add Daily Calories</h2>
+
+        <form method="post" action="/add_data">
+
+            <div class="input-group mb-2 mt-2">
+                <span class="input-group-text" id="basic-addon4">Date</span>
+                <input type="date" class="form-control" name="date" aria-label="Date"
+                       aria-describedby="basic-addon4">
+                <span class="input-group-text" id="basic-addon3">Calories</span>
+                <input type="number" class="form-control" name="calories" aria-label="Calories"
+                       aria-describedby="basic-addon3">
+            </div>
+
+            <input type="submit" name="action" value="Add" class="btn btn-sm btn-outline-primary"
+                   onclick="return confirmSubmit()">
+        </form>
+    </div>
+
+
+    <div class="col col-md-6 center-block mb-5">
+        <h2 class="center mt-5">Add Weight</h2>
+
+        <form method="post" action="/add_data">
+
+            <div class="input-group mb-2 mt-2">
+                <span class="input-group-text" id="basic-addon1">Date</span>
+                <input type="date" class="form-control" name="date" aria-label="Date"
+                       aria-describedby="basic-addon1">
+                <span class="input-group-text" id="basic-addon2">Weight</span>
+                <input type="text" class="form-control" name="weight" aria-label="Weight"
+                       aria-describedby="basic-addon2">
+            </div>
+
+            <input type="submit" name="action" value="Add" class="btn btn-sm btn-outline-primary"
+                   onclick="return confirmSubmit()">
+        </form>
+    </div>
+</div>
+
+<div class="row justify-content-md-center">
+
+    {% if calories %}
+
+    <div class="col col-md-6 center-block mb-5">
+        <h2 class="center mt-5">Calories Records</h2>
+
+        <form action="/handle_calorie_action" method="post">
+            <table class="table table-bordered border-light mt-2 mb-2">
+                <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Calories</th>
+                    <th scope="col">Select</th> <!-- New column header -->
+                </tr>
+                </thead>
+                <tbody>
+                {% for calorie in calories %}
+                <tr>
+                    <td>{{ calorie.date }}</td>
+                    <td>{{ calorie.calories }}</td>
+                    <td>
+                        <input type="checkbox" name="calories" value="{{ calorie.date }}">
+                        <!-- New checkbox column -->
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+
+        </form>
+
+        {% endif %}
+    </div>
+
+    {% if weights %}
+
+    <div class="col col-md-6 center-block mb-5">
+        <h2 class="center mt-5">Weight Records</h2>
+
+        <form action="/handle_weight_action" method="post">
+            <table class="table table-bordered border-light mt-2 mb-2">
+                <thead>
+                <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Weight</th>
+                    <th scope="col">Select</th> <!-- New column header -->
+                </tr>
+                </thead>
+                <tbody>
+                {% for w in weights %}
+                <tr>
+                    <td>{{ w.date }}</td>
+                    <td>{{ w.weight }}</td>
+                    <td>
+                        <input type="checkbox" name="weight" value="{{ w.date }}">
+                        <!-- New checkbox column -->
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </form>
+
+    </div>
+
+    {% endif %}
+</div>
+
+{% endblock %}
