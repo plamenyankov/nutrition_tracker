@@ -37,8 +37,8 @@ class FoodDatabase:
         with self.conn:
             cursor = self.conn.cursor()
             cursor.execute('INSERT OR IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (?,?,?)', (quantity, ingredient_id, unit_id,))
-            ingredient_quantity_id = cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=? AND unit_id=?',
-                                           (ingredient_id, unit_id,)).fetchone()
+            ingredient_quantity_id = cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=? AND unit_id=? AND quantity=?',
+                                           (ingredient_id, unit_id,quantity)).fetchone()
             if ingredient_quantity_id:
                 return ingredient_quantity_id[0]
 
@@ -226,7 +226,7 @@ class FoodDatabase:
             cursor.execute(query,(kcal, fats, carbs, fiber, net_carbs, protein,iq_id,iq_id,))
             cursor.close()
 
-    def fetch_all_nutrition(self, iq_id=None):
+    def fetch_all_nutrition(self):
         with self.conn:
             cursor = self.conn.cursor()
             query = """SELECT
@@ -244,7 +244,7 @@ class FoodDatabase:
                     LEFT JOIN Ingredient I ON I.ingredient_id = iq.ingredient_id
                     LEFT JOIN Unit U ON U.unit_id = iq.unit_id
                     LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND U.unit_id = N.unit_id
-                ORDER BY iq.ingredient_quantity_id DESC LIMIT 50"""
+                ORDER BY iq.ingredient_quantity_id DESC"""
             cursor.execute(query)
 
             # Fetch all rows
@@ -420,3 +420,58 @@ class FoodDatabase:
                 ingredient_ids_list.append(ingredient_id[0])
 
             return ingredient_ids_list
+
+    def get_unit_ingredient_from_iq(self, iq_id):
+        with self.conn:
+            cursor = self.conn.cursor()
+            query ="""
+            SELECT 
+            ingredient_id,
+            unit_id 
+            FROM Ingredient_Quantity
+            WHERE ingredient_quantity_id=?
+            """
+            cursor.execute(query, (iq_id,))
+            result = cursor.fetchone()
+            return result[0], result[1]
+    def get_avg_nutrition_consumed(self):
+        with self.conn:
+            cursor = self.conn.cursor()
+            query ="""
+            SELECT
+                round(sum(kcal)/count(*),0) kcal,
+                round(sum(fat)/count(*),0) fat,
+                round(sum(carb)/count(*),0) carb,
+                round(sum(fiber)/count(*),0) fiber,
+                round(sum(net_carb)/count(*),0) net_carb,
+                round(sum(protein)/count(*),0) protein,
+                COUNT(*) cnt
+            FROM (SELECT
+                c.consumption_date date,
+                round(sum(IQ.quantity*N.kcal*c.ingredient_quantity_portions), 0) kcal,
+                round(sum(IQ.quantity*N.fat*c.ingredient_quantity_portions), 0) fat,
+                round(sum(IQ.quantity*N.carb*c.ingredient_quantity_portions), 0) carb,
+                round(sum(IQ.quantity*N.fiber*c.ingredient_quantity_portions), 0) fiber,
+                round(sum(IQ.quantity*N.net_carb*c.ingredient_quantity_portions), 0) net_carb,
+                round(sum(IQ.quantity*N.protein*c.ingredient_quantity_portions), 0) protein
+                FROM Consumption c
+            LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
+            LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
+            LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
+            LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
+            GROUP BY c.consumption_date
+            ORDER BY date DESC);
+            """
+            cursor.execute(query)
+            result = cursor.fetchone()
+            nutrition_data = {
+                "kcal": result[0],
+                "fat": result[1],
+                "carb": result[2],
+                "fiber": result[3],
+                "net_carb": result[4],
+                "protein": result[5],
+                "cnt":result[6]
+            }
+
+            return nutrition_data

@@ -33,7 +33,7 @@
                     {% for nutrition in recipes %}
                     <tr>
                         <td>{{ nutrition.date }}</td>
-                        <td>{{ nutrition.recipe_name }}</td>
+                        <td><a href="/recipe/{{nutrition.recipe_id}}">{{ nutrition.recipe_name }}</a></td>
                         <td>{{ nutrition.serv }}</td>
                         <td>{{ nutrition.kcal }}</td>
                         <td>{{ nutrition.fat }}</td>
@@ -56,7 +56,7 @@
 
         </div>
     </div>
-  {% if recipe_ingredients %}
+  {% if nutritions %}
     <div class="row justify-content-md-center">
         <div class="col col-md-8 center-block mb-5">
             <h2 class="center mt-5">Ingredients Quantity</h2>

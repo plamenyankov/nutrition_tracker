@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 import pandas as pd
+import numpy as np
 from models.food import FoodDatabase
 from models.foods.food_blueprint import food_blueprint
 from models.calorie_weight import CalorieWeight
@@ -21,11 +22,14 @@ def home():
     consumption = food_db.fetch_all_consumption()
     calories = calorie_weight.fetch_calories()
     weights = calorie_weight.fetch_weights()
+    avg_consumed = food_db.get_avg_nutrition_consumed()
     if len(consumption) > 0:
         df = pd.DataFrame(consumption)
         df[['protein','carb']] = df[['protein','carb']] * 4
         df['fat'] = df['fat'] * 9
-
+        # Convert 'date' column to datetime format
+        df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+        df = df.sort_values(by='date', ascending=True)
         # Group by date and sum up the necessary columns
         grouped_data = df.groupby('date').agg({
             'protein': 'sum',
@@ -38,18 +42,23 @@ def home():
         proteins = grouped_data['protein'].tolist()
         fats = grouped_data['fat'].tolist()
         carbs = grouped_data['carb'].tolist()
-        print(dates)
-        print(fats)
+
     if len(calories) > 0:
         df_calories = pd.DataFrame(calories).reset_index()
+        df_calories['date'] = pd.to_datetime(df_calories['date'], format='%d.%m.%Y')
+        df_calories = df_calories.sort_values(by='date', ascending=True)
         date_calories = df_calories['date'].to_list()
         data_calories = df_calories['calories'].to_list()
 
         df_weight = pd.DataFrame(weights).reset_index()
-        date_weight = df_weight['date'].to_list()
-        data_weight = df_weight['weight'].to_list()
+        df_weight['date'] = pd.to_datetime(df_weight['date'], format='%d.%m.%Y')
+        df_weight = df_weight.sort_values(by='date', ascending=True)
+        date_weight = df_weight['date'].to_list()[1:]
+        data_weight = df_weight['weight'].to_list()[1:]
+        average_weight = np.round(np.mean(data_weight),1)
 
-    return render_template('index.html',date_calories=date_calories,data_calories=data_calories, date_weight=date_weight,data_weight=data_weight, dates=dates, kcals=data_calories, proteins=proteins, fats=fats, carbs=carbs)
+
+    return render_template('index.html',average_weight=average_weight,avg_consumed=avg_consumed,date_calories=date_calories,data_calories=data_calories, date_weight=date_weight,data_weight=data_weight, dates=dates, kcals=data_calories, proteins=proteins, fats=fats, carbs=carbs)
 
 
 @app.route('/add_data', methods=["GET", "POST"])

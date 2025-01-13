@@ -84,20 +84,50 @@ def food():
         temp_df['date'] = current_date
         data = temp_df.to_dict(orient='records')
         columns = temp_df.columns
-    all_nutritions = food_db.fetch_all_nutrition()[:20]
-    all_consumption = food_db.fetch_all_consumption()[:20]
+    all_nutritions = food_db.fetch_all_nutrition()
+    all_consumption = food_db.fetch_all_consumption()
+    all_consumption = pd.DataFrame(all_consumption)
+    all_consumption['date'] = pd.to_datetime(all_consumption['date'], format='%d.%m.%Y')
+    all_consumption = all_consumption.sort_values(by='date', ascending=False)
+    all_consumption['date'] = all_consumption['date'].dt.strftime('%d.%m.%Y')
+    all_consumption = all_consumption.to_dict(orient='records')
+    # filtered_nutritions = all_nutritions['ingredient'].unique()
+    # print(filtered_nutritions)
+    # print(all_nutritions.sort_values(by='ingredient'))
     all_recipes = food_db.fetch_all_recipes()
     return render_template('food.html', data=data, columns=columns,  nutritions= all_nutritions, consumption=all_consumption, recipes=all_recipes)
+@food_blueprint.route('/consume_food', methods=['POST'])
+def consume_food():
+    date = datetime.now().strftime('%d.%m.%Y')
+    if 'date' in request.form and request.form['date'] != '':
+        date = transform_date_format(request.form['date'])
+    # Get IQ id & qty
+    qty = request.form['qty']
+    iq_id = request.form['iq_id']
+    # Get ingredient & unit ids
+    ingredient_id, unit_id = food_db.get_unit_ingredient_from_iq(iq_id)
+    # Save new IQ with qty
+    ingredient_quantity_id = food_db.save_ingredient_qty(qty, ingredient_id, unit_id)
+    # save to consume
+    food_db.save_consumption(date, ingredient_quantity_id)
+    return redirect(url_for('foods.food'))
 
-@food_blueprint.route('/recipe', methods=['GET','POST'])
-def recipe():
+@food_blueprint.route('/recipe/<int:recipe_id>', methods=['GET','POST'])
+def recipe(recipe_id):
     all_recipes = food_db.fetch_all_recipes()
+    ingredients = None
+
     if 'recipe_page' in request.form:
         recipe_id = request.form['recipe_id']
         recipe_ingredients = get_ingredients_from_recipes(recipe_id)
 
+    if recipe_id:
+        recipe_ingredients = food_db.fetch_recipe_ingredients(recipe_id)
+        ingredients = []
+        for iq_id in recipe_ingredients:
+            ingredients.append(food_db.fetch_nutrition(iq_id))
 
-    return render_template('recipe.html', recipes=all_recipes)
+    return render_template('recipe.html', recipes=all_recipes, nutritions=ingredients)
 
 @food_blueprint.route('/preview_openai_response', methods=['POST'])
 def preview_openai_response():
@@ -139,9 +169,13 @@ def handle_recipe_action():
 
     action = request.form['action']
     ingredient_ids = get_ingredients_from_recipes(recipe_ids)
+    date = datetime.now().strftime('%d.%m.%Y')
+
+    if 'date' in request.form and request.form['date'] != '':
+        date = transform_date_format(request.form['date'])
+
 
     if action == "Consume":
-        date = datetime.now().strftime('%d.%m.%Y')
         add_foods_to_consumption(date, ingredient_ids)
 
     elif action == "Delete":

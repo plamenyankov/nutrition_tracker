@@ -1,13 +1,47 @@
 {% extends 'layout.html' %}
 
 {% block content %}
+  <div class="row justify-content-md-center">
+        <div class="col col-md-8 center-block mb-5">
+            <h2 class="text-center mt-5">AVG Nutrition Consumed</h2>
+                <table class="table table-bordered border-light mt-2 mb-2">
+                    <thead>
+                    <tr>
+                        <th scope="col">Days</th>
+                        <th scope="col">Kcal</th>
+                        <th scope="col">Fat</th>
+                        <th scope="col">Carb</th>
+                        <th scope="col">Fiber</th>
+                        <th scope="col">Net Carb</th>
+                        <th scope="col">Protein</th>
+                        <th scope="col">AVG Weight</th>
+                        <th scope="col">P/W ratio</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>{{ avg_consumed.cnt }}</td>
+                            <td>{{ avg_consumed.kcal }}</td>
+                            <td>{{ avg_consumed.fat }}</td>
+                            <td>{{ avg_consumed.carb }}</td>
+                            <td>{{ avg_consumed.fiber }}</td>
+                            <td>{{ avg_consumed.net_carb }}</td>
+                            <td>{{ avg_consumed.protein }}</td>
+                            <td>{{ average_weight }}</td>
+                            <td>{{ avg_consumed.protein/average_weight }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+        </div>
+    </div>
 
 <div class="row justify-content-md-center">
     <h1 class="text-center mt-5">Nutrition Tracker</h1>
 
         <canvas id="myChart"></canvas>
-        <canvas id="calorieChart"></canvas>
         <canvas id="weightChart"></canvas>
+
+        <canvas id="calorieChart"></canvas>
 
 
         <script type="text/javascript">
@@ -43,7 +77,7 @@
         options: {
             scales: {
                 y: {
-                    beginAtZero: true,
+                    beginAtZero: false,
                     stacked: true
                 },
                 x: {
@@ -54,7 +88,7 @@
     });
     var ctx2 = document.getElementById('calorieChart').getContext('2d');
     new Chart(ctx2, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: {{ date_calories|tojson }},
             datasets: [
@@ -70,11 +104,11 @@
         options: {
             scales: {
                 y: {
-                    beginAtZero: true,
-                    stacked: true
+                    beginAtZero: false
+
                 },
                 x: {
-                    stacked: true
+
                 }
             }
         }
@@ -97,11 +131,10 @@
         options: {
             scales: {
                 y: {
-                    beginAtZero: true,
-                    stacked: true
+                    beginAtZero: false
                 },
                 x: {
-                    stacked: true
+
                 }
             }
         }
