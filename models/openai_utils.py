@@ -1,9 +1,12 @@
-import openai
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()  # Load environment variables from .env file
 api_key = os.getenv('OPENAI_API_KEY')
+
+# Initialize the OpenAI client
+client = OpenAI(api_key=api_key)
 
 def cleanup_csv(api_response):
     lines = api_response.strip().split("\n")
@@ -17,14 +20,15 @@ def cleanup_csv(api_response):
 
     return "\n".join(cleaned_lines)
 
-def get_completion(prompt, model="gpt-4-1106-preview"):
+def get_completion(prompt, model="gpt-4o"):
     messages = [{"role": "user", "content": prompt}]
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=0, # this is the degree of randomness of the model's output
     )
-    return response.choices[0].message["content"]
+    return response.choices[0].message.content
+
 def get_openai_response(user_input):
     prompt = f"""
         calculate calories and macronutrients of the following ingredients into the triple backquotes:

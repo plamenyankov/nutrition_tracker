@@ -1,12 +1,18 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 import pandas as pd
 import numpy as np
+import os
 from models.food import FoodDatabase
 from models.foods.food_blueprint import food_blueprint
 from models.calorie_weight import CalorieWeight
 from datetime import datetime
+
 app = Flask(__name__)
 app.secret_key = 'secret'  # This is for flash messaging
+
+# Configure debug mode based on environment
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+
 app.register_blueprint(food_blueprint)
 food_db = FoodDatabase()
 calorie_weight =CalorieWeight()
@@ -83,4 +89,11 @@ def add_data():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Enable debug mode for development
+    app.run(
+        debug=True,
+        host='127.0.0.1',  # Localhost
+        port=5000,         # Default Flask port
+        use_reloader=True, # Auto-reload on file changes
+        use_debugger=True  # Enable interactive debugger
+    )
