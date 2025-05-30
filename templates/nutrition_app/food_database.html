@@ -4,18 +4,75 @@
 <div class="container-fluid">
     <h1 class="text-center mt-4 mb-4">Food Database</h1>
 
-    <!-- Search and Add New Food -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <input type="text" class="form-control" id="searchFood" placeholder="Search foods...">
-        </div>
-        <div class="col-md-6 text-end">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFoodModal">
-                <i class="bi bi-plus-circle"></i> Add New Food
-            </button>
-            <a href="{{ url_for('nutrition_app.ai_assistant') }}" class="btn btn-success">
-                <i class="bi bi-robot"></i> Add with AI
-            </a>
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Search Foods</label>
+                    <input type="text" class="form-control" id="searchFood" placeholder="Search by name...">
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFoodModal">
+                        <i class="bi bi-plus-circle"></i> Add New Food
+                    </button>
+                    <a href="{{ url_for('nutrition_app.ai_assistant') }}" class="btn btn-success">
+                        <i class="bi bi-robot"></i> Add with AI
+                    </a>
+                </div>
+            </div>
+
+            <!-- Advanced Filters -->
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Calories Range</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="minCalories" placeholder="Min">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" id="maxCalories" placeholder="Max">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Protein (g)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="minProtein" placeholder="Min">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" id="maxProtein" placeholder="Max">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Carbs (g)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="minCarbs" placeholder="Min">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" id="maxCarbs" placeholder="Max">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Fat (g)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="minFat" placeholder="Min">
+                        <span class="input-group-text">-</span>
+                        <input type="number" class="form-control" id="maxFat" placeholder="Max">
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="showFavoritesOnly">
+                        <label class="form-check-label" for="showFavoritesOnly">
+                            <i class="bi bi-star-fill text-warning"></i> Show Favorites Only
+                        </label>
+                    </div>
+                </div>
+                <div class="col text-end">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="clearFilters()">
+                        <i class="bi bi-x-circle"></i> Clear Filters
+                    </button>
+                    <span class="ms-3 text-muted" id="filterResults"></span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -35,8 +92,15 @@
             </thead>
             <tbody>
                 {% for food in foods %}
-                <tr>
-                    <td>{{ food.ingredient }}</td>
+                <tr data-ingredient-id="{{ food.ingredient_id }}" data-is-favorite="{{ food.is_favorite|lower }}">
+                    <td>
+                        <button class="btn btn-sm btn-link favorite-btn p-0 me-2"
+                                data-ingredient-id="{{ food.ingredient_id }}"
+                                title="Toggle favorite">
+                            <i class="bi {% if food.is_favorite %}bi-star-fill text-warning{% else %}bi-star{% endif %}"></i>
+                        </button>
+                        {{ food.ingredient }}
+                    </td>
                     <td>{{ food.qty }} {{ food.unit }}</td>
                     <td>{{ food.kcal }}</td>
                     <td>{{ food.protein }}</td>
@@ -172,20 +236,122 @@
 </div>
 
 <script>
-// Search functionality
-document.getElementById('searchFood').addEventListener('keyup', function() {
-    const searchValue = this.value.toLowerCase();
+// Enhanced filtering functionality
+function applyFilters() {
+    const searchValue = document.getElementById('searchFood').value.toLowerCase();
+    const minCalories = parseFloat(document.getElementById('minCalories').value) || 0;
+    const maxCalories = parseFloat(document.getElementById('maxCalories').value) || Infinity;
+    const minProtein = parseFloat(document.getElementById('minProtein').value) || 0;
+    const maxProtein = parseFloat(document.getElementById('maxProtein').value) || Infinity;
+    const minCarbs = parseFloat(document.getElementById('minCarbs').value) || 0;
+    const maxCarbs = parseFloat(document.getElementById('maxCarbs').value) || Infinity;
+    const minFat = parseFloat(document.getElementById('minFat').value) || 0;
+    const maxFat = parseFloat(document.getElementById('maxFat').value) || Infinity;
+    const showFavoritesOnly = document.getElementById('showFavoritesOnly').checked;
+
     const rows = document.querySelectorAll('#foodsTable tbody tr');
+    let visibleCount = 0;
 
     rows.forEach(row => {
         const foodName = row.cells[0].textContent.toLowerCase();
-        if (foodName.includes(searchValue)) {
+        const calories = parseFloat(row.cells[2].textContent);
+        const protein = parseFloat(row.cells[3].textContent);
+        const carbs = parseFloat(row.cells[4].textContent);
+        const fat = parseFloat(row.cells[5].textContent);
+        const isFavorite = row.dataset.isFavorite === 'true';
+
+        const matchesSearch = foodName.includes(searchValue);
+        const matchesCalories = calories >= minCalories && calories <= maxCalories;
+        const matchesProtein = protein >= minProtein && protein <= maxProtein;
+        const matchesCarbs = carbs >= minCarbs && carbs <= maxCarbs;
+        const matchesFat = fat >= minFat && fat <= maxFat;
+        const matchesFavorite = !showFavoritesOnly || isFavorite;
+
+        if (matchesSearch && matchesCalories && matchesProtein && matchesCarbs && matchesFat && matchesFavorite) {
             row.style.display = '';
+            visibleCount++;
         } else {
             row.style.display = 'none';
         }
     });
+
+    // Update results count
+    document.getElementById('filterResults').textContent = `Showing ${visibleCount} of ${rows.length} foods`;
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('searchFood').value = '';
+    document.getElementById('minCalories').value = '';
+    document.getElementById('maxCalories').value = '';
+    document.getElementById('minProtein').value = '';
+    document.getElementById('maxProtein').value = '';
+    document.getElementById('minCarbs').value = '';
+    document.getElementById('maxCarbs').value = '';
+    document.getElementById('minFat').value = '';
+    document.getElementById('maxFat').value = '';
+    document.getElementById('showFavoritesOnly').checked = false;
+    applyFilters();
+}
+
+// Add event listeners for all filter inputs
+document.getElementById('searchFood').addEventListener('keyup', applyFilters);
+document.getElementById('minCalories').addEventListener('input', applyFilters);
+document.getElementById('maxCalories').addEventListener('input', applyFilters);
+document.getElementById('minProtein').addEventListener('input', applyFilters);
+document.getElementById('maxProtein').addEventListener('input', applyFilters);
+document.getElementById('minCarbs').addEventListener('input', applyFilters);
+document.getElementById('maxCarbs').addEventListener('input', applyFilters);
+document.getElementById('minFat').addEventListener('input', applyFilters);
+document.getElementById('maxFat').addEventListener('input', applyFilters);
+document.getElementById('showFavoritesOnly').addEventListener('change', applyFilters);
+
+// Handle favorite button clicks
+document.querySelectorAll('.favorite-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+        const ingredientId = this.dataset.ingredientId;
+        const icon = this.querySelector('i');
+
+        try {
+            const response = await fetch(`{{ url_for("nutrition_app.toggle_favorite", ingredient_id=0) }}`.replace('0', ingredientId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update icon
+                if (result.is_favorited) {
+                    icon.classList.remove('bi-star');
+                    icon.classList.add('bi-star-fill', 'text-warning');
+                } else {
+                    icon.classList.remove('bi-star-fill', 'text-warning');
+                    icon.classList.add('bi-star');
+                }
+
+                // Update data attribute
+                const row = this.closest('tr');
+                row.dataset.isFavorite = result.is_favorited.toString();
+
+                // Reapply filters in case favorites filter is active
+                applyFilters();
+
+                // Show toast or alert
+                // alert(result.message);
+            } else {
+                alert('Error toggling favorite: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error toggling favorite: ' + error);
+        }
+    });
 });
+
+// Initial filter application
+applyFilters();
 
 // Handle Add to Meal button clicks
 document.querySelectorAll('.add-to-meal-btn').forEach(button => {

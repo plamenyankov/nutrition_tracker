@@ -20,6 +20,16 @@ def food_database():
     # Get all foods from database
     foods = food_db.fetch_all_nutrition()
 
+    # Get favorite ingredient IDs
+    favorite_ids = food_db.get_favorites()
+
+    # Add favorite status to each food
+    for food in foods:
+        # Get ingredient_id from ingredient_quantity_id
+        ingredient_id, _ = food_db.get_unit_ingredient_from_iq(food['id'])
+        food['is_favorite'] = ingredient_id in favorite_ids
+        food['ingredient_id'] = ingredient_id
+
     # Get today's date for the date picker
     today = datetime.now().strftime('%Y-%m-%d')
 
@@ -528,6 +538,22 @@ def recipe_delete(recipe_id):
             return jsonify({'success': True, 'redirect': url_for('nutrition_app.recipes_list')})
         else:
             return jsonify({'success': False, 'error': result})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@nutrition_app.route('/toggle-favorite/<int:ingredient_id>', methods=['POST'])
+@login_required
+def toggle_favorite(ingredient_id):
+    """Toggle favorite status for a food"""
+    try:
+        is_favorited = food_db.toggle_favorite(ingredient_id)
+
+        if is_favorited is not None:
+            message = "Added to favorites!" if is_favorited else "Removed from favorites!"
+            return jsonify({'success': True, 'is_favorited': is_favorited, 'message': message})
+        else:
+            return jsonify({'success': False, 'error': 'Error toggling favorite'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

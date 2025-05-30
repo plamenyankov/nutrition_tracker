@@ -45,7 +45,7 @@ The current `/food` page is overloaded with multiple functionalities. This plan 
   - Natural language food input
   - Bulk food analysis
   - Recipe nutrition calculation
-  - Meal photo analysis (future)
+  - Meal photo analysis
   - Nutrition advice/suggestions
   - Save analyzed foods to database
 
@@ -155,8 +155,8 @@ The current `/food` page is overloaded with multiple functionalities. This plan 
 - [x] Implement meal types (breakfast, lunch, etc.)
 - [x] Add calendar view for meal tracking
 - [x] Enhance recipe builder
-- [ ] Add search/filter capabilities
-- [ ] Implement favorites system
+- [x] Add search/filter capabilities
+- [x] Implement favorites system
 
 ### Phase 3: New Features (Week 5-6)
 - [ ] Build meal planning module

@@ -501,3 +501,49 @@ class FoodDatabase:
         finally:
             if cursor:
                 cursor.close()
+
+    def toggle_favorite(self, ingredient_id):
+        """Toggle favorite status for an ingredient"""
+        try:
+            with self.conn:
+                cursor = self.conn.cursor()
+
+                # Check if already favorited
+                cursor.execute('SELECT favorite_id FROM Favorites WHERE ingredient_id = ?', (ingredient_id,))
+                favorite = cursor.fetchone()
+
+                if favorite:
+                    # Remove from favorites
+                    cursor.execute('DELETE FROM Favorites WHERE ingredient_id = ?', (ingredient_id,))
+                    self.conn.commit()
+                    return False  # Unfavorited
+                else:
+                    # Add to favorites
+                    cursor.execute('INSERT INTO Favorites (ingredient_id) VALUES (?)', (ingredient_id,))
+                    self.conn.commit()
+                    return True  # Favorited
+
+        except sqlite3.Error as e:
+            print(f"Error toggling favorite: {e}")
+            return None
+
+        finally:
+            if cursor:
+                cursor.close()
+
+    def get_favorites(self):
+        """Get all favorite ingredient IDs"""
+        try:
+            with self.conn:
+                cursor = self.conn.cursor()
+                cursor.execute('SELECT ingredient_id FROM Favorites')
+                favorites = cursor.fetchall()
+                return [f[0] for f in favorites]
+
+        except sqlite3.Error as e:
+            print(f"Error fetching favorites: {e}")
+            return []
+
+        finally:
+            if cursor:
+                cursor.close()
