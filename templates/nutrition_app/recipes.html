@@ -10,7 +10,7 @@
             <input type="text" class="form-control" id="searchRecipe" placeholder="Search recipes...">
         </div>
         <div class="col-md-6 text-end">
-            <a href="{{ url_for('nutrition_app.recipe_create') }}" class="btn btn-primary">
+            <a href="{{ url_for('recipe_bp.recipe_create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Create New Recipe
             </a>
         </div>
@@ -52,7 +52,7 @@
                 </div>
                 <div class="card-footer bg-transparent">
                     <div class="d-flex justify-content-between">
-                        <a href="{{ url_for('nutrition_app.recipe_detail', recipe_id=recipe.recipe_id) }}"
+                        <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}"
                            class="btn btn-sm btn-outline-primary">
                             <i class="bi bi-eye"></i> View
                         </a>
@@ -73,7 +73,7 @@
     <div class="text-center py-5 text-muted">
         <i class="bi bi-book" style="font-size: 3rem;"></i>
         <p class="mt-3">No recipes yet. Create your first recipe!</p>
-        <a href="{{ url_for('nutrition_app.recipe_create') }}" class="btn btn-primary">
+        <a href="{{ url_for('recipe_bp.recipe_create') }}" class="btn btn-primary">
             <i class="bi bi-plus-circle"></i> Create Recipe
         </a>
     </div>
@@ -182,7 +182,7 @@ async function addRecipeToMeal() {
     formData.set('date', formattedDate);
 
     try {
-        const response = await fetch(`{{ url_for("nutrition_app.recipe_add_to_meal", recipe_id=0) }}`.replace('0', recipeId), {
+        const response = await fetch(`{{ url_for("recipe_bp.recipe_add_to_meal", recipe_id=0) }}`.replace('0', recipeId), {
             method: 'POST',
             body: formData
         });
@@ -198,7 +198,7 @@ async function addRecipeToMeal() {
 
             // Optionally redirect to meal tracking
             if (confirm('Go to meal tracking page?')) {
-                window.location.href = '{{ url_for("nutrition_app.meal_tracking") }}';
+                window.location.href = '{{ url_for("meal_bp.meal_tracking") }}';
             }
         } else {
             alert('Error: ' + result.error);

@@ -7,7 +7,7 @@
         <div class="col">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('nutrition_app.recipes_list') }}">Recipes</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipes_list') }}">Recipes</a></li>
                     <li class="breadcrumb-item active">Create New Recipe</li>
                 </ol>
             </nav>
@@ -65,7 +65,7 @@
 
                 <!-- Actions -->
                 <div class="d-flex justify-content-between">
-                    <a href="{{ url_for('nutrition_app.recipes_list') }}" class="btn btn-secondary">
+                    <a href="{{ url_for('recipe_bp.recipes_list') }}" class="btn btn-secondary">
                         <i class="bi bi-arrow-left"></i> Cancel
                     </a>
                     <button type="submit" class="btn btn-success">

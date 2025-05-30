@@ -7,7 +7,7 @@
         <div class="col">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('nutrition_app.recipes_list') }}">Recipes</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipes_list') }}">Recipes</a></li>
                     <li class="breadcrumb-item active">{{ recipe.recipe_name }}</li>
                 </ol>
             </nav>
@@ -27,7 +27,7 @@
                             <p class="mb-0"><i class="bi bi-people"></i> <strong>Servings:</strong> {{ recipe.serv }}</p>
                         </div>
                         <div class="col-md-6 text-md-end">
-                            <a href="{{ url_for('nutrition_app.recipe_edit', recipe_id=recipe.recipe_id) }}"
+                            <a href="{{ url_for('recipe_bp.recipe_edit', recipe_id=recipe.recipe_id) }}"
                                class="btn btn-warning">
                                 <i class="bi bi-pencil"></i> Edit Recipe
                             </a>
@@ -199,7 +199,7 @@
                     <button class="btn btn-success add-to-meal-btn">
                         <i class="bi bi-plus-square"></i> Add to Meal
                     </button>
-                    <a href="{{ url_for('nutrition_app.recipe_edit', recipe_id=recipe.recipe_id) }}"
+                    <a href="{{ url_for('recipe_bp.recipe_edit', recipe_id=recipe.recipe_id) }}"
                        class="btn btn-warning">
                         <i class="bi bi-pencil"></i> Edit Recipe
                     </a>
@@ -329,7 +329,7 @@ async function addToMeal() {
     formData.set('date', formattedDate);
 
     try {
-        const response = await fetch('{{ url_for("nutrition_app.recipe_add_to_meal", recipe_id=recipe.recipe_id) }}', {
+        const response = await fetch('{{ url_for("recipe_bp.recipe_add_to_meal", recipe_id=recipe.recipe_id) }}', {
             method: 'POST',
             body: formData
         });
@@ -344,7 +344,7 @@ async function addToMeal() {
             alert('Recipe added to meal successfully!');
 
             // Redirect to meal tracking
-            window.location.href = '{{ url_for("nutrition_app.meal_tracking") }}';
+            window.location.href = '{{ url_for("meal_bp.meal_tracking") }}';
         } else {
             alert('Error: ' + result.error);
         }
@@ -361,7 +361,7 @@ document.querySelectorAll('.delete-recipe-btn').forEach(button => {
 
         if (confirm(`Are you sure you want to delete the recipe "${recipeName}"? This action cannot be undone.`)) {
             try {
-                const response = await fetch(`{{ url_for("nutrition_app.recipe_delete", recipe_id=recipe.recipe_id) }}`, {
+                const response = await fetch(`{{ url_for("recipe_bp.recipe_delete", recipe_id=recipe.recipe_id) }}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -374,7 +374,7 @@ document.querySelectorAll('.delete-recipe-btn').forEach(button => {
                     if (result.redirect) {
                         window.location.href = result.redirect;
                     } else {
-                        window.location.href = '{{ url_for("nutrition_app.recipes_list") }}';
+                        window.location.href = '{{ url_for("recipe_bp.recipes_list") }}';
                     }
                 } else {
                     alert('Error deleting recipe: ' + (result.error || 'Unknown error'));

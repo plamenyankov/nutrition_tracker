@@ -7,8 +7,8 @@
         <div class="col">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('nutrition_app.recipes_list') }}">Recipes</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('nutrition_app.recipe_detail', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipes_list') }}">Recipes</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a></li>
                     <li class="breadcrumb-item active">Edit</li>
                 </ol>
             </nav>
@@ -42,7 +42,7 @@
             </p>
         </div>
         <div class="card-footer">
-            <a href="{{ url_for('nutrition_app.recipe_detail', recipe_id=recipe.recipe_id) }}" class="btn btn-secondary">
+            <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Back to Recipe
             </a>
         </div>

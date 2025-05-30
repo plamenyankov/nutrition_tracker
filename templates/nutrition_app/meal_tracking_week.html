@@ -9,7 +9,7 @@
         <div class="card-body">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <a href="{{ url_for('nutrition_app.meal_tracking_week', start_date=prev_week) }}" class="btn btn-outline-primary">
+                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=prev_week) }}" class="btn btn-outline-primary">
                         <i class="bi bi-chevron-left"></i> Previous Week
                     </a>
                 </div>
@@ -17,17 +17,17 @@
                     <h4 class="mb-0">{{ week_display }}</h4>
                 </div>
                 <div class="col-auto">
-                    <a href="{{ url_for('nutrition_app.meal_tracking_week', start_date=next_week) }}" class="btn btn-outline-primary">
+                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=next_week) }}" class="btn btn-outline-primary">
                         Next Week <i class="bi bi-chevron-right"></i>
                     </a>
                 </div>
             </div>
             <div class="row mt-3">
                 <div class="col text-center">
-                    <a href="{{ url_for('nutrition_app.meal_tracking_week') }}" class="btn btn-outline-secondary">
+                    <a href="{{ url_for('meal_bp.meal_tracking_week') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-calendar-check"></i> Current Week
                     </a>
-                    <a href="{{ url_for('nutrition_app.meal_tracking') }}" class="btn btn-outline-primary ms-2">
+                    <a href="{{ url_for('meal_bp.meal_tracking') }}" class="btn btn-outline-primary ms-2">
                         <i class="bi bi-calendar-day"></i> Daily View
                     </a>
                 </div>
@@ -83,7 +83,7 @@
                 <div class="card-header {% if day_data.date.date() == now().date() %}bg-primary text-white{% else %}bg-light{% endif %}">
                     <div class="d-flex justify-content-between align-items-center">
                         <h6 class="mb-0">{{ day_data.display_date }}</h6>
-                        <a href="{{ url_for('nutrition_app.meal_tracking', date_str=date_key) }}"
+                        <a href="{{ url_for('meal_bp.meal_tracking', date_str=date_key) }}"
                            class="btn btn-sm {% if day_data.date.date() == now().date() %}btn-light{% else %}btn-primary{% endif %}">
                             <i class="bi bi-eye"></i> View
                         </a>

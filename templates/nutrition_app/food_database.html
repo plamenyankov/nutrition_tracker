@@ -16,7 +16,7 @@
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFoodModal">
                         <i class="bi bi-plus-circle"></i> Add New Food
                     </button>
-                    <a href="{{ url_for('nutrition_app.ai_assistant') }}" class="btn btn-success">
+                    <a href="{{ url_for('ai_bp.ai_assistant') }}" class="btn btn-success">
                         <i class="bi bi-robot"></i> Add with AI
                     </a>
                 </div>
@@ -313,7 +313,7 @@ document.querySelectorAll('.favorite-btn').forEach(button => {
         const icon = this.querySelector('i');
 
         try {
-            const response = await fetch(`{{ url_for("nutrition_app.toggle_favorite", ingredient_id=0) }}`.replace('0', ingredientId), {
+            const response = await fetch(`{{ url_for("food_bp.toggle_favorite", ingredient_id=0) }}`.replace('0', ingredientId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -395,7 +395,7 @@ async function addToMeal() {
     const formData = new FormData(form);
 
     try {
-        const response = await fetch('{{ url_for("nutrition_app.add_to_meal") }}', {
+        const response = await fetch('{{ url_for("meal_bp.add_to_meal") }}', {
             method: 'POST',
             body: formData
         });
@@ -411,7 +411,7 @@ async function addToMeal() {
 
             // Optionally redirect to meal tracking
             if (confirm('Go to meal tracking page?')) {
-                window.location.href = '{{ url_for("nutrition_app.meal_tracking") }}';
+                window.location.href = '{{ url_for("meal_bp.meal_tracking") }}';
             }
         } else {
             alert('Error: ' + result.error);

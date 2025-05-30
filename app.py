@@ -5,7 +5,12 @@ import numpy as np
 import os
 from models.food import FoodDatabase
 from models.foods.food_blueprint import food_blueprint
-from models.nutrition_app.routes import nutrition_app
+# from models.nutrition_app.routes import nutrition_app  # Commented out - replaced by new blueprints
+from models.blueprints.food_bp import food_bp
+from models.blueprints.meal_bp import meal_bp
+from models.blueprints.recipe_bp import recipe_bp
+from models.blueprints.ai_bp import ai_bp
+from models.blueprints.analytics_bp import analytics_bp
 from models.calorie_weight import CalorieWeight
 from datetime import datetime
 
@@ -60,8 +65,17 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+# Register old blueprint (to be removed later)
 app.register_blueprint(food_blueprint)
-app.register_blueprint(nutrition_app)
+# app.register_blueprint(nutrition_app)  # Commented out - replaced by new blueprints
+
+# Register new modular blueprints
+app.register_blueprint(food_bp)
+app.register_blueprint(meal_bp)
+app.register_blueprint(recipe_bp)
+app.register_blueprint(ai_bp)
+app.register_blueprint(analytics_bp)
+
 food_db = FoodDatabase()
 calorie_weight =CalorieWeight()
 
@@ -78,12 +92,36 @@ def home():
     calories = calorie_weight.fetch_calories()
     weights = calorie_weight.fetch_weights()
     avg_consumed = food_db.get_avg_nutrition_consumed()
+
+    # Initialize variables with defaults
+    dates = []
+    proteins = []
+    fats = []
+    carbs = []
+    date_calories = []
+    data_calories = []
+    date_weight = []
+    data_weight = []
+    average_weight = 0
+
     if len(consumption) > 0:
         df = pd.DataFrame(consumption)
         df[['protein','carb']] = df[['protein','carb']] * 4
         df['fat'] = df['fat'] * 9
-        # Convert 'date' column to datetime format
-        df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+
+        # Convert 'date' column to datetime format - handle multiple formats
+        # Try to parse dates without specifying format, let pandas infer
+        try:
+            # First try with pd.to_datetime without any format specification
+            df['date'] = pd.to_datetime(df['date'])
+        except:
+            # If that fails, try with dayfirst=True for DD.MM.YYYY formats
+            try:
+                df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+            except:
+                # As a last resort, try to parse each date individually
+                df['date'] = df['date'].apply(lambda x: pd.to_datetime(x, errors='coerce'))
+
         df = df.sort_values(by='date', ascending=True)
         # Group by date and sum up the necessary columns
         grouped_data = df.groupby('date').agg({
@@ -100,17 +138,33 @@ def home():
 
     if len(calories) > 0:
         df_calories = pd.DataFrame(calories).reset_index()
-        df_calories['date'] = pd.to_datetime(df_calories['date'], format='%d.%m.%Y')
+        # Handle multiple date formats for calories
+        try:
+            df_calories['date'] = pd.to_datetime(df_calories['date'])
+        except:
+            try:
+                df_calories['date'] = pd.to_datetime(df_calories['date'], dayfirst=True)
+            except:
+                df_calories['date'] = df_calories['date'].apply(lambda x: pd.to_datetime(x, errors='coerce'))
+
         df_calories = df_calories.sort_values(by='date', ascending=True)
         date_calories = df_calories['date'].to_list()
         data_calories = df_calories['calories'].to_list()
 
         df_weight = pd.DataFrame(weights).reset_index()
-        df_weight['date'] = pd.to_datetime(df_weight['date'], format='%d.%m.%Y')
+        # Handle multiple date formats for weights
+        try:
+            df_weight['date'] = pd.to_datetime(df_weight['date'])
+        except:
+            try:
+                df_weight['date'] = pd.to_datetime(df_weight['date'], dayfirst=True)
+            except:
+                df_weight['date'] = df_weight['date'].apply(lambda x: pd.to_datetime(x, errors='coerce'))
+
         df_weight = df_weight.sort_values(by='date', ascending=True)
-        date_weight = df_weight['date'].to_list()[1:]
-        data_weight = df_weight['weight'].to_list()[1:]
-        average_weight = np.round(np.mean(data_weight),1)
+        date_weight = df_weight['date'].to_list()[1:] if len(df_weight) > 1 else []
+        data_weight = df_weight['weight'].to_list()[1:] if len(df_weight) > 1 else []
+        average_weight = np.round(np.mean(data_weight),1) if len(data_weight) > 0 else 0
 
 
     return render_template('index.html',average_weight=average_weight,avg_consumed=avg_consumed,date_calories=date_calories,data_calories=data_calories, date_weight=date_weight,data_weight=data_weight, dates=dates, kcals=data_calories, proteins=proteins, fats=fats, carbs=carbs)

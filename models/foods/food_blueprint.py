@@ -89,11 +89,27 @@ def food():
         columns = temp_df.columns
     all_nutritions = food_db.fetch_all_nutrition()
     all_consumption = food_db.fetch_all_consumption()
-    all_consumption = pd.DataFrame(all_consumption)
-    all_consumption['date'] = pd.to_datetime(all_consumption['date'], format='%d.%m.%Y')
-    all_consumption = all_consumption.sort_values(by='date', ascending=False)
-    all_consumption['date'] = all_consumption['date'].dt.strftime('%d.%m.%Y')
-    all_consumption = all_consumption.to_dict(orient='records')
+    df = pd.DataFrame(all_consumption)
+
+    # Convert date format and handle multiple formats
+    if not df.empty:
+        try:
+            # First try with pd.to_datetime without any format specification
+            df['date'] = pd.to_datetime(df['date'])
+        except:
+            # If that fails, try with dayfirst=True for DD.MM.YYYY formats
+            try:
+                df['date'] = pd.to_datetime(df['date'], dayfirst=True)
+            except:
+                # As a last resort, try to parse each date individually
+                df['date'] = df['date'].apply(lambda x: pd.to_datetime(x, errors='coerce'))
+
+        # Sort by date descending
+        df = df.sort_values(by='date', ascending=False)
+        # Convert date back to string format
+        df['date'] = df['date'].dt.strftime('%d.%m.%Y')
+
+    all_consumption = df.to_dict(orient='records')
     # filtered_nutritions = all_nutritions['ingredient'].unique()
     # print(filtered_nutritions)
     # print(all_nutritions.sort_values(by='ingredient'))
