@@ -1,0 +1,263 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-center mt-4 mb-4">Food Database</h1>
+
+    <!-- Search and Add New Food -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <input type="text" class="form-control" id="searchFood" placeholder="Search foods...">
+        </div>
+        <div class="col-md-6 text-end">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFoodModal">
+                <i class="bi bi-plus-circle"></i> Add New Food
+            </button>
+            <a href="{{ url_for('nutrition_app.ai_assistant') }}" class="btn btn-success">
+                <i class="bi bi-robot"></i> Add with AI
+            </a>
+        </div>
+    </div>
+
+    <!-- Foods Table -->
+    <div class="table-responsive">
+        <table class="table table-striped" id="foodsTable">
+            <thead>
+                <tr>
+                    <th>Food Name</th>
+                    <th>Quantity</th>
+                    <th>Calories</th>
+                    <th>Protein (g)</th>
+                    <th>Carbs (g)</th>
+                    <th>Fat (g)</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for food in foods %}
+                <tr>
+                    <td>{{ food.ingredient }}</td>
+                    <td>{{ food.qty }} {{ food.unit }}</td>
+                    <td>{{ food.kcal }}</td>
+                    <td>{{ food.protein }}</td>
+                    <td>{{ food.carb }}</td>
+                    <td>{{ food.fat }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success add-to-meal-btn"
+                                data-food-id="{{ food.id }}"
+                                data-food-name="{{ food.ingredient }}"
+                                data-food-qty="{{ food.qty }}"
+                                data-food-unit="{{ food.unit }}">
+                            <i class="bi bi-plus"></i> Add to Meal
+                        </button>
+                        <button class="btn btn-sm btn-warning">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Food Modal -->
+<div class="modal fade" id="addFoodModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Food</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFoodForm">
+                    <div class="mb-3">
+                        <label class="form-label">Food Name</label>
+                        <input type="text" class="form-control" name="food_name" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" name="quantity" step="0.01" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Unit</label>
+                            <input type="text" class="form-control" name="unit" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Calories</label>
+                            <input type="number" class="form-control" name="calories" step="0.1" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Protein (g)</label>
+                            <input type="number" class="form-control" name="protein" step="0.1" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Carbs (g)</label>
+                            <input type="number" class="form-control" name="carbs" step="0.1" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Fat (g)</label>
+                            <input type="number" class="form-control" name="fat" step="0.1" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveFood()">Save Food</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add to Meal Modal -->
+<div class="modal fade" id="addToMealModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add to Meal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addToMealForm">
+                    <input type="hidden" id="selectedFoodId" name="food_id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Food</label>
+                        <input type="text" class="form-control" id="selectedFoodName" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Meal Type</label>
+                        <select class="form-select" id="mealType" name="meal_type" required>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="snacks">Snacks</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="foodQuantity" name="quantity" step="0.01" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Unit</label>
+                            <input type="text" class="form-control" id="foodUnit" readonly>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" id="consumptionDate" name="date" value="{{ today }}">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addToMeal()">Add to Meal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Search functionality
+document.getElementById('searchFood').addEventListener('keyup', function() {
+    const searchValue = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#foodsTable tbody tr');
+
+    rows.forEach(row => {
+        const foodName = row.cells[0].textContent.toLowerCase();
+        if (foodName.includes(searchValue)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Handle Add to Meal button clicks
+document.querySelectorAll('.add-to-meal-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const foodId = this.dataset.foodId;
+        const foodName = this.dataset.foodName;
+        const foodQty = this.dataset.foodQty;
+        const foodUnit = this.dataset.foodUnit;
+
+        // Set modal values
+        document.getElementById('selectedFoodId').value = foodId;
+        document.getElementById('selectedFoodName').value = foodName;
+        document.getElementById('foodQuantity').value = foodQty;
+        document.getElementById('foodUnit').value = foodUnit;
+
+        // Check if meal type was set from meal tracking page
+        const savedMealType = sessionStorage.getItem('selectedMealType');
+        if (savedMealType) {
+            document.getElementById('mealType').value = savedMealType;
+            sessionStorage.removeItem('selectedMealType');
+        }
+
+        // Check if date was set from meal tracking page
+        const savedDate = sessionStorage.getItem('selectedMealDate');
+        if (savedDate) {
+            document.getElementById('consumptionDate').value = savedDate;
+            sessionStorage.removeItem('selectedMealDate');
+        } else {
+            // Set today's date
+            document.getElementById('consumptionDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('addToMealModal')).show();
+    });
+});
+
+// Add to meal function
+async function addToMeal() {
+    const form = document.getElementById('addToMealForm');
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch('{{ url_for("nutrition_app.add_to_meal") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('addToMealModal')).hide();
+
+            // Show success message
+            alert('Food added to meal successfully!');
+
+            // Optionally redirect to meal tracking
+            if (confirm('Go to meal tracking page?')) {
+                window.location.href = '{{ url_for("nutrition_app.meal_tracking") }}';
+            }
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error adding food to meal: ' + error);
+    }
+}
+
+// Placeholder for save food function
+function saveFood() {
+    alert('Save food functionality to be implemented');
+}
+</script>
+{% endblock %}

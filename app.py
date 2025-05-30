@@ -5,6 +5,7 @@ import numpy as np
 import os
 from models.food import FoodDatabase
 from models.foods.food_blueprint import food_blueprint
+from models.nutrition_app.routes import nutrition_app
 from models.calorie_weight import CalorieWeight
 from datetime import datetime
 
@@ -60,6 +61,7 @@ def logout():
     return redirect(url_for('login'))
 
 app.register_blueprint(food_blueprint)
+app.register_blueprint(nutrition_app)
 food_db = FoodDatabase()
 calorie_weight =CalorieWeight()
 

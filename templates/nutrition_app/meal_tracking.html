@@ -1,0 +1,339 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-center mt-4 mb-4">Meal Tracking</h1>
+
+    <!-- Date Navigation -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-auto">
+                    <a href="{{ url_for('nutrition_app.meal_tracking', date_str=prev_date) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </a>
+                </div>
+                <div class="col text-center">
+                    <h4 class="mb-0">{{ display_date }}</h4>
+                </div>
+                <div class="col-auto">
+                    <a href="{{ url_for('nutrition_app.meal_tracking', date_str=next_date) }}" class="btn btn-outline-primary">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-4 mx-auto">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                        <input type="date" class="form-control" id="mealDate" value="{{ selected_date }}">
+                        <button class="btn btn-primary" onclick="goToDate()">Go</button>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <a href="{{ url_for('nutrition_app.meal_tracking') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-calendar-check"></i> Today
+                    </a>
+                    <a href="{{ url_for('nutrition_app.meal_tracking_week') }}" class="btn btn-outline-primary ms-2">
+                        <i class="bi bi-calendar-week"></i> Week View
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Buttons -->
+    <div class="row mb-4">
+        <div class="col text-end">
+            <a href="{{ url_for('nutrition_app.food_database') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Add from Food Database
+            </a>
+            <a href="{{ url_for('nutrition_app.ai_assistant') }}" class="btn btn-success">
+                <i class="bi bi-robot"></i> Quick Add with AI
+            </a>
+        </div>
+    </div>
+
+    <!-- Daily Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Calories</h5>
+                    <h2 class="text-primary">{{ daily_totals.calories|default(0) }}</h2>
+                    <small class="text-muted">kcal</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Protein</h5>
+                    <h2 class="text-success">{{ daily_totals.protein|default(0) }}</h2>
+                    <small class="text-muted">grams</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Carbs</h5>
+                    <h2 class="text-warning">{{ daily_totals.carbs|default(0) }}</h2>
+                    <small class="text-muted">grams</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">Daily Fat</h5>
+                    <h2 class="text-info">{{ daily_totals.fat|default(0) }}</h2>
+                    <small class="text-muted">grams</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meals by Type -->
+    {% set meal_icons = {
+        'breakfast': 'bi-sunrise',
+        'lunch': 'bi-sun',
+        'dinner': 'bi-moon',
+        'snacks': 'bi-cookie',
+        'other': 'bi-three-dots'
+    } %}
+
+    {% for meal_type, meals in meals_by_type.items() %}
+    <div class="card mb-3">
+        <div class="card-header bg-light">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="mb-0">
+                        <i class="bi {{ meal_icons[meal_type] }}"></i>
+                        {{ meal_type|title }}
+                    </h5>
+                </div>
+                <div class="col-auto">
+                    <small class="text-muted">
+                        {{ meal_totals[meal_type].calories }} kcal |
+                        {{ meal_totals[meal_type].protein }}g protein |
+                        {{ meal_totals[meal_type].carbs }}g carbs |
+                        {{ meal_totals[meal_type].fat }}g fat
+                    </small>
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-outline-primary" data-meal-type="{{ meal_type }}">
+                        <i class="bi bi-plus"></i> Add Food
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if meals %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Food</th>
+                            <th>Quantity</th>
+                            <th>Calories</th>
+                            <th>Protein</th>
+                            <th>Carbs</th>
+                            <th>Fat</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in meals %}
+                        <tr>
+                            <td>
+                                <a href="/nutrition/{{ item.iq_id }}">{{ item.ingredient }}</a>
+                            </td>
+                            <td>{{ item.qty }} {{ item.unit }}</td>
+                            <td>{{ item.kcal }}</td>
+                            <td>{{ item.protein }}g</td>
+                            <td>{{ item.carb }}g</td>
+                            <td>{{ item.fat }}g</td>
+                            <td>
+                                <button class="btn btn-sm btn-warning edit-btn"
+                                        data-consumption-id="{{ item.consumption_id }}"
+                                        data-food-name="{{ item.ingredient }}"
+                                        data-quantity="{{ item.qty }}"
+                                        data-unit="{{ item.unit }}">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger delete-btn"
+                                        data-consumption-id="{{ item.consumption_id }}"
+                                        data-food-name="{{ item.ingredient }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center mb-0">No foods logged for {{ meal_type }}</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Empty state if no meals -->
+    {% if daily_totals.calories == 0 %}
+    <div class="text-center py-5 text-muted">
+        <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+        <p class="mt-3">No meals logged for this day.</p>
+        <button class="btn btn-primary" data-meal-type="breakfast">
+            <i class="bi bi-plus-circle"></i> Start Tracking
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Edit Quantity Modal -->
+<div class="modal fade" id="editQuantityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Quantity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editQuantityForm">
+                    <input type="hidden" id="editConsumptionId">
+
+                    <div class="mb-3">
+                        <label class="form-label">Food</label>
+                        <input type="text" class="form-control" id="editFoodName" readonly>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="editQuantity" name="quantity" step="0.01" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Unit</label>
+                            <input type="text" class="form-control" id="editUnit" readonly>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateQuantity()">Update</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle date navigation
+function goToDate() {
+    const selectedDate = document.getElementById('mealDate').value;
+    if (selectedDate) {
+        window.location.href = '{{ url_for("nutrition_app.meal_tracking") }}/' + selectedDate;
+    }
+}
+
+// Handle date change with Enter key
+document.getElementById('mealDate').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        goToDate();
+    }
+});
+
+// Handle add food button clicks
+document.querySelectorAll('[data-meal-type]').forEach(button => {
+    button.addEventListener('click', function() {
+        const mealType = this.dataset.mealType;
+        const selectedDate = '{{ selected_date }}';
+
+        // Store meal type and date in session storage
+        sessionStorage.setItem('selectedMealType', mealType);
+        sessionStorage.setItem('selectedMealDate', selectedDate);
+
+        window.location.href = '{{ url_for("nutrition_app.food_database") }}';
+    });
+});
+
+// Handle edit button clicks
+document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', function() {
+        const consumptionId = this.dataset.consumptionId;
+        const foodName = this.dataset.foodName;
+        const quantity = this.dataset.quantity;
+        const unit = this.dataset.unit;
+
+        // Set modal values
+        document.getElementById('editConsumptionId').value = consumptionId;
+        document.getElementById('editFoodName').value = foodName;
+        document.getElementById('editQuantity').value = quantity;
+        document.getElementById('editUnit').value = unit;
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('editQuantityModal')).show();
+    });
+});
+
+// Handle delete button clicks
+document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+        const consumptionId = this.dataset.consumptionId;
+        const foodName = this.dataset.foodName;
+
+        if (confirm(`Are you sure you want to delete ${foodName}?`)) {
+            try {
+                const response = await fetch(`{{ url_for("nutrition_app.delete_consumption", consumption_id=0) }}`.replace('0', consumptionId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Reload the page to show updated data
+                    window.location.reload();
+                } else {
+                    alert('Error deleting item: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error deleting item: ' + error);
+            }
+        }
+    });
+});
+
+// Update quantity function
+async function updateQuantity() {
+    const consumptionId = document.getElementById('editConsumptionId').value;
+    const newQuantity = document.getElementById('editQuantity').value;
+
+    const formData = new FormData();
+    formData.append('quantity', newQuantity);
+
+    try {
+        const response = await fetch(`{{ url_for("nutrition_app.update_consumption", consumption_id=0) }}`.replace('0', consumptionId), {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Close modal and reload page
+            bootstrap.Modal.getInstance(document.getElementById('editQuantityModal')).hide();
+            window.location.reload();
+        } else {
+            alert('Error updating quantity: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error updating quantity: ' + error);
+    }
+}
+</script>
+{% endblock %}

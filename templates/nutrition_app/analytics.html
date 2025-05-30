@@ -1,0 +1,71 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-center mt-4 mb-4">Analytics</h1>
+
+    <!-- Date Range Selector -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Date Range</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label>From:</label>
+                            <input type="date" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label>To:</label>
+                            <input type="date" class="form-control">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Quick Stats</h5>
+                    <p>Average Daily Calories: <strong>Coming Soon</strong></p>
+                    <p>Average Daily Protein: <strong>Coming Soon</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Placeholder Charts -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Calorie Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-graph-up" style="font-size: 3rem;"></i>
+                        <p class="mt-3">Calorie trends chart will be displayed here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Macro Distribution</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-pie-chart" style="font-size: 3rem;"></i>
+                        <p class="mt-3">Macro distribution chart will be displayed here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Analytics features are coming soon. This page will show detailed nutrition trends, progress tracking, and insights.
+    </div>
+</div>
+{% endblock %}

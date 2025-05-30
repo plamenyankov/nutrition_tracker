@@ -53,14 +53,14 @@ class FoodDatabase:
             if nutrition:
                 return nutrition[0]
 
-    def save_consumption(self, date, ingredient_quantity_id):
+    def save_consumption(self, date, ingredient_quantity_id, meal_type='other'):
         with self.conn:
             cursor = self.conn.cursor()
-            cnt = cursor.execute('SELECT COUNT(*) cnt FROM Consumption WHERE ingredient_quantity_id = ? AND consumption_date = ?', (ingredient_quantity_id, date,)).fetchone()[0]
+            cnt = cursor.execute('SELECT COUNT(*) cnt FROM Consumption WHERE ingredient_quantity_id = ? AND consumption_date = ? AND meal_type = ?', (ingredient_quantity_id, date, meal_type)).fetchone()[0]
             if cnt:
-                cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = ? AND consumption_date = ?', (ingredient_quantity_id, date,))
+                cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = ? AND consumption_date = ? AND meal_type = ?', (ingredient_quantity_id, date, meal_type))
             else:
-                cursor.execute('INSERT OR IGNORE INTO Consumption (ingredient_quantity_id, consumption_date) VALUES (?,?)', (ingredient_quantity_id, date,))
+                cursor.execute('INSERT OR IGNORE INTO Consumption (ingredient_quantity_id, consumption_date, meal_type) VALUES (?,?,?)', (ingredient_quantity_id, date, meal_type))
             return cnt
 
     def delete_consumption(self, ingredient_id):
@@ -312,7 +312,7 @@ class FoodDatabase:
     def fetch_all_consumption(self):
         with self.conn:
             cursor = self.conn.cursor()
-            query = """SELECT                        
+            query = """SELECT
                         c.consumption_date date,
                         IQ.quantity*c.ingredient_quantity_portions qty,
                         U.unit_name unit,
@@ -325,13 +325,14 @@ class FoodDatabase:
                         round(IQ.quantity*N.protein*c.ingredient_quantity_portions, 2) protein,
                         c.consumption_id consumption_id,
                         c.ingredient_quantity_portions iqp,
-                        IQ.ingredient_quantity_id
+                        IQ.ingredient_quantity_id,
+                        c.meal_type
                         FROM Consumption c
                     LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
                     LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
                     LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
                     LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
-                    ORDER BY date DESC"""
+                    ORDER BY date DESC, meal_type"""
 
             cursor.execute(query)
 
@@ -354,7 +355,8 @@ class FoodDatabase:
                     "protein": nutrition[9],
                     "consumption_id": nutrition[10],
                     "iqp": nutrition[11],
-                    "iq_id":nutrition[12]
+                    "iq_id":nutrition[12],
+                    "meal_type": nutrition[13] if len(nutrition) > 13 else 'other'
                 })
 
             return nutrition_data
@@ -408,7 +410,7 @@ class FoodDatabase:
         with self.conn:
             cursor = self.conn.cursor()
             query ="""
-            SELECT ri.ingredient_quantity_id iq 
+            SELECT ri.ingredient_quantity_id iq
             FROM Recipe r
             LEFT JOIN Recipe_Ingredients ri ON r.recipe_id = ri.recipe_id
             WHERE r.recipe_id=?
@@ -425,9 +427,9 @@ class FoodDatabase:
         with self.conn:
             cursor = self.conn.cursor()
             query ="""
-            SELECT 
+            SELECT
             ingredient_id,
-            unit_id 
+            unit_id
             FROM Ingredient_Quantity
             WHERE ingredient_quantity_id=?
             """
