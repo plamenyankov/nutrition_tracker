@@ -129,7 +129,7 @@ ssh root@164.90.169.51
 docker pull yourusername/nutrition-tracker:latest
 docker stop nutrition-tracker
 docker rm nutrition-tracker
-docker run -d --name nutrition-tracker -p 80:8000 \
+docker run -d --name nutrition-tracker -p 80:5000 \
   -e SECRET_KEY="$(openssl rand -hex 32)" \
   -e OPENAI_API_KEY="$OPENAI_API_KEY" \
   yourusername/nutrition-tracker:latest
