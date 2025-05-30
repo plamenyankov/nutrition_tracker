@@ -9,7 +9,7 @@ APP_DIR="/root/nutrition_tracker"
 CONTAINER_NAME="nutrition-tracker"
 
 # Docker Hub configuration - UPDATE THESE WITH YOUR DOCKER HUB USERNAME
-DOCKER_USERNAME="plamenyankov"  # Replace with your Docker Hub username
+DOCKER_USERNAME="plamenyankov1"  # Replace with your Docker Hub username
 DOCKER_IMAGE_NAME="nutrition-tracker"
 DOCKER_TAG="latest"
 DOCKER_FULL_NAME="${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
