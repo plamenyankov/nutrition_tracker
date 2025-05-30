@@ -116,24 +116,24 @@ def consume_food():
     food_db.save_consumption(date, ingredient_quantity_id)
     return redirect(url_for('foods.food'))
 
-@food_blueprint.route('/recipe', methods=['GET','POST'])
-@food_blueprint.route('/recipe/<int:recipe_id>', methods=['GET','POST'])
-@login_required
-def recipe(recipe_id=None):
-    all_recipes = food_db.fetch_all_recipes()
-    ingredients = None
-
-    if 'recipe_page' in request.form:
-        recipe_id = request.form['recipe_id']
-        recipe_ingredients = get_ingredients_from_recipes(recipe_id)
-
-    if recipe_id:
-        recipe_ingredients = food_db.fetch_recipe_ingredients(recipe_id)
-        ingredients = []
-        for iq_id in recipe_ingredients:
-            ingredients.append(food_db.fetch_nutrition(iq_id))
-
-    return render_template('recipe.html', recipes=all_recipes, nutritions=ingredients)
+# @food_blueprint.route('/recipe', methods=['GET','POST'])
+# @food_blueprint.route('/recipe/<int:recipe_id>', methods=['GET','POST'])
+# @login_required
+# def recipe(recipe_id=None):
+#     all_recipes = food_db.fetch_all_recipes()
+#     ingredients = None
+#
+#     if 'recipe_page' in request.form:
+#         recipe_id = request.form['recipe_id']
+#         recipe_ingredients = get_ingredients_from_recipes(recipe_id)
+#
+#     if recipe_id:
+#         recipe_ingredients = food_db.fetch_recipe_ingredients(recipe_id)
+#         ingredients = []
+#         for iq_id in recipe_ingredients:
+#             ingredients.append(food_db.fetch_nutrition(iq_id))
+#
+#     return render_template('recipe.html', recipes=all_recipes, nutritions=ingredients)
 
 @food_blueprint.route('/preview_openai_response', methods=['POST'])
 @login_required

@@ -252,6 +252,156 @@ def recipes_list():
     all_recipes = food_db.fetch_all_recipes()
     return render_template('nutrition_app/recipes.html', recipes=all_recipes)
 
+@nutrition_app.route('/recipe/<int:recipe_id>')
+@login_required
+def recipe_detail(recipe_id):
+    """View recipe details"""
+    # Get recipe info
+    all_recipes = food_db.fetch_all_recipes()
+    recipe = next((r for r in all_recipes if r['recipe_id'] == recipe_id), None)
+
+    if not recipe:
+        flash('Recipe not found', 'danger')
+        return redirect(url_for('nutrition_app.recipes_list'))
+
+    # Get recipe ingredients
+    ingredient_ids = food_db.fetch_recipe_ingredients(recipe_id)
+    ingredients = []
+
+    for iq_id in ingredient_ids:
+        ingredient = food_db.fetch_nutrition(iq_id)
+        ingredients.append(ingredient)
+
+    # Calculate per serving nutrition
+    per_serving = {
+        'kcal': round(recipe['kcal'] / recipe['serv'], 1),
+        'protein': round(recipe['protein'] / recipe['serv'], 1),
+        'carb': round(recipe['carb'] / recipe['serv'], 1),
+        'fat': round(recipe['fat'] / recipe['serv'], 1)
+    }
+
+    return render_template('nutrition_app/recipe_detail.html',
+                         recipe=recipe,
+                         ingredients=ingredients,
+                         per_serving=per_serving)
+
+@nutrition_app.route('/recipe/create', methods=['GET', 'POST'])
+@login_required
+def recipe_create():
+    """Create new recipe"""
+    if request.method == 'POST':
+        try:
+            recipe_name = request.form.get('recipe_name')
+            servings = int(request.form.get('servings', 1))
+
+            # Get ingredients data
+            ingredient_ids = request.form.getlist('ingredient_ids[]')
+            quantities = request.form.getlist('quantities[]')
+
+            if not recipe_name or not ingredient_ids:
+                flash('Recipe name and at least one ingredient are required', 'danger')
+                return redirect(url_for('nutrition_app.recipe_create'))
+
+            # Build CSV data for the recipe
+            csv_lines = ['ingr,qty,unit,kcal,fats,carbs,fiber,net_carbs,protein']
+
+            for i, iq_id in enumerate(ingredient_ids):
+                if iq_id:
+                    # Get ingredient details
+                    ingredient = food_db.fetch_nutrition(iq_id)
+                    quantity = float(quantities[i]) if i < len(quantities) else ingredient['qty']
+
+                    # Scale nutrition values
+                    scale = quantity / ingredient['qty']
+
+                    csv_line = f"{ingredient['ingredient']},{quantity},{ingredient['unit']}," \
+                             f"{ingredient['kcal'] * scale},{ingredient['fat'] * scale}," \
+                             f"{ingredient['carb'] * scale},{ingredient['fiber'] * scale}," \
+                             f"{ingredient['net_carb'] * scale},{ingredient['protein'] * scale}"
+                    csv_lines.append(csv_line)
+
+            # Save recipe
+            csv_data = '\n'.join(csv_lines)
+            date = datetime.now().strftime('%Y-%m-%d')
+            result = food_db.save_recipe(date, recipe_name, servings, csv_data)
+
+            if isinstance(result, list):
+                flash(f'Recipe "{recipe_name}" created successfully!', 'success')
+                return redirect(url_for('nutrition_app.recipes_list'))
+            else:
+                flash(f'Error creating recipe: {result}', 'danger')
+
+        except Exception as e:
+            flash(f'Error creating recipe: {str(e)}', 'danger')
+
+    # Get all foods for ingredient selection
+    all_foods = food_db.fetch_all_nutrition()
+    return render_template('nutrition_app/recipe_create.html', foods=all_foods)
+
+@nutrition_app.route('/recipe/<int:recipe_id>/edit', methods=['GET', 'POST'])
+@login_required
+def recipe_edit(recipe_id):
+    """Edit existing recipe"""
+    # Get recipe info
+    all_recipes = food_db.fetch_all_recipes()
+    recipe = next((r for r in all_recipes if r['recipe_id'] == recipe_id), None)
+
+    if not recipe:
+        flash('Recipe not found', 'danger')
+        return redirect(url_for('nutrition_app.recipes_list'))
+
+    if request.method == 'POST':
+        # For now, we'll implement delete and recreate
+        # In a production app, you'd want proper UPDATE functionality
+        flash('Recipe editing will be implemented soon!', 'info')
+        return redirect(url_for('nutrition_app.recipe_detail', recipe_id=recipe_id))
+
+    # Get recipe ingredients
+    ingredient_ids = food_db.fetch_recipe_ingredients(recipe_id)
+    ingredients = []
+    for iq_id in ingredient_ids:
+        ingredient = food_db.fetch_nutrition(iq_id)
+        ingredients.append(ingredient)
+
+    # Get all foods for ingredient selection
+    all_foods = food_db.fetch_all_nutrition()
+
+    return render_template('nutrition_app/recipe_edit.html',
+                         recipe=recipe,
+                         ingredients=ingredients,
+                         foods=all_foods)
+
+@nutrition_app.route('/recipe/<int:recipe_id>/add-to-meal', methods=['POST'])
+@login_required
+def recipe_add_to_meal(recipe_id):
+    """Add recipe to a meal"""
+    try:
+        meal_type = request.form.get('meal_type', 'other')
+        servings = float(request.form.get('servings', 1))
+        date = request.form.get('date', datetime.now().strftime('%d.%m.%Y'))
+
+        # Get recipe ingredients
+        ingredient_ids = food_db.fetch_recipe_ingredients(recipe_id)
+
+        # Add each ingredient to the meal with scaled quantity
+        for iq_id in ingredient_ids:
+            ingredient = food_db.fetch_nutrition(iq_id)
+            # Scale by number of servings consumed
+            scaled_qty = ingredient['qty'] * servings
+
+            # Get ingredient and unit IDs
+            ingredient_id, unit_id = food_db.get_unit_ingredient_from_iq(iq_id)
+
+            # Save with scaled quantity
+            new_iq_id = food_db.save_ingredient_qty(scaled_qty, ingredient_id, unit_id)
+            food_db.save_consumption(date, new_iq_id, meal_type)
+
+        flash(f'Recipe added to {meal_type}!', 'success')
+        return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @nutrition_app.route('/analytics')
 @login_required
 def analytics():
@@ -354,6 +504,30 @@ def update_consumption(consumption_id):
         food_db.save_consumption(consumption_item['date'], new_iq_id, consumption_item.get('meal_type', 'other'))
 
         return jsonify({'success': True})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@nutrition_app.route('/recipe/<int:recipe_id>/delete', methods=['POST'])
+@login_required
+def recipe_delete(recipe_id):
+    """Delete a recipe"""
+    try:
+        # Get recipe info to confirm it exists
+        all_recipes = food_db.fetch_all_recipes()
+        recipe = next((r for r in all_recipes if r['recipe_id'] == recipe_id), None)
+
+        if not recipe:
+            return jsonify({'success': False, 'error': 'Recipe not found'})
+
+        # Delete recipe from database
+        result = food_db.delete_recipe(recipe_id)
+
+        if "successfully" in result:
+            flash(f'Recipe "{recipe["recipe_name"]}" has been deleted successfully!', 'success')
+            return jsonify({'success': True, 'redirect': url_for('nutrition_app.recipes_list')})
+        else:
+            return jsonify({'success': False, 'error': result})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

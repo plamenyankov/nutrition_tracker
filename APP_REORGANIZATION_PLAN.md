@@ -154,7 +154,7 @@ The current `/food` page is overloaded with multiple functionalities. This plan 
 ### Phase 2: Enhanced Functionality (Week 3-4)
 - [x] Implement meal types (breakfast, lunch, etc.)
 - [x] Add calendar view for meal tracking
-- [ ] Enhance recipe builder
+- [x] Enhance recipe builder
 - [ ] Add search/filter capabilities
 - [ ] Implement favorites system
 

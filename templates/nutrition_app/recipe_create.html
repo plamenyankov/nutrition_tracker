@@ -1,0 +1,345 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mt-4 mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('nutrition_app.recipes_list') }}">Recipes</a></li>
+                    <li class="breadcrumb-item active">Create New Recipe</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <h1 class="mb-4">Create New Recipe</h1>
+
+    <form method="POST" id="createRecipeForm">
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Recipe Details -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Recipe Details</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Recipe Name</label>
+                                <input type="text" class="form-control" name="recipe_name"
+                                       placeholder="Enter recipe name" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Number of Servings</label>
+                                <input type="number" class="form-control" name="servings"
+                                       min="1" value="1" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ingredients -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Ingredients</h5>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addIngredientRow()">
+                                <i class="bi bi-plus-circle"></i> Add Ingredient
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="ingredientsList">
+                            <!-- Ingredient rows will be added here -->
+                        </div>
+
+                        <div class="text-center mt-3">
+                            <button type="button" class="btn btn-outline-primary" onclick="addIngredientRow()">
+                                <i class="bi bi-plus"></i> Add Another Ingredient
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('nutrition_app.recipes_list') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Create Recipe
+                    </button>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <!-- Nutrition Preview -->
+                <div class="card sticky-top" style="top: 20px;">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Nutrition Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="text-muted mb-3">Total Recipe:</h6>
+                        <div class="row text-center mb-3">
+                            <div class="col-6 mb-2">
+                                <div class="p-2 bg-light rounded">
+                                    <h5 class="mb-0 text-primary" id="totalCalories">0</h5>
+                                    <small class="text-muted">Calories</small>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <div class="p-2 bg-light rounded">
+                                    <h5 class="mb-0 text-success" id="totalProtein">0g</h5>
+                                    <small class="text-muted">Protein</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 bg-light rounded">
+                                    <h5 class="mb-0 text-warning" id="totalCarbs">0g</h5>
+                                    <small class="text-muted">Carbs</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 bg-light rounded">
+                                    <h5 class="mb-0 text-info" id="totalFat">0g</h5>
+                                    <small class="text-muted">Fat</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6 class="text-muted mb-3">Per Serving:</h6>
+                        <div class="text-center" id="perServingInfo">
+                            <small class="text-muted">Add ingredients to see nutrition</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+// Food data for autocomplete and nutrition calculation
+const foods = [
+    {% for food in foods %}
+    {
+        id: "{{ food.id }}",
+        name: "{{ food.ingredient }}",
+        unit: "{{ food.unit }}",
+        qty: {{ food.qty }},
+        kcal: {{ food.kcal }},
+        protein: {{ food.protein }},
+        carb: {{ food.carb }},
+        fat: {{ food.fat }}
+    },
+    {% endfor %}
+];
+
+let ingredientCount = 0;
+let selectedIngredients = {};
+
+// Add ingredient row
+function addIngredientRow() {
+    ingredientCount++;
+    const rowId = `ingredient_${ingredientCount}`;
+
+    const row = `
+        <div class="ingredient-row mb-3" id="${rowId}">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <input type="text" class="form-control ingredient-search"
+                           placeholder="Search for ingredient..."
+                           data-row-id="${rowId}">
+                    <input type="hidden" name="ingredient_ids[]" id="${rowId}_id">
+                    <div class="autocomplete-results position-absolute bg-white border rounded shadow-sm d-none"
+                         style="max-height: 200px; overflow-y: auto; z-index: 1000; width: 100%;">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <input type="number" class="form-control quantity-input"
+                               name="quantities[]" placeholder="Qty"
+                               step="0.01" min="0.01"
+                               data-row-id="${rowId}" disabled>
+                        <span class="input-group-text unit-display">-</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeIngredient('${rowId}')">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+            <small class="text-muted nutrition-info mt-1"></small>
+        </div>
+    `;
+
+    document.getElementById('ingredientsList').insertAdjacentHTML('beforeend', row);
+
+    // Setup autocomplete for the new row
+    setupAutocomplete(rowId);
+}
+
+// Setup autocomplete for ingredient search
+function setupAutocomplete(rowId) {
+    const searchInput = document.querySelector(`#${rowId} .ingredient-search`);
+    const resultsDiv = document.querySelector(`#${rowId} .autocomplete-results`);
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        if (searchTerm.length < 2) {
+            resultsDiv.classList.add('d-none');
+            return;
+        }
+
+        const matches = foods.filter(food =>
+            food.name.toLowerCase().includes(searchTerm)
+        ).slice(0, 10);
+
+        if (matches.length > 0) {
+            resultsDiv.innerHTML = matches.map(food => `
+                <div class="p-2 hover-bg-light cursor-pointer autocomplete-item"
+                     onclick="selectIngredient('${rowId}', '${food.id}')">
+                    ${food.name} (${food.qty} ${food.unit})
+                </div>
+            `).join('');
+            resultsDiv.classList.remove('d-none');
+        } else {
+            resultsDiv.classList.add('d-none');
+        }
+    });
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest(`#${rowId}`)) {
+            resultsDiv.classList.add('d-none');
+        }
+    });
+}
+
+// Select ingredient from autocomplete
+function selectIngredient(rowId, foodId) {
+    const food = foods.find(f => f.id === foodId);
+    if (!food) return;
+
+    // Update UI
+    document.querySelector(`#${rowId} .ingredient-search`).value = food.name;
+    document.querySelector(`#${rowId}_id`).value = food.id;
+    document.querySelector(`#${rowId} .quantity-input`).disabled = false;
+    document.querySelector(`#${rowId} .quantity-input`).value = food.qty;
+    document.querySelector(`#${rowId} .unit-display`).textContent = food.unit;
+    document.querySelector(`#${rowId} .autocomplete-results`).classList.add('d-none');
+
+    // Store ingredient data
+    selectedIngredients[rowId] = food;
+
+    // Update nutrition preview
+    updateNutritionPreview();
+
+    // Setup quantity change listener
+    const qtyInput = document.querySelector(`#${rowId} .quantity-input`);
+    qtyInput.addEventListener('input', updateNutritionPreview);
+}
+
+// Remove ingredient row
+function removeIngredient(rowId) {
+    document.getElementById(rowId).remove();
+    delete selectedIngredients[rowId];
+    updateNutritionPreview();
+}
+
+// Update nutrition preview
+function updateNutritionPreview() {
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    // Calculate totals
+    Object.keys(selectedIngredients).forEach(rowId => {
+        const ingredient = selectedIngredients[rowId];
+        const qtyInput = document.querySelector(`#${rowId} .quantity-input`);
+
+        if (qtyInput && qtyInput.value) {
+            const quantity = parseFloat(qtyInput.value);
+            const scale = quantity / ingredient.qty;
+
+            totalCalories += ingredient.kcal * scale;
+            totalProtein += ingredient.protein * scale;
+            totalCarbs += ingredient.carb * scale;
+            totalFat += ingredient.fat * scale;
+
+            // Update row nutrition info
+            const nutritionInfo = document.querySelector(`#${rowId} .nutrition-info`);
+            if (nutritionInfo) {
+                nutritionInfo.textContent = `${Math.round(ingredient.kcal * scale)} kcal | ` +
+                    `${(ingredient.protein * scale).toFixed(1)}g protein | ` +
+                    `${(ingredient.carb * scale).toFixed(1)}g carbs | ` +
+                    `${(ingredient.fat * scale).toFixed(1)}g fat`;
+            }
+        }
+    });
+
+    // Update totals display
+    document.getElementById('totalCalories').textContent = Math.round(totalCalories);
+    document.getElementById('totalProtein').textContent = totalProtein.toFixed(1) + 'g';
+    document.getElementById('totalCarbs').textContent = totalCarbs.toFixed(1) + 'g';
+    document.getElementById('totalFat').textContent = totalFat.toFixed(1) + 'g';
+
+    // Update per serving
+    const servings = parseInt(document.querySelector('input[name="servings"]').value) || 1;
+    const perServingDiv = document.getElementById('perServingInfo');
+
+    if (totalCalories > 0) {
+        perServingDiv.innerHTML = `
+            <span class="text-primary">${Math.round(totalCalories / servings)} kcal</span> |
+            <span class="text-success">${(totalProtein / servings).toFixed(1)}g P</span> |
+            <span class="text-warning">${(totalCarbs / servings).toFixed(1)}g C</span> |
+            <span class="text-info">${(totalFat / servings).toFixed(1)}g F</span>
+        `;
+    } else {
+        perServingDiv.innerHTML = '<small class="text-muted">Add ingredients to see nutrition</small>';
+    }
+}
+
+// Update preview when servings change
+document.querySelector('input[name="servings"]').addEventListener('input', updateNutritionPreview);
+
+// Add first ingredient row on load
+addIngredientRow();
+
+// Form validation
+document.getElementById('createRecipeForm').addEventListener('submit', function(e) {
+    const hasIngredients = document.querySelectorAll('input[name="ingredient_ids[]"]').length > 0 &&
+                          Array.from(document.querySelectorAll('input[name="ingredient_ids[]"]')).some(input => input.value);
+
+    if (!hasIngredients) {
+        e.preventDefault();
+        alert('Please add at least one ingredient to the recipe.');
+    }
+});
+
+// Add custom styles
+const style = document.createElement('style');
+style.textContent = `
+    .hover-bg-light:hover {
+        background-color: #f8f9fa;
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    .autocomplete-item {
+        border-bottom: 1px solid #eee;
+    }
+    .autocomplete-item:last-child {
+        border-bottom: none;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

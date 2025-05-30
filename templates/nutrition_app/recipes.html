@@ -4,36 +4,65 @@
 <div class="container-fluid">
     <h1 class="text-center mt-4 mb-4">Recipes</h1>
 
-    <!-- Add Recipe Button -->
+    <!-- Search and Add Recipe -->
     <div class="row mb-4">
-        <div class="col text-end">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
+        <div class="col-md-6">
+            <input type="text" class="form-control" id="searchRecipe" placeholder="Search recipes...">
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('nutrition_app.recipe_create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-circle"></i> Create New Recipe
-            </button>
+            </a>
         </div>
     </div>
 
     <!-- Recipes Grid -->
-    <div class="row">
+    <div class="row" id="recipesGrid">
         {% for recipe in recipes %}
-        <div class="col-md-4 mb-4">
+        <div class="col-md-6 col-lg-4 mb-4 recipe-card">
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title">{{ recipe.recipe_name }}</h5>
                     <p class="card-text">
-                        <small class="text-muted">Created: {{ recipe.date }}</small><br>
-                        Servings: {{ recipe.serv }}
+                        <small class="text-muted">
+                            <i class="bi bi-calendar"></i> {{ recipe.date }}<br>
+                            <i class="bi bi-people"></i> {{ recipe.serv }} servings
+                        </small>
                     </p>
+
+                    <!-- Total Nutrition -->
+                    <h6 class="text-muted mb-2">Total Recipe:</h6>
+                    <div class="nutrition-info mb-2">
+                        <span class="badge bg-primary">{{ recipe.kcal|round|int }} kcal</span>
+                        <span class="badge bg-success">{{ recipe.protein|round|int }}g protein</span>
+                        <span class="badge bg-warning text-dark">{{ recipe.carb|round|int }}g carbs</span>
+                        <span class="badge bg-info">{{ recipe.fat|round|int }}g fat</span>
+                    </div>
+
+                    <!-- Per Serving -->
+                    <h6 class="text-muted mb-2">Per Serving:</h6>
                     <div class="nutrition-info">
-                        <span class="badge bg-primary">{{ recipe.kcal }} kcal</span>
-                        <span class="badge bg-success">{{ recipe.protein }}g protein</span>
-                        <span class="badge bg-warning">{{ recipe.carb }}g carbs</span>
-                        <span class="badge bg-info">{{ recipe.fat }}g fat</span>
+                        <small>
+                            <span class="text-primary">{{ (recipe.kcal / recipe.serv)|round|int }} kcal</span> |
+                            <span class="text-success">{{ (recipe.protein / recipe.serv)|round(1) }}g P</span> |
+                            <span class="text-warning">{{ (recipe.carb / recipe.serv)|round(1) }}g C</span> |
+                            <span class="text-info">{{ (recipe.fat / recipe.serv)|round(1) }}g F</span>
+                        </small>
                     </div>
                 </div>
-                <div class="card-footer">
-                    <a href="/recipe/{{ recipe.id }}" class="btn btn-sm btn-outline-primary">View Details</a>
-                    <button class="btn btn-sm btn-outline-success">Add to Meal</button>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('nutrition_app.recipe_detail', recipe_id=recipe.recipe_id) }}"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i> View
+                        </a>
+                        <button class="btn btn-sm btn-outline-success add-recipe-to-meal"
+                                data-recipe-id="{{ recipe.recipe_id }}"
+                                data-recipe-name="{{ recipe.recipe_name }}"
+                                data-servings="{{ recipe.serv }}">
+                            <i class="bi bi-plus-square"></i> Add to Meal
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -44,22 +73,139 @@
     <div class="text-center py-5 text-muted">
         <i class="bi bi-book" style="font-size: 3rem;"></i>
         <p class="mt-3">No recipes yet. Create your first recipe!</p>
+        <a href="{{ url_for('nutrition_app.recipe_create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create Recipe
+        </a>
     </div>
     {% endif %}
 </div>
 
-<!-- Create Recipe Modal (placeholder for now) -->
-<div class="modal fade" id="createRecipeModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- Add Recipe to Meal Modal -->
+<div class="modal fade" id="addRecipeToMealModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Create New Recipe</h5>
+                <h5 class="modal-title">Add Recipe to Meal</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Recipe creation form will be implemented here.</p>
+                <form id="addRecipeToMealForm">
+                    <input type="hidden" id="recipeId" name="recipe_id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Recipe</label>
+                        <input type="text" class="form-control" id="recipeName" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Meal Type</label>
+                        <select class="form-select" name="meal_type" required>
+                            <option value="breakfast">Breakfast</option>
+                            <option value="lunch">Lunch</option>
+                            <option value="dinner">Dinner</option>
+                            <option value="snacks">Snacks</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Number of Servings</label>
+                        <input type="number" class="form-control" name="servings"
+                               id="recipeServings" step="0.5" min="0.5" value="1" required>
+                        <small class="form-text text-muted" id="servingsHelp"></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Date</label>
+                        <input type="date" class="form-control" name="date"
+                               value="{{ today|default('') }}" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addRecipeToMeal()">Add to Meal</button>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+// Search functionality
+document.getElementById('searchRecipe').addEventListener('keyup', function() {
+    const searchValue = this.value.toLowerCase();
+    const recipeCards = document.querySelectorAll('.recipe-card');
+
+    recipeCards.forEach(card => {
+        const recipeName = card.querySelector('.card-title').textContent.toLowerCase();
+        if (recipeName.includes(searchValue)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+});
+
+// Handle Add to Meal button clicks
+document.querySelectorAll('.add-recipe-to-meal').forEach(button => {
+    button.addEventListener('click', function() {
+        const recipeId = this.dataset.recipeId;
+        const recipeName = this.dataset.recipeName;
+        const servings = this.dataset.servings;
+
+        // Set modal values
+        document.getElementById('recipeId').value = recipeId;
+        document.getElementById('recipeName').value = recipeName;
+        document.getElementById('servingsHelp').textContent = `Recipe makes ${servings} servings`;
+
+        // Set today's date
+        const dateInput = document.querySelector('input[name="date"]');
+        if (!dateInput.value) {
+            dateInput.value = new Date().toISOString().split('T')[0];
+        }
+
+        // Show modal
+        new bootstrap.Modal(document.getElementById('addRecipeToMealModal')).show();
+    });
+});
+
+// Add recipe to meal function
+async function addRecipeToMeal() {
+    const form = document.getElementById('addRecipeToMealForm');
+    const formData = new FormData(form);
+    const recipeId = document.getElementById('recipeId').value;
+
+    // Convert date to DD.MM.YYYY format
+    const dateValue = formData.get('date');
+    const date = new Date(dateValue);
+    const formattedDate = `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+    formData.set('date', formattedDate);
+
+    try {
+        const response = await fetch(`{{ url_for("nutrition_app.recipe_add_to_meal", recipe_id=0) }}`.replace('0', recipeId), {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('addRecipeToMealModal')).hide();
+
+            // Show success message
+            alert('Recipe added to meal successfully!');
+
+            // Optionally redirect to meal tracking
+            if (confirm('Go to meal tracking page?')) {
+                window.location.href = '{{ url_for("nutrition_app.meal_tracking") }}';
+            }
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error adding recipe to meal: ' + error);
+    }
+}
+</script>
 {% endblock %}

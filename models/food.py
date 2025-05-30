@@ -477,3 +477,27 @@ class FoodDatabase:
             }
 
             return nutrition_data
+
+    def delete_recipe(self, recipe_id):
+        try:
+            with self.conn:
+                cursor = self.conn.cursor()
+
+                # First delete from Recipe_Ingredients
+                cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = ?', (recipe_id,))
+
+                # Then delete from Recipe
+                cursor.execute('DELETE FROM Recipe WHERE recipe_id = ?', (recipe_id,))
+
+                # Commit the changes
+                self.conn.commit()
+
+                return "Recipe deleted successfully"
+
+        except sqlite3.Error as e:
+            # Handle the error and return a meaningful message
+            return f"Error deleting recipe: {e}"
+
+        finally:
+            if cursor:
+                cursor.close()
