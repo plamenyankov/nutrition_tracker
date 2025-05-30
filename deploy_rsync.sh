@@ -78,7 +78,7 @@ fi
 echo "Starting new container..."
 docker run -d \
     --name nutrition-tracker \
-    -p 80:8000 \
+    -p 80:5000 \
     -e SECRET_KEY="$(openssl rand -hex 32)" \
     -e OPENAI_API_KEY="$OPENAI_API_KEY" \
     -e DEBUG=False \
