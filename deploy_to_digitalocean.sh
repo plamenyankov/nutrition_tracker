@@ -8,6 +8,12 @@ DROPLET_USER="root"
 APP_DIR="/root/nutrition_tracker"
 CONTAINER_NAME="nutrition-tracker"
 
+# Docker Hub configuration - UPDATE THESE WITH YOUR DOCKER HUB USERNAME
+DOCKER_USERNAME="plamenyankov"  # Replace with your Docker Hub username
+DOCKER_IMAGE_NAME="nutrition-tracker"
+DOCKER_TAG="latest"
+DOCKER_FULL_NAME="${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -40,51 +46,72 @@ else
     echo -e "${YELLOW}No remote repository found. Skipping push.${NC}"
 fi
 
-# Step 3: Deploy to DigitalOcean
+# Step 3: Build Docker image locally
+echo -e "${GREEN}Building Docker image locally...${NC}"
+docker build -t ${DOCKER_FULL_NAME} .
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Docker build failed!${NC}"
+    exit 1
+fi
+
+# Step 4: Push to Docker Hub
+echo -e "${YELLOW}Pushing image to Docker Hub...${NC}"
+echo -e "${YELLOW}Please ensure you're logged in to Docker Hub (docker login)${NC}"
+
+docker push ${DOCKER_FULL_NAME}
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}❌ Docker push failed! Please run 'docker login' first.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Image pushed to Docker Hub successfully!${NC}"
+
+# Step 5: Deploy to DigitalOcean
 echo -e "${GREEN}Deploying to DigitalOcean droplet...${NC}"
 
 # Create deployment commands
-DEPLOY_COMMANDS=$(cat <<'EOF'
-cd /root/nutrition_tracker
-
-# Pull latest changes if git repo exists
-if [ -d .git ]; then
-    echo "Pulling latest changes from git..."
-    git pull origin main || git pull origin master || echo "Git pull skipped"
-fi
-
+DEPLOY_COMMANDS=$(cat <<EOF
 # Stop and remove existing container
 echo "Stopping existing container..."
-docker stop nutrition-tracker 2>/dev/null || true
-docker rm nutrition-tracker 2>/dev/null || true
+docker stop ${CONTAINER_NAME} 2>/dev/null || true
+docker rm ${CONTAINER_NAME} 2>/dev/null || true
 
-# Remove old image to ensure fresh build
-echo "Removing old Docker image..."
-docker rmi nutrition-tracker-app 2>/dev/null || true
+# Pull the latest image from Docker Hub
+echo "Pulling latest image from Docker Hub..."
+docker pull ${DOCKER_FULL_NAME}
 
-# Build new image
-echo "Building new Docker image..."
-docker build -t nutrition-tracker-app .
+# Get OPENAI_API_KEY from environment or .env file
+if [ -z "\$OPENAI_API_KEY" ]; then
+    # Try to get from existing container
+    OPENAI_API_KEY=\$(docker inspect ${CONTAINER_NAME} 2>/dev/null | grep OPENAI_API_KEY | head -1 | cut -d'"' -f4)
+
+    # If still empty, try from .env file
+    if [ -z "\$OPENAI_API_KEY" ] && [ -f /root/nutrition_tracker/.env ]; then
+        export OPENAI_API_KEY=\$(grep OPENAI_API_KEY /root/nutrition_tracker/.env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+    fi
+fi
 
 # Run new container with environment variables
 echo "Starting new container..."
-docker run -d \
-    --name nutrition-tracker \
-    -p 80:8000 \
-    -e SECRET_KEY="$(openssl rand -hex 32)" \
-    -e OPENAI_API_KEY="$OPENAI_API_KEY" \
-    -e DEBUG=False \
-    --restart unless-stopped \
-    nutrition-tracker-app
+docker run -d \\
+    --name ${CONTAINER_NAME} \\
+    -p 80:5000 \\
+    -e SECRET_KEY="\$(openssl rand -hex 32)" \\
+    -e OPENAI_API_KEY="\$OPENAI_API_KEY" \\
+    -e DEBUG=False \\
+    --restart unless-stopped \\
+    ${DOCKER_FULL_NAME}
 
 # Check if container is running
 sleep 3
-if docker ps | grep -q nutrition-tracker; then
+if docker ps | grep -q ${CONTAINER_NAME}; then
     echo "✅ Deployment successful! Container is running."
-    docker logs --tail 20 nutrition-tracker
+    docker logs --tail 20 ${CONTAINER_NAME}
 else
     echo "❌ Deployment failed! Container is not running."
-    docker logs nutrition-tracker
+    docker logs ${CONTAINER_NAME}
     exit 1
 fi
 
