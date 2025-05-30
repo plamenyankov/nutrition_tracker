@@ -1,5 +1,6 @@
 from flask import Blueprint
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask_login import login_required
 from datetime import datetime
 from models.food import FoodDatabase
 import pandas as pd
@@ -50,6 +51,7 @@ def save_recipe(date, form):
 
 
 @food_blueprint.route('/nutrition/<int:nutrition_id>', methods=['GET','POST'])
+@login_required
 def nutrition(nutrition_id):
     if 'action' in request.form:
         action = request.form['action']
@@ -75,6 +77,7 @@ def nutrition(nutrition_id):
     return render_template('nutrition.html', nutrition=nutrition)
 
 @food_blueprint.route('/food', methods=['GET','POST'])
+@login_required
 def food():
     global temp_df
     data = None
@@ -97,6 +100,7 @@ def food():
     all_recipes = food_db.fetch_all_recipes()
     return render_template('food.html', data=data, columns=columns,  nutritions= all_nutritions, consumption=all_consumption, recipes=all_recipes)
 @food_blueprint.route('/consume_food', methods=['POST'])
+@login_required
 def consume_food():
     date = datetime.now().strftime('%d.%m.%Y')
     if 'date' in request.form and request.form['date'] != '':
@@ -112,8 +116,10 @@ def consume_food():
     food_db.save_consumption(date, ingredient_quantity_id)
     return redirect(url_for('foods.food'))
 
+@food_blueprint.route('/recipe', methods=['GET','POST'])
 @food_blueprint.route('/recipe/<int:recipe_id>', methods=['GET','POST'])
-def recipe(recipe_id):
+@login_required
+def recipe(recipe_id=None):
     all_recipes = food_db.fetch_all_recipes()
     ingredients = None
 
@@ -130,18 +136,31 @@ def recipe(recipe_id):
     return render_template('recipe.html', recipes=all_recipes, nutritions=ingredients)
 
 @food_blueprint.route('/preview_openai_response', methods=['POST'])
+@login_required
 def preview_openai_response():
     global temp_df
-    user_input = request.form['foods']
-    # Call OpenAI API here
-    response = openai_utils.get_openai_response(user_input)
-    # Convert the response to a DataFrame
-    data_io = io.StringIO(response)
-    temp_df = pd.read_csv(data_io)
+    try:
+        user_input = request.form['foods']
+        print(f"OpenAI request for: {user_input}")
+
+        # Call OpenAI API here
+        response = openai_utils.get_openai_response(user_input)
+        print(f"OpenAI response received: {response[:100]}...")
+
+        # Convert the response to a DataFrame
+        data_io = io.StringIO(response)
+        temp_df = pd.read_csv(data_io)
+        print(f"DataFrame created successfully with {len(temp_df)} rows")
+        print(f"DataFrame columns: {list(temp_df.columns)}")
+
+    except Exception as e:
+        print(f"Error in preview_openai_response: {str(e)}")
+        temp_df = None
 
     return redirect(url_for('foods.food'))
 
 @food_blueprint.route('/handle_ingredients_action', methods=['POST'])
+@login_required
 def handle_ingredients_action():
     action = request.form['action']
     # This will return a list of all the ingredient_ids from the checked checkboxes
@@ -160,6 +179,7 @@ def handle_ingredients_action():
     return redirect(url_for('foods.food'))
 
 @food_blueprint.route('/handle_recipe_action', methods=['POST'])
+@login_required
 def handle_recipe_action():
      # This will return a list of all the ingredient_ids from the checked checkboxes
     recipe_ids = request.form.getlist('remove_ids[]')
@@ -189,6 +209,7 @@ def handle_recipe_action():
     return redirect(url_for('foods.food'))
 
 @food_blueprint.route('/remove_consumption', methods=['POST'])
+@login_required
 def remove_consumption():
     # This will return a list of all the ingredient_ids from the checked checkboxes
     ingredient_ids_to_remove = request.form.getlist('remove_ids[]')
@@ -202,6 +223,7 @@ def remove_consumption():
 
 
 @food_blueprint.route('/handle_food_actions', methods=['POST'])
+@login_required
 def handle_food_actions():
     global temp_df
     button_clicked = request.form['action']
@@ -242,4 +264,3 @@ def handle_food_actions():
     temp_df = None
 
     return redirect(url_for('foods.food'))
-

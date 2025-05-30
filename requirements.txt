@@ -3,4 +3,5 @@ gunicorn
 pandas
 plotly
 openai>=1.0.0
-psycopg2
+python-dotenv
+flask-login

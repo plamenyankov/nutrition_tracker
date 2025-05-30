@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 import pandas as pd
 import numpy as np
 import os
@@ -8,10 +9,55 @@ from models.calorie_weight import CalorieWeight
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = 'secret'  # This is for flash messaging
+
+# Use environment variable for secret key, fallback to default for development
+app.secret_key = os.getenv('SECRET_KEY', 'secret')
 
 # Configure debug mode based on environment
-app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+app.config['DEBUG'] = os.getenv('DEBUG', 'False').lower() == 'true'
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Simple User class
+class User(UserMixin):
+    def __init__(self, id):
+        self.id = id
+
+# Hardcoded user credentials
+USERS = {
+    'plamenyankov': 'somestrongpassword'
+}
+
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id in USERS:
+        return User(user_id)
+    return None
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+
+        if username in USERS and USERS[username] == password:
+            user = User(username)
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('home'))
+        else:
+            flash('Invalid username or password', 'error')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
 
 app.register_blueprint(food_blueprint)
 food_db = FoodDatabase()
@@ -24,6 +70,7 @@ def transform_date_format(date_str):
     return date_obj.strftime("%d.%m.%Y")
 
 @app.route('/', methods=["GET", "POST"])
+@login_required
 def home():
     consumption = food_db.fetch_all_consumption()
     calories = calorie_weight.fetch_calories()
@@ -68,6 +115,7 @@ def home():
 
 
 @app.route('/add_data', methods=["GET", "POST"])
+@login_required
 def add_data():
     date = datetime.now().strftime('%d.%m.%Y')
 
@@ -87,11 +135,13 @@ def add_data():
     return render_template('add_data.html', calories=calories, weights=weights)
 
 
-
 if __name__ == "__main__":
+    # Get debug mode from environment, default to True for development
+    debug_mode = os.getenv('DEBUG', 'True').lower() == 'true'
+
     # Enable debug mode for development
     app.run(
-        debug=True,
+        debug=debug_mode,
         host='127.0.0.1',  # Localhost
         port=5000,         # Default Flask port
         use_reloader=True, # Auto-reload on file changes

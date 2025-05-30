@@ -14,6 +14,7 @@
 </head>
 
 <body>
+{% if current_user.is_authenticated %}
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
     <a class="navbar-brand" href="/">Dashboard</a>
@@ -21,7 +22,7 @@
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav">
+      <ul class="navbar-nav me-auto">
         <li class="nav-item">
           <a class="nav-link active" aria-current="page" href="/food">Food</a>
         </li>
@@ -38,9 +39,18 @@
           <a class="nav-link" href="/add_data">Add Data</a>
         </li>
       </ul>
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <span class="navbar-text me-3">Welcome, {{ current_user.id }}</span>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/logout">Logout</a>
+        </li>
+      </ul>
     </div>
   </div>
 </nav>
+{% endif %}
 
 <div class="container vh-100 justify-content-center align-items-center">
 
