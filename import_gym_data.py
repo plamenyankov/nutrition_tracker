@@ -44,8 +44,6 @@ def import_csv_data(csv_file='data/GYM Tracker - Gym Tracker.csv'):
             if len(row) < 7:
                 continue
 
-
-
             # Parse row data - adjusted for actual CSV format
             row_num = row[0].strip()
             date_str = row[1].strip()
@@ -65,7 +63,7 @@ def import_csv_data(csv_file='data/GYM Tracker - Gym Tracker.csv'):
 
                         cursor.execute(
                             'INSERT INTO workout_sessions (user_id, date, notes) VALUES (?, ?, ?)',
-                            (1, current_date, notes)
+                            (2, current_date, notes)
                         )
                         current_session_id = cursor.lastrowid
                         workouts_created += 1
@@ -88,8 +86,6 @@ def import_csv_data(csv_file='data/GYM Tracker - Gym Tracker.csv'):
             # Parse loads and reps from columns 4 and 5
             loads_str = row[4].strip() if len(row) > 4 else ""
             reps_str = row[5].strip() if len(row) > 5 else ""
-
-
 
             # Clean exercise name
             exercise_name = exercise_name.strip()
@@ -142,7 +138,7 @@ def import_csv_data(csv_file='data/GYM Tracker - Gym Tracker.csv'):
                     elif any(x in exercise_name.lower() for x in ['abs', 'core']):
                         muscle_group = 'Core'
 
-                                        # Insert new exercise
+                    # Insert new exercise
                     cursor.execute('INSERT INTO exercises (name, muscle_group) VALUES (?, ?)',
                                  (exercise_name, muscle_group))
                     exercise_map[exercise_name] = cursor.lastrowid

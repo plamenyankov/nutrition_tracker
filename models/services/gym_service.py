@@ -1,10 +1,13 @@
 import sqlite3
+import os
 from datetime import datetime
 from flask_login import current_user
 
 class GymService:
     def __init__(self):
-        self.db_path = 'database.db'
+        self.db_path = os.getenv('DATABASE_PATH', 'database.db')
+        # Temporary fix: hardcode user_id as 2 until proper user management is implemented
+        self.user_id = 2
 
     def get_connection(self):
         return sqlite3.connect(self.db_path)
@@ -35,7 +38,7 @@ class GymService:
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO workout_sessions (user_id, date, notes) VALUES (?, ?, ?)',
-            (current_user.id, datetime.now().date(), notes)
+            (self.user_id, datetime.now().date(), notes)
         )
         session_id = cursor.lastrowid
         conn.commit()
@@ -74,7 +77,7 @@ class GymService:
             SELECT ws.id FROM workout_sets ws
             JOIN workout_sessions wss ON ws.session_id = wss.id
             WHERE ws.id = ? AND wss.user_id = ?
-        ''', (set_id, current_user.id))
+        ''', (set_id, self.user_id))
 
         if cursor.fetchone():
             cursor.execute('DELETE FROM workout_sets WHERE id = ?', (set_id,))
@@ -98,7 +101,7 @@ class GymService:
             GROUP BY ws.id
             ORDER BY ws.date DESC, ws.created_at DESC
             LIMIT ?
-        ''', (current_user.id, limit))
+        ''', (self.user_id, limit))
         workouts = cursor.fetchall()
         conn.close()
         return workouts
@@ -111,7 +114,7 @@ class GymService:
         # Get workout session info
         cursor.execute('''
             SELECT * FROM workout_sessions WHERE id = ? AND user_id = ?
-        ''', (workout_id, current_user.id))
+        ''', (workout_id, self.user_id))
         workout = cursor.fetchone()
 
         if not workout:
@@ -173,7 +176,7 @@ class GymService:
             JOIN workout_sessions wss ON ws.session_id = wss.id
             WHERE ws.session_id = ? AND wss.user_id = ?
             ORDER BY ws.id
-        ''', (workout_id, current_user.id))
+        ''', (workout_id, self.user_id))
 
         sets = cursor.fetchall()
         conn.close()
@@ -204,7 +207,7 @@ class GymService:
         cursor = conn.cursor()
         cursor.execute(
             'UPDATE workout_sessions SET notes = ? WHERE id = ? AND user_id = ?',
-            (notes, workout_id, current_user.id)
+            (notes, workout_id, self.user_id)
         )
         conn.commit()
         conn.close()
@@ -217,7 +220,7 @@ class GymService:
         # Check if workout belongs to current user
         cursor.execute(
             'SELECT id FROM workout_sessions WHERE id = ? AND user_id = ?',
-            (workout_id, current_user.id)
+            (workout_id, self.user_id)
         )
 
         if not cursor.fetchone():
