@@ -98,8 +98,10 @@ echo "Starting new container..."
 docker run -d \\
     --name ${CONTAINER_NAME} \\
     -p 80:5000 \\
+    -v /root/nutrition_tracker_data:/app/data \\
     -e SECRET_KEY="\$(openssl rand -hex 32)" \\
     -e OPENAI_API_KEY="\$OPENAI_API_KEY" \\
+    -e DATABASE_PATH="/app/data/database.db" \\
     -e DEBUG=False \\
     --restart unless-stopped \\
     ${DOCKER_FULL_NAME}
