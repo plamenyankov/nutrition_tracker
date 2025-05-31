@@ -33,100 +33,94 @@ def init_database():
     if 'Ingredient' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Ingredient (
-                ingredient_name TEXT PRIMARY KEY,
-                density REAL,
-                serving TEXT
+                ingredient_id INTEGER PRIMARY KEY,
+                ingredient_name VARCHAR(255) NOT NULL UNIQUE
             )
         """)
 
     if 'Unit' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Unit (
-                unit_name TEXT PRIMARY KEY,
-                short_name TEXT
+                unit_id INTEGER PRIMARY KEY,
+                unit_name VARCHAR(255) NOT NULL UNIQUE
             )
         """)
 
     if 'Nutrition' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Nutrition (
-                ingredient_name TEXT PRIMARY KEY,
-                protein REAL,
-                carb REAL,
-                fat REAL,
-                kcal REAL,
-                FOREIGN KEY (ingredient_name) REFERENCES Ingredient(ingredient_name)
+                ingredient_id INTEGER,
+                unit_id INTEGER,
+                kcal FLOAT NOT NULL,
+                fat FLOAT NOT NULL,
+                carb FLOAT NOT NULL,
+                fiber FLOAT NOT NULL,
+                net_carb FLOAT NOT NULL,
+                protein FLOAT NOT NULL,
+                FOREIGN KEY (ingredient_id) REFERENCES Ingredient(ingredient_id),
+                FOREIGN KEY (unit_id) REFERENCES Unit(unit_id),
+                PRIMARY KEY (ingredient_id, unit_id),
+                UNIQUE (ingredient_id, unit_id)
             )
         """)
 
     if 'Ingredient_Quantity' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Ingredient_Quantity (
-                ingredient_name TEXT,
-                quantity REAL,
-                unit TEXT,
-                PRIMARY KEY (ingredient_name, quantity, unit),
-                FOREIGN KEY (ingredient_name) REFERENCES Ingredient(ingredient_name),
-                FOREIGN KEY (unit) REFERENCES Unit(unit_name)
+                ingredient_quantity_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                quantity FLOAT NOT NULL,
+                ingredient_id INTEGER,
+                unit_id INTEGER,
+                FOREIGN KEY (ingredient_id) REFERENCES Ingredient(ingredient_id),
+                FOREIGN KEY (unit_id) REFERENCES Unit(unit_id),
+                UNIQUE (quantity, ingredient_id, unit_id)
             )
         """)
 
     if 'Consumption' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Consumption (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ingredient_name TEXT,
-                quantity REAL,
-                unit TEXT,
-                protein REAL,
-                carb REAL,
-                fat REAL,
-                kcal REAL,
-                date TEXT,
-                meal_type TEXT DEFAULT 'meal',
-                FOREIGN KEY (ingredient_name) REFERENCES Ingredient(ingredient_name),
-                FOREIGN KEY (unit) REFERENCES Unit(unit_name)
+                consumption_id INTEGER PRIMARY KEY,
+                consumption_date DATE NOT NULL DEFAULT (strftime('%d.%m.%Y', 'now')),
+                ingredient_quantity_id INTEGER,
+                ingredient_quantity_portions INTEGER DEFAULT 1,
+                meal_type VARCHAR(20) DEFAULT 'other',
+                FOREIGN KEY (ingredient_quantity_id) REFERENCES Ingredient_Quantity(ingredient_quantity_id),
+                UNIQUE (consumption_date, ingredient_quantity_id, meal_type)
             )
         """)
 
     if 'Recipe' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Recipe (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                description TEXT,
-                instructions TEXT,
-                prep_time INTEGER,
-                cook_time INTEGER,
-                servings INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                recipe_id INTEGER PRIMARY KEY,
+                recipe_name VARCHAR(255) NOT NULL UNIQUE,
+                recipe_date DATE NOT NULL,
+                servings TINYINT NOT NULL
             )
         """)
 
     if 'Recipe_Ingredients' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Recipe_Ingredients (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                recipe_id INTEGER NOT NULL,
-                ingredient_name TEXT NOT NULL,
-                quantity REAL NOT NULL,
-                unit TEXT NOT NULL,
-                FOREIGN KEY (recipe_id) REFERENCES Recipe(id) ON DELETE CASCADE,
-                FOREIGN KEY (ingredient_name) REFERENCES Ingredient(ingredient_name),
-                FOREIGN KEY (unit) REFERENCES Unit(unit_name)
+                recipe_id INTEGER,
+                ingredient_quantity_id INTEGER,
+                FOREIGN KEY (recipe_id) REFERENCES Recipe(recipe_id) ON DELETE CASCADE,
+                FOREIGN KEY (ingredient_quantity_id) REFERENCES Ingredient_Quantity(ingredient_quantity_id),
+                PRIMARY KEY (recipe_id, ingredient_quantity_id)
             )
         """)
 
     if 'recipe_consumption' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE recipe_consumption (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                recipe_consumption_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 recipe_id INTEGER NOT NULL,
-                recipe_name TEXT NOT NULL,
-                servings_consumed REAL NOT NULL DEFAULT 1,
-                date TEXT NOT NULL,
-                meal_type TEXT DEFAULT 'meal',
-                FOREIGN KEY (recipe_id) REFERENCES Recipe(id)
+                consumption_date TEXT NOT NULL,
+                meal_type TEXT DEFAULT 'other',
+                servings REAL DEFAULT 1,
+                FOREIGN KEY (recipe_id) REFERENCES Recipe(recipe_id) ON DELETE CASCADE,
+                UNIQUE(recipe_id, consumption_date, meal_type)
             )
         """)
 
@@ -152,13 +146,11 @@ def init_database():
     if 'Favorites' not in existing_tables:
         tables_to_create.append("""
             CREATE TABLE Favorites (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ingredient_name TEXT NOT NULL,
-                quantity REAL NOT NULL,
-                unit TEXT NOT NULL,
-                UNIQUE(ingredient_name, quantity, unit),
-                FOREIGN KEY (ingredient_name) REFERENCES Ingredient(ingredient_name),
-                FOREIGN KEY (unit) REFERENCES Unit(unit_name)
+                favorite_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ingredient_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (ingredient_id) REFERENCES Ingredient(ingredient_id),
+                UNIQUE(ingredient_id)
             )
         """)
 
@@ -204,9 +196,9 @@ def init_database():
 
     # Create indexes for better performance
     indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_consumption_date ON Consumption(date)",
+        "CREATE INDEX IF NOT EXISTS idx_consumption_date ON Consumption(consumption_date)",
         "CREATE INDEX IF NOT EXISTS idx_consumption_meal_type ON Consumption(meal_type)",
-        "CREATE INDEX IF NOT EXISTS idx_recipe_consumption_date ON recipe_consumption(date)",
+        "CREATE INDEX IF NOT EXISTS idx_recipe_consumption_date ON recipe_consumption(consumption_date)",
         "CREATE INDEX IF NOT EXISTS idx_workout_sessions_user_date ON workout_sessions(user_id, date)",
         "CREATE INDEX IF NOT EXISTS idx_workout_sets_session ON workout_sets(session_id)"
     ]
