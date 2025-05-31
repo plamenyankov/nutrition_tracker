@@ -1,6 +1,39 @@
 {% extends 'layout.html' %}
 
 {% block content %}
+<style>
+    .pulse-animation {
+        animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+        50% {
+            opacity: 0.5;
+        }
+        100% {
+            opacity: 1;
+        }
+    }
+
+    #voiceButton.btn-danger {
+        animation: recording-pulse 2s infinite;
+    }
+
+    @keyframes recording-pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        }
+    }
+</style>
 <div class="row justify-content-center">
     <div class="col-md-8">
         <h1 class="text-center mt-4 mb-4">AI Nutrition Assistant</h1>
@@ -56,11 +89,17 @@
                     <!-- Text Input Section -->
                     <div id="text_input_section" class="analysis-section">
                         <div class="mb-3">
-                            <label for="foods" class="form-label">Enter foods to analyze:</label>
+                            <label for="foods" class="form-label d-flex align-items-center justify-content-between">
+                                <span>Enter foods to analyze:</span>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="voiceButton" title="Click to start voice input">
+                                    <i class="bi bi-mic-fill"></i> <span id="voiceButtonText" class="d-none d-sm-inline">Voice Input</span>
+                                </button>
+                            </label>
                             <textarea class="form-control" id="foods" name="foods" rows="4"
                                       placeholder="Example: 2 apples, 100g chicken breast, 1 cup rice"></textarea>
                             <small class="form-text text-muted">
                                 Enter foods in natural language. You can include quantities and multiple items.
+                                <span id="voiceStatus" class="text-info" style="display: none;"></span>
                             </small>
                         </div>
                     </div>
@@ -164,7 +203,8 @@
         <div class="mt-4">
             <h6>Tips for best results:</h6>
             <ul class="small text-muted">
-                <li><strong>Text Input:</strong> Be specific with quantities (e.g., "2 medium apples")</li>
+                <li><strong>Text Input:</strong> Be specific with quantities (e.g., "2 medium apples"). Use voice input for hands-free entry!</li>
+                <li><strong>Voice Input:</strong> Speak clearly and naturally. Say quantities like "two apples" or "100 grams chicken"</li>
                 <li><strong>Meal Photo:</strong> Take photo from above with good lighting, include something for scale</li>
                 <li><strong>Nutrition Labels:</strong> Ensure text is clear and readable, avoid glare</li>
                 <li><strong>Product Photos:</strong> Include full product name and brand visible on front</li>
@@ -174,6 +214,155 @@
 </div>
 
 <script>
+// Voice recognition setup
+let recognition = null;
+let isRecording = false;
+
+// Check for browser support
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+
+    // Configure recognition
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalTranscript = '';
+
+            recognition.onstart = function() {
+        isRecording = true;
+        const voiceButton = document.getElementById('voiceButton');
+        const voiceButtonText = document.getElementById('voiceButtonText');
+        const voiceStatus = document.getElementById('voiceStatus');
+
+        voiceButton.classList.remove('btn-outline-primary');
+        voiceButton.classList.add('btn-danger');
+        voiceButton.title = 'Click to stop recording';
+
+        // Update button text and ensure visibility on mobile
+        if (voiceButtonText) {
+            voiceButtonText.textContent = 'Stop';
+            voiceButtonText.classList.remove('d-none');
+            voiceButtonText.classList.add('d-inline');
+        }
+
+        voiceButton.querySelector('i').classList.add('pulse-animation');
+
+        voiceStatus.textContent = 'Listening...';
+        voiceStatus.style.display = 'inline';
+    };
+
+    recognition.onresult = function(event) {
+        let interimTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+
+        // Update textarea with current transcript
+        const foodsTextarea = document.getElementById('foods');
+        const baseTextValue = recognition.baseTextValue || '';
+        foodsTextarea.value = baseTextValue + finalTranscript + interimTranscript;
+
+        // Update status
+        const voiceStatus = document.getElementById('voiceStatus');
+        if (interimTranscript) {
+            voiceStatus.textContent = 'Processing: "' + interimTranscript + '"';
+        } else {
+            voiceStatus.textContent = 'Listening...';
+        }
+    };
+
+    recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        const voiceStatus = document.getElementById('voiceStatus');
+
+        if (event.error === 'no-speech') {
+            voiceStatus.textContent = 'No speech detected. Try again.';
+        } else if (event.error === 'audio-capture') {
+            voiceStatus.textContent = 'No microphone found. Please check your settings.';
+        } else if (event.error === 'not-allowed') {
+            voiceStatus.textContent = 'Microphone access denied. Please allow access and try again.';
+        } else {
+            voiceStatus.textContent = 'Error: ' + event.error;
+        }
+
+        stopRecording();
+    };
+
+    recognition.onend = function() {
+        if (isRecording) {
+            // Restart if still supposed to be recording (handles interruptions)
+            recognition.start();
+        } else {
+            finalTranscript = '';
+            recognition.baseTextValue = '';
+            const voiceStatus = document.getElementById('voiceStatus');
+            setTimeout(() => {
+                voiceStatus.style.display = 'none';
+            }, 3000);
+        }
+    };
+}
+
+function toggleVoiceRecording() {
+    if (!recognition) {
+        alert('Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+        return;
+    }
+
+    if (isRecording) {
+        stopRecording();
+    } else {
+        startRecording();
+    }
+}
+
+function startRecording() {
+    try {
+        // Capture existing text and add a space if needed
+        const foodsTextarea = document.getElementById('foods');
+        const existingText = foodsTextarea.value.trim();
+        recognition.baseTextValue = existingText ? existingText + ', ' : '';
+
+        recognition.start();
+    } catch (error) {
+        console.error('Error starting recognition:', error);
+        const voiceStatus = document.getElementById('voiceStatus');
+        voiceStatus.textContent = 'Error starting voice input. Please try again.';
+        voiceStatus.style.display = 'inline';
+    }
+}
+
+function stopRecording() {
+    isRecording = false;
+    if (recognition) {
+        recognition.stop();
+    }
+
+    const voiceButton = document.getElementById('voiceButton');
+    const voiceButtonText = document.getElementById('voiceButtonText');
+
+    voiceButton.classList.remove('btn-danger');
+    voiceButton.classList.add('btn-outline-primary');
+    voiceButton.title = 'Click to start voice input';
+
+    // Update button text and restore visibility classes
+    if (voiceButtonText) {
+        voiceButtonText.textContent = 'Voice Input';
+        voiceButtonText.classList.remove('d-inline');
+        voiceButtonText.classList.add('d-none', 'd-sm-inline');
+    }
+
+    voiceButton.querySelector('i').classList.remove('pulse-animation');
+}
+
 // Image compression function
 function compressImage(file, maxWidth, maxHeight, quality) {
     return new Promise((resolve, reject) => {
@@ -242,6 +431,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Voice button listener
+    const voiceButton = document.getElementById('voiceButton');
+    if (voiceButton) {
+        voiceButton.addEventListener('click', toggleVoiceRecording);
+    }
 
     // Handle file inputs with compression
     const fileInputs = document.querySelectorAll('input[type="file"]');
