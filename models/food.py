@@ -1,5 +1,4 @@
 import sqlite3
-from sqlalchemy import create_engine
 import os
 
 # Use environment variable for database path
@@ -7,7 +6,7 @@ db_path = os.getenv('DATABASE_PATH', 'database.db')
 # Convert to absolute path if needed
 if not db_path.startswith('/'):
     db_path = os.path.abspath(db_path)
-DATABASE_PATH = f'sqlite:///{db_path}'
+DATABASE_PATH = db_path
 
 
 # noinspection SqlNoDataSourceInspection
