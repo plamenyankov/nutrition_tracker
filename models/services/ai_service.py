@@ -2,6 +2,7 @@ from models import openai_utils
 from models.food import FoodDatabase
 import pandas as pd
 import io
+from datetime import datetime
 
 class AIService:
     def __init__(self):
@@ -139,4 +140,47 @@ class AIService:
             return {
                 'success': False,
                 'error': 'No analysis results to save'
+            }
+
+    def create_recipe_from_results(self, recipe_name, servings, included_indices):
+        """Create a recipe from the temporary results"""
+        if self.temp_results is None:
+            return {
+                'success': False,
+                'error': 'No analysis results available to create recipe'
+            }
+
+        try:
+            # Filter results based on selected indices
+            included_indices = [int(idx) for idx in included_indices]
+            selected_results = self.temp_results.iloc[included_indices]
+
+            if selected_results.empty:
+                return {
+                    'success': False,
+                    'error': 'No ingredients selected for the recipe'
+                }
+
+            # Save ingredients to database first (to get IDs)
+            csv_data = selected_results.to_csv(index=False)
+
+            # Save recipe
+            date = datetime.now().strftime('%Y-%m-%d')
+            result = self.food_db.save_recipe(date, recipe_name, servings, csv_data)
+
+            if isinstance(result, list):
+                return {
+                    'success': True,
+                    'message': f'Recipe "{recipe_name}" created successfully!'
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': f'Error creating recipe: {result}'
+                }
+
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'Error creating recipe: {str(e)}'
             }

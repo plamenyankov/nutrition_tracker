@@ -547,3 +547,92 @@ class FoodDatabase:
         finally:
             if cursor:
                 cursor.close()
+
+    def save_recipe_consumption(self, recipe_id, date, meal_type, servings=1):
+        """Save recipe consumption as a single meal item"""
+        with self.conn:
+            cursor = self.conn.cursor()
+            try:
+                cursor.execute('''
+                    INSERT OR REPLACE INTO recipe_consumption
+                    (recipe_id, consumption_date, meal_type, servings)
+                    VALUES (?, ?, ?, ?)
+                ''', (recipe_id, date, meal_type, servings))
+                self.conn.commit()
+                return True
+            except sqlite3.Error as e:
+                print(f"Error saving recipe consumption: {e}")
+                return False
+
+    def fetch_recipe_consumption(self, date=None):
+        """Fetch recipe consumption records"""
+        with self.conn:
+            cursor = self.conn.cursor()
+            if date:
+                query = '''
+                    SELECT rc.recipe_consumption_id, rc.recipe_id, rc.consumption_date,
+                           rc.meal_type, rc.servings, r.recipe_name, r.servings as recipe_servings,
+                           r.recipe_id,
+                           round(sum(N.kcal*IQ.quantity*rc.servings/r.servings),0) kcal,
+                           round(sum(N.fat*IQ.quantity*rc.servings/r.servings),0) fat,
+                           round(sum(N.carb*IQ.quantity*rc.servings/r.servings),0) carb,
+                           round(sum(N.protein*IQ.quantity*rc.servings/r.servings),0) protein
+                    FROM recipe_consumption rc
+                    JOIN Recipe r ON rc.recipe_id = r.recipe_id
+                    LEFT JOIN Recipe_Ingredients RI ON r.recipe_id = RI.recipe_id
+                    LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = RI.ingredient_quantity_id
+                    LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
+                    LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
+                    LEFT JOIN Nutrition N ON IQ.unit_id = N.unit_id AND IQ.ingredient_id = N.ingredient_id
+                    WHERE rc.consumption_date = ?
+                    GROUP BY rc.recipe_consumption_id
+                '''
+                cursor.execute(query, (date,))
+            else:
+                query = '''
+                    SELECT rc.recipe_consumption_id, rc.recipe_id, rc.consumption_date,
+                           rc.meal_type, rc.servings, r.recipe_name, r.servings as recipe_servings,
+                           r.recipe_id,
+                           round(sum(N.kcal*IQ.quantity*rc.servings/r.servings),0) kcal,
+                           round(sum(N.fat*IQ.quantity*rc.servings/r.servings),0) fat,
+                           round(sum(N.carb*IQ.quantity*rc.servings/r.servings),0) carb,
+                           round(sum(N.protein*IQ.quantity*rc.servings/r.servings),0) protein
+                    FROM recipe_consumption rc
+                    JOIN Recipe r ON rc.recipe_id = r.recipe_id
+                    LEFT JOIN Recipe_Ingredients RI ON r.recipe_id = RI.recipe_id
+                    LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = RI.ingredient_quantity_id
+                    LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
+                    LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
+                    LEFT JOIN Nutrition N ON IQ.unit_id = N.unit_id AND IQ.ingredient_id = N.ingredient_id
+                    GROUP BY rc.recipe_consumption_id
+                    ORDER BY rc.consumption_date DESC
+                '''
+                cursor.execute(query)
+
+            results = cursor.fetchall()
+            return [{
+                'recipe_consumption_id': r[0],
+                'recipe_id': r[1],
+                'date': r[2],
+                'meal_type': r[3],
+                'servings': r[4],
+                'recipe_name': r[5],
+                'recipe_servings': r[6],
+                'recipe_id': r[7],
+                'kcal': r[8],
+                'fat': r[9],
+                'carb': r[10],
+                'protein': r[11]
+            } for r in results]
+
+    def delete_recipe_consumption(self, recipe_consumption_id):
+        """Delete a recipe consumption record"""
+        try:
+            with self.conn:
+                cursor = self.conn.cursor()
+                cursor.execute('DELETE FROM recipe_consumption WHERE recipe_consumption_id = ?',
+                             (recipe_consumption_id,))
+                self.conn.commit()
+                return "Deletion successful"
+        except sqlite3.Error as e:
+            return f"Error: {e}"

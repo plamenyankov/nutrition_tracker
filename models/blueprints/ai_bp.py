@@ -114,3 +114,20 @@ def save_ai_results():
         flash(result['error'], 'danger')
 
     return redirect(url_for('ai_bp.ai_assistant'))
+
+@ai_bp.route('/create-recipe', methods=['POST'])
+@login_required
+def create_recipe_from_results():
+    """Create a recipe from AI analysis results"""
+    recipe_name = request.form.get('recipe_name')
+    servings = int(request.form.get('servings', 1))
+    included_indices = request.form.getlist('include_ingredient')
+
+    result = ai_service.create_recipe_from_results(recipe_name, servings, included_indices)
+
+    if result['success']:
+        flash(result['message'], 'success')
+    else:
+        flash(result['error'], 'danger')
+
+    return redirect(url_for('ai_bp.ai_assistant'))

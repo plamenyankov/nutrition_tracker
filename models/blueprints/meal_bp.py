@@ -47,7 +47,8 @@ def add_to_meal():
 def delete_consumption(consumption_id):
     """Delete a consumption item"""
     try:
-        result = meal_service.delete_consumption(consumption_id)
+        is_recipe = request.form.get('is_recipe', 'false').lower() == 'true'
+        result = meal_service.delete_consumption(consumption_id, is_recipe)
         if result['success']:
             return jsonify(result)
         else:

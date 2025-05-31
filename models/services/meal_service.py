@@ -21,6 +21,10 @@ class MealService:
         all_consumption = self.food_db.fetch_all_consumption()
         consumption_df = pd.DataFrame(all_consumption)
 
+        # Get recipe consumption data
+        all_recipe_consumption = self.food_db.fetch_recipe_consumption()
+        recipe_consumption_df = pd.DataFrame(all_recipe_consumption)
+
         # Initialize meal types and data structures
         meal_types = ['breakfast', 'lunch', 'dinner', 'snacks', 'other']
         meals_by_type = {meal: [] for meal in meal_types}
@@ -58,6 +62,50 @@ class MealService:
                 for meal in meals:
                     if isinstance(meal.get('date'), pd.Timestamp):
                         meal['date'] = meal['date'].strftime('%d.%m.%Y')
+
+        # Process recipe consumption data
+        if not recipe_consumption_df.empty:
+            # Handle date formats
+            recipe_consumption_df['date'] = recipe_consumption_df['date'].apply(self._parse_date)
+
+            # Filter for selected date
+            day_recipes = recipe_consumption_df[recipe_consumption_df['date'] == selected_date_normalized]
+
+            if not day_recipes.empty:
+                # Add recipes to meals by type
+                for meal_type in meal_types:
+                    recipe_data = day_recipes[day_recipes['meal_type'] == meal_type]
+                    if not recipe_data.empty:
+                        # Convert recipe data to match regular food format
+                        recipe_items = []
+                        for _, recipe in recipe_data.iterrows():
+                            recipe_item = {
+                                'date': recipe['date'].strftime('%d.%m.%Y'),
+                                'qty': recipe['servings'],
+                                'unit': 'serving(s)',
+                                'ingredient': f"[Recipe] {recipe['recipe_name']}",
+                                'kcal': recipe['kcal'],
+                                'fat': recipe['fat'],
+                                'carb': recipe['carb'],
+                                'protein': recipe['protein'],
+                                'recipe_consumption_id': recipe['recipe_consumption_id'],
+                                'is_recipe': True
+                            }
+                            recipe_items.append(recipe_item)
+
+                        # Add recipe items to the meal type
+                        meals_by_type[meal_type].extend(recipe_items)
+
+                        # Update totals
+                        meal_totals[meal_type]['calories'] += round(recipe_data['kcal'].sum(), 1)
+                        meal_totals[meal_type]['protein'] += round(recipe_data['protein'].sum(), 1)
+                        meal_totals[meal_type]['carbs'] += round(recipe_data['carb'].sum(), 1)
+                        meal_totals[meal_type]['fat'] += round(recipe_data['fat'].sum(), 1)
+
+                        daily_totals['calories'] += round(recipe_data['kcal'].sum(), 1)
+                        daily_totals['protein'] += round(recipe_data['protein'].sum(), 1)
+                        daily_totals['carbs'] += round(recipe_data['carb'].sum(), 1)
+                        daily_totals['fat'] += round(recipe_data['fat'].sum(), 1)
 
         # Format dates for template
         return {
@@ -168,10 +216,14 @@ class MealService:
         except Exception as e:
             return {'success': False, 'error': str(e)}
 
-    def delete_consumption(self, consumption_id):
+    def delete_consumption(self, consumption_id, is_recipe=False):
         """Delete a consumption item"""
         try:
-            result = self.food_db.delete_consumption(consumption_id)
+            if is_recipe:
+                result = self.food_db.delete_recipe_consumption(consumption_id)
+            else:
+                result = self.food_db.delete_consumption(consumption_id)
+
             if "successful" in result:
                 return {'success': True}
             else:
