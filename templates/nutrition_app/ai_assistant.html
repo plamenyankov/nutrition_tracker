@@ -222,9 +222,10 @@
 // Voice recognition setup
 let recognition = null;
 let isRecording = false;
+let isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-// Check for browser support
-if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+// Check for browser support - iOS Safari doesn't support Web Speech API
+if (!isIOS && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
 
@@ -317,8 +318,13 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
 }
 
 function toggleVoiceRecording() {
+    if (isIOS) {
+        alert('Voice input is not supported on iOS devices. Please use the device keyboard\'s built-in voice dictation feature (microphone button on keyboard) instead.');
+        return;
+    }
+
     if (!recognition) {
-        alert('Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+        alert('Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari on desktop.');
         return;
     }
 
@@ -439,7 +445,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Voice button listener
     const voiceButton = document.getElementById('voiceButton');
+    const foodsTextarea = document.getElementById('foods');
+
     if (voiceButton) {
+        if (isIOS) {
+            // Update button appearance for iOS
+            voiceButton.title = 'Tap text field and use keyboard microphone';
+            const voiceButtonText = document.getElementById('voiceButtonText');
+            if (voiceButtonText) {
+                voiceButtonText.textContent = 'Voice (Use Keyboard)';
+            }
+            // Update placeholder for iOS users
+            if (foodsTextarea) {
+                foodsTextarea.placeholder = 'Example: 2 apples, 100g chicken breast, 1 cup rice\n\nTip: Use the microphone button on your iOS keyboard for voice input';
+            }
+        }
         voiceButton.addEventListener('click', toggleVoiceRecording);
     }
 
