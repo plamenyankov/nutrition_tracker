@@ -1,4 +1,3 @@
-from sqlalchemy import create_engine
 import os
 import sqlite3
 
@@ -7,7 +6,7 @@ db_path = os.getenv('DATABASE_PATH', 'database.db')
 # Convert to absolute path if needed
 if not db_path.startswith('/'):
     db_path = os.path.abspath(db_path)
-DATABASE_PATH = f'sqlite:///{db_path}'
+DATABASE_PATH = db_path
 
 
 class CalorieWeight:
