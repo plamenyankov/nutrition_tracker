@@ -120,7 +120,7 @@
                             <ul class="list-unstyled small ms-3">
                                 {% for item in day_data.meals[meal_type][:3] %}
                                 <li class="text-truncate">
-                                    • {{ item.ingredient }} ({{ item.kcal|round|int }} kcal)
+                                    • {% if item.get('is_recipe') %}<i class="bi bi-book text-primary" title="Recipe"></i>{% endif %} {{ item.ingredient }} ({{ item.kcal|round|int }} kcal)
                                 </li>
                                 {% endfor %}
                                 {% if day_data.meals[meal_type]|length > 3 %}

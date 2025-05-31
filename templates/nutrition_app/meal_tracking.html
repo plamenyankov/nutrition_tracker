@@ -148,7 +148,8 @@
                         <tr>
                             <td>
                                 {% if item.get('is_recipe') %}
-                                    {{ item.ingredient }}
+                                    <i class="bi bi-book text-primary" title="Recipe"></i>
+                                    <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=item.recipe_id) }}">{{ item.ingredient }}</a>
                                 {% else %}
                                     <a href="/nutrition/{{ item.iq_id }}">{{ item.ingredient }}</a>
                                 {% endif %}
