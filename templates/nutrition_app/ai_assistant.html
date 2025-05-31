@@ -72,6 +72,7 @@
                             <input type="file" class="form-control" id="meal_photo" name="meal_photo" accept="image/*">
                             <small class="form-text text-muted">
                                 Take a clear photo of your meal. AI will identify foods and estimate portions.
+                                <br>Images are automatically compressed for faster upload.
                             </small>
                         </div>
                     </div>
@@ -83,6 +84,7 @@
                             <input type="file" class="form-control" id="label_photo_manual" name="label_photo" accept="image/*">
                             <small class="form-text text-muted">
                                 Take a clear photo of the nutrition facts label.
+                                <br>Images are automatically compressed for faster upload.
                             </small>
                         </div>
                         <div class="mb-3">
@@ -99,6 +101,7 @@
                             <input type="file" class="form-control" id="label_photo_auto" name="nutrition_photo" accept="image/*">
                             <small class="form-text text-muted">
                                 Take a clear photo of the nutrition facts label.
+                                <br>Images are automatically compressed for faster upload.
                             </small>
                         </div>
                         <div class="mb-3">
@@ -106,13 +109,17 @@
                             <input type="file" class="form-control" id="front_photo" name="front_photo" accept="image/*">
                             <small class="form-text text-muted">
                                 Take a clear photo of the product front showing name and brand.
+                                <br>Images are automatically compressed for faster upload.
                             </small>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search"></i> Analyze Nutrition
+                    <button type="submit" class="btn btn-primary" id="analyzeButton">
+                        <i class="bi bi-search"></i> <span id="buttonText">Analyze Nutrition</span>
                     </button>
+                    <div class="progress mt-3" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
                 </form>
             </div>
         </div>
@@ -167,6 +174,51 @@
 </div>
 
 <script>
+// Image compression function
+function compressImage(file, maxWidth, maxHeight, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function(event) {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Calculate new dimensions
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                // Set canvas dimensions
+                canvas.width = width;
+                canvas.height = height;
+
+                // Draw and compress image
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Convert to blob
+                canvas.toBlob(function(blob) {
+                    resolve(blob);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = reject;
+        };
+        reader.onerror = reject;
+    });
+}
+
 // Show/hide sections based on selected method
 document.addEventListener('DOMContentLoaded', function() {
     const radioButtons = document.querySelectorAll('input[name="analysis_method"]');
@@ -191,16 +243,145 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // File size validation (max 10MB)
+    // Handle file inputs with compression
     const fileInputs = document.querySelectorAll('input[type="file"]');
+    const compressedFiles = {}; // Store compressed files
+
     fileInputs.forEach(input => {
-        input.addEventListener('change', function() {
+        input.addEventListener('change', async function() {
             const file = this.files[0];
-            if (file && file.size > 10 * 1024 * 1024) { // 10MB
-                alert('File size must be less than 10MB');
-                this.value = '';
+            if (!file) return;
+
+            // Show loading indicator
+            const loadingText = document.createElement('small');
+            loadingText.className = 'text-info d-block mt-1';
+            loadingText.textContent = 'Compressing image...';
+            this.parentElement.appendChild(loadingText);
+
+                        try {
+                let compressedBlob;
+                let quality = 0.85;
+                let maxDimension = 1920;
+
+                // First compression attempt
+                compressedBlob = await compressImage(file, maxDimension, maxDimension, quality);
+
+                // If still too large (>5MB), compress more aggressively
+                if (compressedBlob.size > 5 * 1024 * 1024) {
+                    quality = 0.7;
+                    maxDimension = 1600;
+                    compressedBlob = await compressImage(file, maxDimension, maxDimension, quality);
+                }
+
+                // If still too large (>3MB), compress even more
+                if (compressedBlob.size > 3 * 1024 * 1024) {
+                    quality = 0.6;
+                    maxDimension = 1280;
+                    compressedBlob = await compressImage(file, maxDimension, maxDimension, quality);
+                }
+
+                // Create a new File object from the blob
+                const compressedFile = new File([compressedBlob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+
+                // Store the compressed file
+                compressedFiles[this.id] = compressedFile;
+
+                // Show compression results
+                const originalSize = (file.size / 1024 / 1024).toFixed(2);
+                const compressedSize = (compressedFile.size / 1024 / 1024).toFixed(2);
+                const compressionRatio = ((1 - compressedFile.size / file.size) * 100).toFixed(0);
+                loadingText.className = 'text-success d-block mt-1';
+                loadingText.textContent = `Compressed: ${originalSize}MB → ${compressedSize}MB (${compressionRatio}% reduction)`;
+
+                // Remove message after 3 seconds
+                setTimeout(() => loadingText.remove(), 3000);
+
+            } catch (error) {
+                console.error('Compression error:', error);
+                loadingText.className = 'text-danger d-block mt-1';
+                loadingText.textContent = 'Error compressing image. Please try again.';
             }
         });
+    });
+
+        // Override form submission to use compressed files
+    const form = document.querySelector('form');
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const analyzeButton = document.getElementById('analyzeButton');
+        const buttonText = document.getElementById('buttonText');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = uploadProgress.querySelector('.progress-bar');
+
+        // Disable button and show loading state
+        analyzeButton.disabled = true;
+        buttonText.textContent = 'Processing...';
+
+        try {
+            const formData = new FormData(form);
+
+            // Replace original files with compressed versions
+            for (const [inputId, compressedFile] of Object.entries(compressedFiles)) {
+                const input = document.getElementById(inputId);
+                if (input && input.files.length > 0) {
+                    // Remove original file and add compressed one
+                    formData.delete(input.name);
+                    formData.append(input.name, compressedFile);
+                }
+            }
+
+            // Show progress bar
+            uploadProgress.style.display = 'block';
+            progressBar.style.width = '25%';
+
+            // Submit the form with compressed images
+            const xhr = new XMLHttpRequest();
+
+            // Track upload progress
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 75 + 25; // 25-100%
+                    progressBar.style.width = percentComplete + '%';
+                }
+            });
+
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    progressBar.style.width = '100%';
+                    buttonText.textContent = 'Analysis complete!';
+
+                    // Replace page content with response
+                    setTimeout(() => {
+                        document.open();
+                        document.write(xhr.responseText);
+                        document.close();
+                    }, 500);
+                } else {
+                    throw new Error('Upload failed');
+                }
+            });
+
+            xhr.addEventListener('error', function() {
+                throw new Error('Network error');
+            });
+
+            xhr.open('POST', form.action);
+            xhr.send(formData);
+
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Error uploading images. Please try again.');
+
+            // Reset button state
+            analyzeButton.disabled = false;
+            buttonText.textContent = 'Analyze Nutrition';
+            uploadProgress.style.display = 'none';
+            progressBar.style.width = '0%';
+        }
     });
 });
 </script>
