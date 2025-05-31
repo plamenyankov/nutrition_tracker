@@ -2,9 +2,15 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from models.services.ai_service import AIService
 import base64
+from werkzeug.exceptions import RequestEntityTooLarge
 
 ai_bp = Blueprint('ai_bp', __name__, url_prefix='/ai')
 ai_service = AIService()
+
+@ai_bp.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(e):
+    flash('File size too large. Images are automatically compressed, but if you still see this error, please try a smaller image.', 'danger')
+    return redirect(url_for('ai_bp.ai_assistant'))
 
 @ai_bp.route('/assistant', methods=['GET', 'POST'])
 @login_required
