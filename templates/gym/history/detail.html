@@ -1,0 +1,107 @@
+{% extends "layout.html" %}
+
+{% block title %}Workout Details - Gym Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Workout Details</h2>
+        <div>
+            <a href="{{ url_for('gym.edit_workout', workout_id=workout[0]) }}" class="btn btn-primary">
+                <i class="fas fa-edit"></i> Edit Workout
+            </a>
+            <a href="{{ url_for('gym.history') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to History
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">{{ workout[2] }}</h5>
+            <p class="card-text">
+                <i class="fas fa-calendar"></i> <strong>Date:</strong> {{ workout[2] }}<br>
+                {% if workout[3] %}
+                    <i class="fas fa-sticky-note"></i> <strong>Notes:</strong> {{ workout[3] }}<br>
+                {% endif %}
+                <i class="fas fa-clock"></i> <strong>Logged:</strong> {{ workout[4] }}
+            </p>
+        </div>
+    </div>
+
+    <h3 class="mb-3">Exercises</h3>
+
+    {% if exercises %}
+        {% for exercise_name, sets in exercises.items() %}
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">{{ exercise_name }}</h5>
+                    {% if sets[0][7] %}
+                        <small class="text-muted">{{ sets[0][7] }}</small>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Set</th>
+                                    <th>Weight (kg)</th>
+                                    <th>Reps</th>
+                                    <th>Volume (kg)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for set in sets %}
+                                    <tr>
+                                        <td>{{ set[3] }}</td>
+                                        <td>{{ set[4] }}</td>
+                                        <td>{{ set[5] }}</td>
+                                        <td>{{ set[4] * set[5] }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr class="table-light">
+                                    <th>Total</th>
+                                    <th>-</th>
+                                    <th>{{ sets|sum(attribute='5') }}</th>
+                                    <th>
+                                        {% set total_volume = 0 %}
+                                        {% for set in sets %}
+                                            {% set total_volume = total_volume + (set[4] * set[5]) %}
+                                        {% endfor %}
+                                        {{ total_volume }}
+                                    </th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5>Workout Summary</h5>
+                <p class="mb-0">
+                    <strong>Total Exercises:</strong> {{ exercises|length }}<br>
+                    <strong>Total Sets:</strong> {{ exercises.values()|map('length')|sum }}<br>
+                    <strong>Total Volume:</strong>
+                    {% set total_volume = namespace(value=0) %}
+                    {% for exercise_sets in exercises.values() %}
+                        {% for set in exercise_sets %}
+                            {% set total_volume.value = total_volume.value + (set[4] * set[5]) %}
+                        {% endfor %}
+                    {% endfor %}
+                    {{ total_volume.value }} kg
+                </p>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <p class="mb-0">No exercises logged for this workout.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

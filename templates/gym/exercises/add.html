@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block title %}Add Exercise - Gym Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <h2 class="mb-4">Add New Exercise</h2>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('gym.add_exercise') }}">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Exercise Name *</label>
+                    <input type="text" class="form-control" id="name" name="name" required placeholder="e.g., Bench Press">
+                </div>
+
+                <div class="mb-3">
+                    <label for="muscle_group" class="form-label">Muscle Group</label>
+                    <select class="form-select" id="muscle_group" name="muscle_group">
+                        <option value="">Select muscle group (optional)</option>
+                        <option value="Chest">Chest</option>
+                        <option value="Back">Back</option>
+                        <option value="Shoulders">Shoulders</option>
+                        <option value="Legs">Legs</option>
+                        <option value="Arms">Arms</option>
+                        <option value="Biceps">Biceps</option>
+                        <option value="Triceps">Triceps</option>
+                        <option value="Core">Core</option>
+                        <option value="Cardio">Cardio</option>
+                        <option value="Full Body">Full Body</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Add Exercise</button>
+                    <a href="{{ url_for('gym.exercises') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
