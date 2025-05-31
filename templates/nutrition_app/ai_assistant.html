@@ -23,15 +23,93 @@
                 <h5 class="mb-0">Analyze Food Nutrition</h5>
             </div>
             <div class="card-body">
-                <form action="{{ url_for('ai_bp.ai_assistant') }}" method="post">
-                    <div class="mb-3">
-                        <label for="foods" class="form-label">Enter foods to analyze:</label>
-                        <textarea class="form-control" id="foods" name="foods" rows="4"
-                                  placeholder="Example: 2 apples, 100g chicken breast, 1 cup rice"></textarea>
-                        <small class="form-text text-muted">
-                            Enter foods in natural language. You can include quantities and multiple items.
-                        </small>
+                <form action="{{ url_for('ai_bp.ai_assistant') }}" method="post" enctype="multipart/form-data">
+                    <!-- Analysis Method Selection -->
+                    <div class="mb-4">
+                        <label class="form-label">Choose analysis method:</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="analysis_method" id="method_text" value="text" checked>
+                            <label class="form-check-label" for="method_text">
+                                <strong>Text Input</strong> - Enter foods manually
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="analysis_method" id="method_meal_photo" value="meal_photo">
+                            <label class="form-check-label" for="method_meal_photo">
+                                <strong>Meal Photo</strong> - AI analyzes photo of your meal
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="analysis_method" id="method_label_manual" value="label_manual">
+                            <label class="form-check-label" for="method_label_manual">
+                                <strong>Nutrition Label + Manual Name</strong> - Photo of nutrition facts + enter food name
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="analysis_method" id="method_label_auto" value="label_auto">
+                            <label class="form-check-label" for="method_label_auto">
+                                <strong>Full Product Photos</strong> - Photos of nutrition label + product front
+                            </label>
+                        </div>
                     </div>
+
+                    <!-- Text Input Section -->
+                    <div id="text_input_section" class="analysis-section">
+                        <div class="mb-3">
+                            <label for="foods" class="form-label">Enter foods to analyze:</label>
+                            <textarea class="form-control" id="foods" name="foods" rows="4"
+                                      placeholder="Example: 2 apples, 100g chicken breast, 1 cup rice"></textarea>
+                            <small class="form-text text-muted">
+                                Enter foods in natural language. You can include quantities and multiple items.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Meal Photo Section -->
+                    <div id="meal_photo_section" class="analysis-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="meal_photo" class="form-label">Upload meal photo:</label>
+                            <input type="file" class="form-control" id="meal_photo" name="meal_photo" accept="image/*">
+                            <small class="form-text text-muted">
+                                Take a clear photo of your meal. AI will identify foods and estimate portions.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Label Manual Section -->
+                    <div id="label_manual_section" class="analysis-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="label_photo_manual" class="form-label">Upload nutrition facts photo:</label>
+                            <input type="file" class="form-control" id="label_photo_manual" name="label_photo" accept="image/*">
+                            <small class="form-text text-muted">
+                                Take a clear photo of the nutrition facts label.
+                            </small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="food_name" class="form-label">Food name:</label>
+                            <input type="text" class="form-control" id="food_name" name="food_name"
+                                   placeholder="Enter product name (e.g., Organic Whole Wheat Bread)">
+                        </div>
+                    </div>
+
+                    <!-- Label Auto Section -->
+                    <div id="label_auto_section" class="analysis-section" style="display: none;">
+                        <div class="mb-3">
+                            <label for="label_photo_auto" class="form-label">Upload nutrition facts photo:</label>
+                            <input type="file" class="form-control" id="label_photo_auto" name="nutrition_photo" accept="image/*">
+                            <small class="form-text text-muted">
+                                Take a clear photo of the nutrition facts label.
+                            </small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="front_photo" class="form-label">Upload product front photo:</label>
+                            <input type="file" class="form-control" id="front_photo" name="front_photo" accept="image/*">
+                            <small class="form-text text-muted">
+                                Take a clear photo of the product front showing name and brand.
+                            </small>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-search"></i> Analyze Nutrition
                     </button>
@@ -79,12 +157,51 @@
         <div class="mt-4">
             <h6>Tips for best results:</h6>
             <ul class="small text-muted">
-                <li>Be specific with quantities (e.g., "2 medium apples" instead of "apples")</li>
-                <li>You can analyze multiple foods at once</li>
-                <li>Include cooking methods if relevant (e.g., "grilled chicken" vs "fried chicken")</li>
-                <li>Common measurements work well (cups, grams, ounces, etc.)</li>
+                <li><strong>Text Input:</strong> Be specific with quantities (e.g., "2 medium apples")</li>
+                <li><strong>Meal Photo:</strong> Take photo from above with good lighting, include something for scale</li>
+                <li><strong>Nutrition Labels:</strong> Ensure text is clear and readable, avoid glare</li>
+                <li><strong>Product Photos:</strong> Include full product name and brand visible on front</li>
             </ul>
         </div>
     </div>
 </div>
+
+<script>
+// Show/hide sections based on selected method
+document.addEventListener('DOMContentLoaded', function() {
+    const radioButtons = document.querySelectorAll('input[name="analysis_method"]');
+    const sections = {
+        'text': document.getElementById('text_input_section'),
+        'meal_photo': document.getElementById('meal_photo_section'),
+        'label_manual': document.getElementById('label_manual_section'),
+        'label_auto': document.getElementById('label_auto_section')
+    };
+
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Hide all sections
+            Object.values(sections).forEach(section => {
+                section.style.display = 'none';
+            });
+
+            // Show selected section
+            if (sections[this.value]) {
+                sections[this.value].style.display = 'block';
+            }
+        });
+    });
+
+    // File size validation (max 10MB)
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file && file.size > 10 * 1024 * 1024) { // 10MB
+                alert('File size must be less than 10MB');
+                this.value = '';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
