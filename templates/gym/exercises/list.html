@@ -1,0 +1,85 @@
+{% extends "layout.html" %}
+
+{% block title %}Exercises - Gym Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Exercises</h2>
+        <a href="{{ url_for('gym.add_exercise') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add Exercise
+        </a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if muscle_groups %}
+        <div class="mb-3">
+            <label for="muscleGroupFilter" class="form-label">Filter by Muscle Group:</label>
+            <select id="muscleGroupFilter" class="form-select w-auto">
+                <option value="">All</option>
+                {% for group in muscle_groups %}
+                    <option value="{{ group }}">{{ group }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    {% endif %}
+
+    {% if exercises %}
+        <div class="table-responsive">
+            <table class="table table-hover" id="exercisesTable">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Muscle Group</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exercise in exercises %}
+                        <tr data-muscle-group="{{ exercise[2] or '' }}">
+                            <td>{{ exercise[1] }}</td>
+                            <td>{{ exercise[2] or '-' }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('gym.delete_exercise', exercise_id=exercise[0]) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this exercise?');">
+                                    <button type="submit" class="btn btn-sm btn-danger">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <p class="mb-0">No exercises found. <a href="{{ url_for('gym.add_exercise') }}" class="alert-link">Add your first exercise!</a></p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+document.getElementById('muscleGroupFilter')?.addEventListener('change', function() {
+    const selectedGroup = this.value;
+    const rows = document.querySelectorAll('#exercisesTable tbody tr');
+
+    rows.forEach(row => {
+        if (selectedGroup === '' || row.dataset.muscleGroup === selectedGroup) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

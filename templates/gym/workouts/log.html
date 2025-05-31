@@ -1,0 +1,404 @@
+{% extends "layout.html" %}
+
+{% block title %}Log Workout - Gym Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Log Workout</h2>
+
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Exercise Selection -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Add Exercise</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <select id="exercise-select" class="form-select">
+                                <option value="">Choose an exercise...</option>
+                                {% for exercise in exercises %}
+                                    <option value="{{ exercise[0] }}" data-muscle-group="{{ exercise[2] or '' }}">
+                                        {{ exercise[1] }}{% if exercise[2] %} ({{ exercise[2] }}){% endif %}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button id="add-exercise-btn" class="btn btn-primary w-100">
+                                <i class="fas fa-plus"></i> Add Exercise
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Exercises -->
+            <div id="exercises-container"></div>
+
+            <div class="d-flex justify-content-between mt-3">
+                <a href="{{ url_for('gym.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                <button id="finish-workout" class="btn btn-success" disabled>
+                    <i class="fas fa-check"></i> Finish Workout
+                </button>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <!-- Workout Summary -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Workout Summary</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Date: <strong id="workout-date"></strong></p>
+                    <p class="mb-2">Exercises: <strong id="exercise-count">0</strong></p>
+                    <p class="mb-0">Total Sets: <strong id="total-sets">0</strong></p>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Notes</h5>
+                </div>
+                <div class="card-body">
+                    <textarea id="workout-notes" class="form-control" rows="3" placeholder="Add workout notes..."></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .exercise-card {
+        margin-bottom: 20px;
+    }
+    .set-row {
+        margin-bottom: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    .set-row.logged {
+        background-color: #d4edda;
+    }
+    .set-row input:disabled {
+        background-color: transparent;
+        border: 1px solid #ced4da;
+    }
+</style>
+
+<script>
+let sessionId = null;
+let exerciseData = {};
+let totalSets = 0;
+
+// Set today's date
+document.getElementById('workout-date').textContent = new Date().toISOString().split('T')[0];
+
+// Add exercise button click
+document.getElementById('add-exercise-btn').addEventListener('click', function() {
+    const select = document.getElementById('exercise-select');
+    const exerciseId = select.value;
+
+    if (!exerciseId) {
+        alert('Please select an exercise');
+        return;
+    }
+
+    if (exerciseData[exerciseId]) {
+        alert('This exercise has already been added');
+        return;
+    }
+
+    const exerciseName = select.options[select.selectedIndex].text;
+    addExerciseCard(exerciseId, exerciseName);
+
+    // Reset selection
+    select.value = '';
+});
+
+function addExerciseCard(exerciseId, exerciseName) {
+    exerciseData[exerciseId] = {
+        name: exerciseName,
+        sets: []
+    };
+
+    const exerciseCard = document.createElement('div');
+    exerciseCard.className = 'card exercise-card';
+    exerciseCard.id = `exercise-${exerciseId}`;
+    exerciseCard.innerHTML = `
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">${exerciseName}</h6>
+            <button class="btn btn-sm btn-danger remove-exercise" data-exercise-id="${exerciseId}">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="sets-container" id="sets-${exerciseId}"></div>
+            <button class="btn btn-sm btn-primary add-set-btn" data-exercise-id="${exerciseId}">
+                <i class="fas fa-plus"></i> Add Set
+            </button>
+        </div>
+    `;
+
+    document.getElementById('exercises-container').appendChild(exerciseCard);
+
+    // Add event listeners
+    exerciseCard.querySelector('.remove-exercise').addEventListener('click', function() {
+        removeExercise(exerciseId);
+    });
+
+    exerciseCard.querySelector('.add-set-btn').addEventListener('click', function() {
+        addSetRow(exerciseId);
+    });
+
+    // Add first set automatically
+    addSetRow(exerciseId);
+    updateSummary();
+}
+
+function removeExercise(exerciseId) {
+    if (confirm('Remove this exercise and all its sets?')) {
+        // Update total sets
+        totalSets -= exerciseData[exerciseId].sets.length;
+
+        delete exerciseData[exerciseId];
+        document.getElementById(`exercise-${exerciseId}`).remove();
+        updateSummary();
+    }
+}
+
+function addSetRow(exerciseId) {
+    const setNumber = exerciseData[exerciseId].sets.length + 1;
+    const setId = `${exerciseId}-${setNumber}`;
+
+    const setDiv = document.createElement('div');
+    setDiv.className = 'set-row';
+    setDiv.id = `set-${setId}`;
+    setDiv.innerHTML = `
+        <div class="row align-items-center">
+            <div class="col-auto">
+                <strong>Set ${setNumber}</strong>
+            </div>
+            <div class="col">
+                <input type="number" class="form-control form-control-sm weight-input"
+                       placeholder="Weight (kg)" step="0.5" min="0" id="weight-${setId}">
+            </div>
+            <div class="col">
+                <input type="number" class="form-control form-control-sm reps-input"
+                       placeholder="Reps" min="1" id="reps-${setId}">
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-sm btn-primary save-set-btn" data-set-id="${setId}" data-exercise-id="${exerciseId}">
+                    Save
+                </button>
+                <button class="btn btn-sm btn-warning edit-set-btn d-none" data-set-id="${setId}">
+                    Edit
+                </button>
+                <button class="btn btn-sm btn-danger delete-set-btn" data-set-id="${setId}" data-exercise-id="${exerciseId}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById(`sets-${exerciseId}`).appendChild(setDiv);
+
+    // Add event listeners
+    setDiv.querySelector('.save-set-btn').addEventListener('click', function() {
+        saveSet(exerciseId, setId, setNumber);
+    });
+
+    setDiv.querySelector('.edit-set-btn').addEventListener('click', function() {
+        editSet(setId);
+    });
+
+    setDiv.querySelector('.delete-set-btn').addEventListener('click', function() {
+        deleteSetRow(exerciseId, setId);
+    });
+
+    // Focus on weight input
+    setDiv.querySelector('.weight-input').focus();
+}
+
+function saveSet(exerciseId, setId, setNumber) {
+    const weight = document.getElementById(`weight-${setId}`).value;
+    const reps = document.getElementById(`reps-${setId}`).value;
+
+    if (!weight || !reps) {
+        alert('Please enter both weight and reps');
+        return;
+    }
+
+    // Check if updating existing set
+    const existingSet = exerciseData[exerciseId].sets.find(s => s.localId === setId);
+    const isUpdate = existingSet && existingSet.logged;
+
+    if (isUpdate && existingSet.dbId) {
+        // Update existing set in database
+        fetch('/gym/workout/update-set', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                set_id: existingSet.dbId,
+                weight: parseFloat(weight),
+                reps: parseInt(reps)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update local data
+                existingSet.weight = parseFloat(weight);
+                existingSet.reps = parseInt(reps);
+
+                // Update UI
+                lockSet(setId);
+                updateSummary();
+            } else {
+                alert('Error updating set: ' + (data.error || 'Unknown error'));
+            }
+        });
+    } else {
+        // Log new set
+        fetch('/gym/workout/log', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                session_id: sessionId,
+                exercise_id: exerciseId,
+                set_number: setNumber,
+                weight: parseFloat(weight),
+                reps: parseInt(reps)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                sessionId = data.session_id;
+
+                // Store set data
+                if (!existingSet) {
+                    exerciseData[exerciseId].sets.push({
+                        localId: setId,
+                        dbId: null, // Will be set if we retrieve it later
+                        weight: parseFloat(weight),
+                        reps: parseInt(reps),
+                        logged: true
+                    });
+                    totalSets++;
+                } else {
+                    existingSet.logged = true;
+                    existingSet.weight = parseFloat(weight);
+                    existingSet.reps = parseInt(reps);
+                }
+
+                // Update UI
+                lockSet(setId);
+                updateSummary();
+
+                // Enable finish button
+                document.getElementById('finish-workout').disabled = false;
+            } else {
+                alert('Error logging set: ' + (data.error || 'Unknown error'));
+            }
+        });
+    }
+}
+
+function lockSet(setId) {
+    const setDiv = document.getElementById(`set-${setId}`);
+    setDiv.classList.add('logged');
+
+    // Disable inputs
+    setDiv.querySelector('.weight-input').disabled = true;
+    setDiv.querySelector('.reps-input').disabled = true;
+
+    // Toggle buttons
+    setDiv.querySelector('.save-set-btn').classList.add('d-none');
+    setDiv.querySelector('.edit-set-btn').classList.remove('d-none');
+}
+
+function editSet(setId) {
+    const setDiv = document.getElementById(`set-${setId}`);
+    setDiv.classList.remove('logged');
+
+    // Enable inputs
+    setDiv.querySelector('.weight-input').disabled = false;
+    setDiv.querySelector('.reps-input').disabled = false;
+
+    // Toggle buttons
+    setDiv.querySelector('.save-set-btn').classList.remove('d-none');
+    setDiv.querySelector('.edit-set-btn').classList.add('d-none');
+
+    // Focus on weight input
+    setDiv.querySelector('.weight-input').focus();
+}
+
+function deleteSetRow(exerciseId, setId) {
+    if (confirm('Delete this set?')) {
+        const set = exerciseData[exerciseId].sets.find(s => s.localId === setId);
+
+        if (set && set.logged && set.dbId) {
+            // Delete from database if it was saved
+            fetch('/gym/workout/delete-set', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ set_id: set.dbId })
+            });
+        }
+
+        // Remove from local data
+        exerciseData[exerciseId].sets = exerciseData[exerciseId].sets.filter(s => s.localId !== setId);
+        if (set && set.logged) {
+            totalSets--;
+        }
+
+        // Remove from UI
+        document.getElementById(`set-${setId}`).remove();
+
+        // Renumber remaining sets
+        renumberSets(exerciseId);
+        updateSummary();
+    }
+}
+
+function renumberSets(exerciseId) {
+    const setDivs = document.querySelectorAll(`#sets-${exerciseId} .set-row`);
+    setDivs.forEach((div, index) => {
+        div.querySelector('strong').textContent = `Set ${index + 1}`;
+    });
+}
+
+function updateSummary() {
+    document.getElementById('exercise-count').textContent = Object.keys(exerciseData).length;
+    document.getElementById('total-sets').textContent = totalSets;
+}
+
+document.getElementById('finish-workout').addEventListener('click', function() {
+    if (confirm('Are you sure you want to finish this workout?')) {
+        // Get notes
+        const notes = document.getElementById('workout-notes').value.trim();
+
+        if (notes && sessionId) {
+            // Save notes
+            fetch('/gym/workout/update-notes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    workout_id: sessionId,
+                    notes: notes
+                })
+            }).then(() => {
+                window.location.href = '{{ url_for("gym.history") }}';
+            });
+        } else {
+            window.location.href = '{{ url_for("gym.history") }}';
+        }
+    }
+});
+</script>
+{% endblock %}
