@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="text-center mt-4 mb-4">Analytics</h1>
+    <h1 class="text-center mt-4 mb-4">Analytics Dashboard</h1>
 
     <!-- Date Range Selector -->
     <div class="row mb-4">
@@ -13,39 +13,47 @@
                     <div class="row">
                         <div class="col-md-6">
                             <label>From:</label>
-                            <input type="date" class="form-control">
+                            <input type="date" id="startDate" class="form-control" value="{{ start_date }}">
                         </div>
                         <div class="col-md-6">
                             <label>To:</label>
-                            <input type="date" class="form-control">
+                            <input type="date" id="endDate" class="form-control" value="{{ end_date }}">
                         </div>
                     </div>
+                    <button class="btn btn-primary mt-3" onclick="updateAnalytics()">Update</button>
                 </div>
             </div>
         </div>
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Quick Stats</h5>
-                    <p>Average Daily Calories: <strong>Coming Soon</strong></p>
-                    <p>Average Daily Protein: <strong>Coming Soon</strong></p>
+                    <h5 class="card-title">Summary Statistics</h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <p>Average Daily Calories: <strong>{{ summary_stats.avg_calories|int }}</strong></p>
+                            <p>Average Daily Protein: <strong>{{ summary_stats.avg_protein }}g</strong></p>
+                        </div>
+                        <div class="col-6">
+                            <p>Average Daily Carbs: <strong>{{ summary_stats.avg_carbs }}g</strong></p>
+                            <p>Average Daily Fat: <strong>{{ summary_stats.avg_fat }}g</strong></p>
+                        </div>
+                    </div>
+                    <p>Total Days Tracked: <strong>{{ summary_stats.total_days }}</strong></p>
+                    <p>Total Meals Logged: <strong>{{ summary_stats.total_meals }}</strong></p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Placeholder Charts -->
+    <!-- Main Charts Row -->
     <div class="row">
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Calorie Trends</h5>
+                    <h5 class="mb-0">Daily Calorie Trends</h5>
                 </div>
                 <div class="card-body">
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-graph-up" style="font-size: 3rem;"></i>
-                        <p class="mt-3">Calorie trends chart will be displayed here</p>
-                    </div>
+                    <canvas id="calorieChart" height="300"></canvas>
                 </div>
             </div>
         </div>
@@ -55,17 +63,355 @@
                     <h5 class="mb-0">Macro Distribution</h5>
                 </div>
                 <div class="card-body">
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-pie-chart" style="font-size: 3rem;"></i>
-                        <p class="mt-3">Macro distribution chart will be displayed here</p>
-                    </div>
+                    <canvas id="macroChart" height="300"></canvas>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> Analytics features are coming soon. This page will show detailed nutrition trends, progress tracking, and insights.
+    <!-- Macros Trend Chart -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Daily Macros Trend</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="macroTrendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weight and Food Frequency Row -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Weight Trend</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="weightChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Top 10 Most Consumed Foods</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="foodFrequencyChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Averages Table -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Weekly Averages</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="weeklyAveragesTable">
+                            <thead>
+                                <tr>
+                                    <th>Week Starting</th>
+                                    <th>Avg Calories</th>
+                                    <th>Avg Protein (g)</th>
+                                    <th>Avg Carbs (g)</th>
+                                    <th>Avg Fat (g)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+// Chart instances
+let calorieChart, macroChart, weightChart, foodFrequencyChart, macroTrendChart;
+
+// Initialize charts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    updateAnalytics();
+});
+
+function updateAnalytics() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+
+    // Show loading state
+    document.querySelectorAll('canvas').forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '20px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('Loading...', canvas.width / 2, canvas.height / 2);
+    });
+
+    // Fetch analytics data
+    fetch(`/analytics/data?start_date=${startDate}&end_date=${endDate}`)
+        .then(response => response.json())
+        .then(data => {
+            updateCharts(data);
+            updateWeeklyTable(data.weekly_averages);
+        })
+        .catch(error => {
+            console.error('Error fetching analytics data:', error);
+            alert('Error loading analytics data. Please try again.');
+        });
+}
+
+function updateCharts(data) {
+    // Update Calorie Chart
+    const calorieCtx = document.getElementById('calorieChart').getContext('2d');
+    if (calorieChart) calorieChart.destroy();
+
+    calorieChart = new Chart(calorieCtx, {
+        type: 'line',
+        data: {
+            labels: data.daily_nutrition.dates,
+            datasets: [{
+                label: 'Daily Calories',
+                data: data.daily_nutrition.calories,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Update Macro Distribution Pie Chart
+    const macroCtx = document.getElementById('macroChart').getContext('2d');
+    if (macroChart) macroChart.destroy();
+
+    macroChart = new Chart(macroCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Protein', 'Carbs', 'Fat'],
+            datasets: [{
+                data: [
+                    data.macro_distribution.protein,
+                    data.macro_distribution.carbs,
+                    data.macro_distribution.fat
+                ],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.8)',
+                    'rgba(54, 162, 235, 0.8)',
+                    'rgba(255, 206, 86, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Update Macro Trend Chart
+    const macroTrendCtx = document.getElementById('macroTrendChart').getContext('2d');
+    if (macroTrendChart) macroTrendChart.destroy();
+
+    macroTrendChart = new Chart(macroTrendCtx, {
+        type: 'line',
+        data: {
+            labels: data.daily_nutrition.dates,
+            datasets: [
+                {
+                    label: 'Protein (g)',
+                    data: data.daily_nutrition.protein,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Carbs (g)',
+                    data: data.daily_nutrition.carbs,
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Fat (g)',
+                    data: data.daily_nutrition.fat,
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    backgroundColor: 'rgba(255, 206, 86, 0.2)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Update Weight Chart
+    const weightCtx = document.getElementById('weightChart').getContext('2d');
+    if (weightChart) weightChart.destroy();
+
+    if (data.weight_trend.dates.length > 0) {
+        weightChart = new Chart(weightCtx, {
+            type: 'line',
+            data: {
+                labels: data.weight_trend.dates,
+                datasets: [{
+                    label: 'Weight',
+                    data: data.weight_trend.weights,
+                    borderColor: 'rgb(153, 102, 255)',
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    } else {
+        // Show no data message
+        const ctx = weightCtx;
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('No weight data available', weightCtx.canvas.width / 2, weightCtx.canvas.height / 2);
+    }
+
+    // Update Food Frequency Chart
+    const foodFreqCtx = document.getElementById('foodFrequencyChart').getContext('2d');
+    if (foodFrequencyChart) foodFrequencyChart.destroy();
+
+    if (data.food_frequency.length > 0) {
+        foodFrequencyChart = new Chart(foodFreqCtx, {
+            type: 'bar',
+            data: {
+                labels: data.food_frequency.map(item => item.food),
+                datasets: [{
+                    label: 'Times Consumed',
+                    data: data.food_frequency.map(item => item.count),
+                    backgroundColor: 'rgba(75, 192, 192, 0.8)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            autoSkip: false,
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        // Show no data message
+        const ctx = foodFreqCtx;
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#666';
+        ctx.textAlign = 'center';
+        ctx.fillText('No food data available', foodFreqCtx.canvas.width / 2, foodFreqCtx.canvas.height / 2);
+    }
+}
+
+function updateWeeklyTable(weeklyData) {
+    const tbody = document.querySelector('#weeklyAveragesTable tbody');
+    tbody.innerHTML = '';
+
+    if (weeklyData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">No data available for the selected period</td></tr>';
+        return;
+    }
+
+    weeklyData.forEach(week => {
+        const row = tbody.insertRow();
+        row.innerHTML = `
+            <td>${formatDate(week.week_start)}</td>
+            <td>${week.avg_calories}</td>
+            <td>${week.avg_protein}</td>
+            <td>${week.avg_carbs}</td>
+            <td>${week.avg_fat}</td>
+        `;
+    });
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+}
+</script>
 {% endblock %}

@@ -179,8 +179,12 @@ def add_data():
         date = transform_date_format(request.form['date'])
 
     if 'calories' in request.form:
-        calories = request.form['calories']
-        calorie_weight.add_calorie(date, calories)
+        active_calories = request.form['calories']
+        total_calories = request.form.get('total_calories', None)
+        # Convert empty string to None
+        if total_calories == '':
+            total_calories = None
+        calorie_weight.add_calorie(date, active_calories, total_calories)
     elif 'weight' in request.form:
         weight = request.form['weight']
         calorie_weight.add_weight(date, weight)
