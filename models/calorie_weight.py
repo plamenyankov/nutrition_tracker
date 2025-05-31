@@ -11,10 +11,11 @@ class CalorieWeight:
         if self.conn:
             self.conn.close()
 
-    def add_calorie(self, date, calorie):
+    def add_calorie(self, date, active_calories, total_calories=None):
         with self.conn:
             cursor = self.conn.cursor()
-            cursor.execute('INSERT OR IGNORE INTO calorie_tracking (date, calories) VALUES (?,?)', (date, calorie,))
+            cursor.execute('INSERT OR IGNORE INTO calorie_tracking (date, calories, total_calories) VALUES (?,?,?)',
+                         (date, active_calories, total_calories))
 
     def add_weight(self, date, weight):
         with self.conn:
@@ -24,7 +25,15 @@ class CalorieWeight:
     def fetch_weights(self):
         with self.conn:
             cursor = self.conn.cursor()
-            weight = cursor.execute('SELECT * FROM body_weight_tracking ORDER BY date ASC').fetchall()
+            # Convert DD.MM.YYYY to YYYY-MM-DD for proper sorting
+            weight = cursor.execute('''
+                SELECT date, weight
+                FROM body_weight_tracking
+                ORDER BY
+                    substr(date, 7, 4) || '-' ||
+                    substr(date, 4, 2) || '-' ||
+                    substr(date, 1, 2) DESC
+            ''').fetchall()
 
             weight_data = []
             for w in weight:
@@ -38,14 +47,22 @@ class CalorieWeight:
     def fetch_calories(self):
         with self.conn:
             cursor = self.conn.cursor()
-            calories = cursor.execute('SELECT * FROM calorie_tracking ORDER BY date ASC').fetchall()
+            # Convert DD.MM.YYYY to YYYY-MM-DD for proper sorting
+            calories = cursor.execute('''
+                SELECT date, calories, total_calories
+                FROM calorie_tracking
+                ORDER BY
+                    substr(date, 7, 4) || '-' ||
+                    substr(date, 4, 2) || '-' ||
+                    substr(date, 1, 2) DESC
+            ''').fetchall()
             calories_data = []
             for c in calories:
                 calories_data.append({
                     "date": c[0],
-                    "calories": c[1]
+                    "calories": c[1],  # active calories
+                    "total_calories": c[2] if len(c) > 2 else None
                 })
             print("fetch ", calories_data)
 
             return calories_data
-

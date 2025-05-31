@@ -1,115 +1,244 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div class="row justify-content-md-center">
-    <div class="col col-md-6 center-block mb-5">
-        <h2 class="center mt-5">Add Daily Calories</h2>
+<div class="container-fluid">
+    <h1 class="text-center mt-4 mb-4">Body Metrics Tracking</h1>
+    <p class="text-center text-muted mb-4">Track your daily weight and calories burned from fitness devices</p>
 
-        <form method="post" action="/add_data">
-
-            <div class="input-group mb-2 mt-2">
-                <span class="input-group-text" id="basic-addon4">Date</span>
-                <input type="date" class="form-control" name="date" aria-label="Date"
-                       aria-describedby="basic-addon4">
-                <span class="input-group-text" id="basic-addon3">Calories</span>
-                <input type="number" class="form-control" name="calories" aria-label="Calories"
-                       aria-describedby="basic-addon3">
+    <!-- Quick Add Section -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-speedometer2"></i> Log Weight</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="/add_data">
+                        <div class="mb-3">
+                            <label for="weightDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="weightDate" name="date">
+                        </div>
+                        <div class="mb-3">
+                            <label for="weight" class="form-label">Weight (kg)</label>
+                            <input type="number" step="0.1" class="form-control" id="weight"
+                                   name="weight" placeholder="Enter your weight" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle"></i> Add Weight
+                        </button>
+                    </form>
+                </div>
             </div>
+        </div>
 
-            <input type="submit" name="action" value="Add" class="btn btn-sm btn-outline-primary"
-                   onclick="return confirmSubmit()">
-        </form>
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-fire"></i> Log Daily Calories (Fitness Tracker)</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="/add_data">
+                        <div class="mb-3">
+                            <label for="calorieDate" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="calorieDate" name="date">
+                        </div>
+                        <div class="mb-3">
+                            <label for="calories" class="form-label">Active Calories Burned</label>
+                            <input type="number" class="form-control" id="calories"
+                                   name="calories" placeholder="Enter active calories burned" required>
+                            <small class="form-text text-muted">Calories from exercise/activity only</small>
+                        </div>
+                        <div class="mb-3">
+                            <label for="total_calories" class="form-label">Total Calories Burned (Optional)</label>
+                            <input type="number" class="form-control" id="total_calories"
+                                   name="total_calories" placeholder="Enter total daily calories burned">
+                            <small class="form-text text-muted">Active + resting metabolic calories</small>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-plus-circle"></i> Add Calories
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 
-
-    <div class="col col-md-6 center-block mb-5">
-        <h2 class="center mt-5">Add Weight</h2>
-
-        <form method="post" action="/add_data">
-
-            <div class="input-group mb-2 mt-2">
-                <span class="input-group-text" id="basic-addon1">Date</span>
-                <input type="date" class="form-control" name="date" aria-label="Date"
-                       aria-describedby="basic-addon1">
-                <span class="input-group-text" id="basic-addon2">Weight</span>
-                <input type="text" class="form-control" name="weight" aria-label="Weight"
-                       aria-describedby="basic-addon2">
+    <!-- Historical Data Section -->
+    <div class="row">
+        {% if weights %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-down"></i> Weight History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Weight (kg)</th>
+                                    <th>Change</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for i in range(weights|length) %}
+                                <tr>
+                                    <td>{{ weights[i].date }}</td>
+                                    <td>{{ weights[i].weight }}</td>
+                                    <td>
+                                        {% if i < weights|length - 1 %}
+                                            {% set change = weights[i].weight - weights[i+1].weight %}
+                                            {% if change > 0 %}
+                                                <span class="text-success">+{{ "%.1f"|format(change) }}</span>
+                                            {% elif change < 0 %}
+                                                <span class="text-danger">{{ "%.1f"|format(change) }}</span>
+                                            {% else %}
+                                                <span class="text-muted">0.0</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
+        </div>
+        {% endif %}
 
-            <input type="submit" name="action" value="Add" class="btn btn-sm btn-outline-primary"
-                   onclick="return confirmSubmit()">
-        </form>
-    </div>
-</div>
-
-<div class="row justify-content-md-center">
-
-    {% if calories %}
-
-    <div class="col col-md-6 center-block mb-5">
-        <h2 class="center mt-5">Calories Records</h2>
-
-        <form action="/handle_calorie_action" method="post">
-            <table class="table table-bordered border-light mt-2 mb-2">
-                <thead>
-                <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Calories</th>
-                    <th scope="col">Select</th> <!-- New column header -->
-                </tr>
-                </thead>
-                <tbody>
-                {% for calorie in calories %}
-                <tr>
-                    <td>{{ calorie.date }}</td>
-                    <td>{{ calorie.calories }}</td>
-                    <td>
-                        <input type="checkbox" name="calories" value="{{ calorie.date }}">
-                        <!-- New checkbox column -->
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-
-
-        </form>
-
+        {% if calories %}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Daily Calories Burned History</h5>
+                    <small class="text-muted">Active calories from exercise + Total calories (when available)</small>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Active Cal</th>
+                                    <th>Total Cal</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for calorie in calories %}
+                                <tr>
+                                    <td>{{ calorie.date }}</td>
+                                    <td>{{ calorie.calories }}</td>
+                                    <td>
+                                        {% if calorie.total_calories %}
+                                            {{ calorie.total_calories }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if calorie.calories < 300 %}
+                                            <span class="badge bg-warning">Low Activity</span>
+                                        {% elif calorie.calories > 600 %}
+                                            <span class="badge bg-success">High Activity</span>
+                                        {% else %}
+                                            <span class="badge bg-info">Normal Activity</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
         {% endif %}
     </div>
 
-    {% if weights %}
+    <!-- Summary Statistics -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Quick Stats</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        {% if weights %}
+                        <div class="col-md-3">
+                            <h6>Current Weight</h6>
+                            <h3 class="text-primary">{{ weights[0].weight }} kg</h3>
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Weight Change (7 days)</h6>
+                            {% if weights|length >= 7 %}
+                                {% set week_change = weights[0].weight - weights[6].weight %}
+                            {% elif weights|length >= 2 %}
+                                {% set week_change = weights[0].weight - weights[-1].weight %}
+                            {% else %}
+                                {% set week_change = 0 %}
+                            {% endif %}
+                            <h3 class="{% if week_change > 0 %}text-success{% elif week_change < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                {% if week_change > 0 %}+{% endif %}{{ "%.1f"|format(week_change) }} kg
+                            </h3>
+                        </div>
+                        {% endif %}
 
-    <div class="col col-md-6 center-block mb-5">
-        <h2 class="center mt-5">Weight Records</h2>
-
-        <form action="/handle_weight_action" method="post">
-            <table class="table table-bordered border-light mt-2 mb-2">
-                <thead>
-                <tr>
-                    <th scope="col">Date</th>
-                    <th scope="col">Weight</th>
-                    <th scope="col">Select</th> <!-- New column header -->
-                </tr>
-                </thead>
-                <tbody>
-                {% for w in weights %}
-                <tr>
-                    <td>{{ w.date }}</td>
-                    <td>{{ w.weight }}</td>
-                    <td>
-                        <input type="checkbox" name="weight" value="{{ w.date }}">
-                        <!-- New checkbox column -->
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </form>
-
+                        {% if calories %}
+                        <div class="col-md-3">
+                            <h6>Latest Active Calories</h6>
+                            {% if calories %}
+                                <h3 class="text-success">{{ calories[0].calories }}</h3>
+                                {% if calories[0].total_calories %}
+                                    <small class="text-muted">Total: {{ calories[0].total_calories }}</small>
+                                {% endif %}
+                            {% else %}
+                                <h3 class="text-success">0</h3>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <h6>Avg Active Cal (7 days)</h6>
+                            {% set total_cal = 0 %}
+                            {% set cal_count = 0 %}
+                            {% for cal in calories[:7] %}
+                                {% set total_cal = total_cal + cal.calories %}
+                                {% set cal_count = cal_count + 1 %}
+                            {% endfor %}
+                            <h3 class="text-info">
+                                {% if cal_count > 0 %}
+                                    {{ (total_cal / cal_count)|int }}
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </h3>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-
-    {% endif %}
 </div>
 
+<script>
+// Set today's date as default for date inputs
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    const weightDate = document.getElementById('weightDate');
+    const calorieDate = document.getElementById('calorieDate');
+
+    // Set default value to today
+    weightDate.value = today;
+    calorieDate.value = today;
+
+    // Prevent future dates
+    weightDate.max = today;
+    calorieDate.max = today;
+});
+</script>
 {% endblock %}
