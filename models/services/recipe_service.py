@@ -137,31 +137,54 @@ class RecipeService:
         else:
             return {'success': False, 'error': result}
 
-    def add_recipe_to_meal(self, recipe_id, meal_type, servings, date_str):
-        """Add recipe to a meal"""
+    def add_recipe_to_meal(self, recipe_id, meal_type, servings, date_str, as_recipe=True):
+        """Add recipe to a meal
+
+        Args:
+            recipe_id: ID of the recipe
+            meal_type: breakfast, lunch, dinner, snacks, other
+            servings: Number of servings consumed
+            date_str: Date in string format
+            as_recipe: If True, save as single recipe item; if False, break down into ingredients
+        """
         # Convert date format
         date = self._convert_date_format(date_str)
 
-        # Get recipe ingredients
-        ingredient_ids = self.food_db.fetch_recipe_ingredients(recipe_id)
+        if as_recipe:
+            # Save as a single recipe item
+            success = self.food_db.save_recipe_consumption(recipe_id, date, meal_type, servings)
+            if success:
+                return {
+                    'success': True,
+                    'message': f'Recipe added to {meal_type}!'
+                }
+            else:
+                return {
+                    'success': False,
+                    'message': 'Error adding recipe to meal'
+                }
+        else:
+            # Original behavior - break down into ingredients
+            # Get recipe ingredients
+            ingredient_ids = self.food_db.fetch_recipe_ingredients(recipe_id)
 
-        # Add each ingredient to the meal with scaled quantity
-        for iq_id in ingredient_ids:
-            ingredient = self.food_db.fetch_nutrition(iq_id)
-            # Scale by number of servings consumed
-            scaled_qty = ingredient['qty'] * servings
+            # Add each ingredient to the meal with scaled quantity
+            for iq_id in ingredient_ids:
+                ingredient = self.food_db.fetch_nutrition(iq_id)
+                # Scale by number of servings consumed
+                scaled_qty = ingredient['qty'] * servings
 
-            # Get ingredient and unit IDs
-            ingredient_id, unit_id = self.food_db.get_unit_ingredient_from_iq(iq_id)
+                # Get ingredient and unit IDs
+                ingredient_id, unit_id = self.food_db.get_unit_ingredient_from_iq(iq_id)
 
-            # Save with scaled quantity
-            new_iq_id = self.food_db.save_ingredient_qty(scaled_qty, ingredient_id, unit_id)
-            self.food_db.save_consumption(date, new_iq_id, meal_type)
+                # Save with scaled quantity
+                new_iq_id = self.food_db.save_ingredient_qty(scaled_qty, ingredient_id, unit_id)
+                self.food_db.save_consumption(date, new_iq_id, meal_type)
 
-        return {
-            'success': True,
-            'message': f'Recipe added to {meal_type}!'
-        }
+            return {
+                'success': True,
+                'message': f'Recipe ingredients added to {meal_type}!'
+            }
 
     def get_all_foods(self):
         """Get all foods for recipe creation"""

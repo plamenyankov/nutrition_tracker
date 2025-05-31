@@ -80,8 +80,9 @@ def recipe_add_to_meal(recipe_id):
         meal_type = request.form.get('meal_type', 'other')
         servings = float(request.form.get('servings', 1))
         date = request.form.get('date')
+        as_recipe = request.form.get('as_recipe', 'true').lower() == 'true'
 
-        result = recipe_service.add_recipe_to_meal(recipe_id, meal_type, servings, date)
+        result = recipe_service.add_recipe_to_meal(recipe_id, meal_type, servings, date, as_recipe)
 
         if result['success']:
             return jsonify(result)

@@ -147,7 +147,11 @@
                         {% for item in meals %}
                         <tr>
                             <td>
-                                <a href="/nutrition/{{ item.iq_id }}">{{ item.ingredient }}</a>
+                                {% if item.get('is_recipe') %}
+                                    {{ item.ingredient }}
+                                {% else %}
+                                    <a href="/nutrition/{{ item.iq_id }}">{{ item.ingredient }}</a>
+                                {% endif %}
                             </td>
                             <td>{{ item.qty }} {{ item.unit }}</td>
                             <td>{{ item.kcal }}</td>
@@ -155,6 +159,7 @@
                             <td>{{ item.carb }}g</td>
                             <td>{{ item.fat }}g</td>
                             <td>
+                                {% if not item.get('is_recipe') %}
                                 <button class="btn btn-sm btn-warning edit-btn"
                                         data-consumption-id="{{ item.consumption_id }}"
                                         data-food-name="{{ item.ingredient }}"
@@ -162,9 +167,11 @@
                                         data-unit="{{ item.unit }}">
                                     <i class="bi bi-pencil"></i>
                                 </button>
+                                {% endif %}
                                 <button class="btn btn-sm btn-danger delete-btn"
-                                        data-consumption-id="{{ item.consumption_id }}"
-                                        data-food-name="{{ item.ingredient }}">
+                                        data-consumption-id="{{ item.get('recipe_consumption_id') if item.get('is_recipe') else item.consumption_id }}"
+                                        data-food-name="{{ item.ingredient }}"
+                                        data-is-recipe="{{ 'true' if item.get('is_recipe') else 'false' }}">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -283,14 +290,16 @@ document.querySelectorAll('.delete-btn').forEach(button => {
     button.addEventListener('click', async function() {
         const consumptionId = this.dataset.consumptionId;
         const foodName = this.dataset.foodName;
+        const isRecipe = this.dataset.isRecipe === 'true';
 
         if (confirm(`Are you sure you want to delete ${foodName}?`)) {
             try {
+                const formData = new FormData();
+                formData.append('is_recipe', isRecipe);
+
                 const response = await fetch(`{{ url_for("meal_bp.delete_consumption", consumption_id=0) }}`.replace('0', consumptionId), {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    body: formData
                 });
 
                 const result = await response.json();
