@@ -169,6 +169,11 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Analysis Results</h5>
                 <div>
+                    <form action="{{ url_for('ai_bp.clear_results') }}" method="post" class="d-inline me-2">
+                        <button type="submit" class="btn btn-warning btn-sm" title="Clear current analysis and start fresh">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    </form>
                     <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
                         <i class="bi bi-book"></i> Create Recipe
                     </button>
@@ -213,6 +218,7 @@
                 <li><strong>Meal Photo:</strong> Take photo from above with good lighting, include something for scale</li>
                 <li><strong>Nutrition Labels:</strong> Ensure text is clear and readable, avoid glare</li>
                 <li><strong>Product Photos:</strong> Include full product name and brand visible on front</li>
+                <li><strong>Important:</strong> Each new analysis automatically clears previous results. Use the "Clear" button if you want to start fresh without analyzing new foods.</li>
             </ul>
         </div>
     </div>

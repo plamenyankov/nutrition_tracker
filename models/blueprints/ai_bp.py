@@ -131,3 +131,11 @@ def create_recipe_from_results():
         flash(result['error'], 'danger')
 
     return redirect(url_for('ai_bp.ai_assistant'))
+
+@ai_bp.route('/clear-results', methods=['POST'])
+@login_required
+def clear_results():
+    """Clear current analysis results"""
+    ai_service._clear_stored_results()
+    flash('Analysis results cleared. You can now start a new analysis.', 'info')
+    return redirect(url_for('ai_bp.ai_assistant'))

@@ -26,6 +26,10 @@ app.config['DEBUG'] = os.getenv('DEBUG', 'False').lower() == 'true'
 # Configure file upload limits
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB max file size
 
+# Configure session
+app.config['SESSION_PERMANENT'] = False
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session lifetime
+
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
