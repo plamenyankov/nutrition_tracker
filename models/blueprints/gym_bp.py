@@ -142,13 +142,7 @@ def edit_workout(workout_id):
     exercises_data = gym_service.get_workout_sets_grouped(workout_id)
     all_exercises = gym_service.get_all_exercises()
 
-    # Check if user is on mobile device
-    user_agent = request.headers.get('User-Agent', '').lower()
-    is_mobile = any(device in user_agent for device in ['mobile', 'android', 'iphone', 'ipad'])
-
-    template = 'gym/workouts/edit_mobile.html' if is_mobile else 'gym/workouts/edit.html'
-
-    return render_template(template,
+    return render_template('gym/workouts/edit.html',
                          workout=workout,
                          exercises_data=exercises_data,
                          all_exercises=all_exercises,
@@ -180,12 +174,14 @@ def delete_exercise(exercise_id):
 @gym_bp.route('/workout/<int:workout_id>/delete', methods=['POST'])
 @login_required
 def delete_workout(workout_id):
-    """Delete an entire workout"""
-    success, message = gym_service.delete_workout(workout_id)
+    """Delete a workout"""
+    success = gym_service.delete_workout(workout_id)
+
     if success:
-        flash(message, 'success')
+        flash('Workout deleted successfully', 'success')
     else:
-        flash(message, 'error')
+        flash('Error deleting workout', 'error')
+
     return redirect(url_for('gym.history'))
 
 @gym_bp.route('/workout/<int:workout_id>/complete', methods=['POST'])
@@ -548,3 +544,34 @@ def accept_progression(exercise_id):
         return jsonify({'success': True, 'message': 'Progression recorded successfully'})
     else:
         return jsonify({'success': False, 'message': 'Error recording progression'}), 400
+
+@gym_bp.route('/exercise/<int:exercise_id>/progression-summary')
+@login_required
+def exercise_progression_summary(exercise_id):
+    """Get progression summary for an exercise - used for AJAX"""
+    from datetime import datetime, timedelta
+
+    # Get last performance for this exercise
+    last_performance = gym_service.get_last_exercise_performance(exercise_id)
+
+    if not last_performance:
+        return jsonify({})
+
+    # Calculate days since last performance
+    workout_date = datetime.strptime(last_performance['workout_date'], '%Y-%m-%d')
+    days_ago = (datetime.now() - workout_date).days
+
+    # Check if ready for progression (simplified version)
+    # In reality, ProgressionService would check user preferences and multiple workouts
+    ready_for_progression = False
+    if last_performance['max_reps'] >= 15:  # Hit upper rep range
+        ready_for_progression = True
+
+    return jsonify({
+        'last_performance': {
+            'weight': last_performance['max_weight'],
+            'reps': last_performance['max_reps']
+        },
+        'days_ago': days_ago,
+        'ready_for_progression': ready_for_progression
+    })
