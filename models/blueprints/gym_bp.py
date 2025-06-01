@@ -121,7 +121,7 @@ def workout_detail(workout_id):
     # Group sets by exercise
     exercises = {}
     for set_data in sets:
-        exercise_name = set_data[9]  # Exercise name from join (updated index due to new columns)
+        exercise_name = set_data[12]  # Exercise name from join (after workout_sets columns)
         if exercise_name not in exercises:
             exercises[exercise_name] = []
         exercises[exercise_name].append(set_data)
@@ -405,7 +405,7 @@ def create_template_from_workout(workout_id):
     # Get exercise summary for preview
     exercises = {}
     for set_data in sets:
-        exercise_name = set_data[9]  # Updated index due to new columns
+        exercise_name = set_data[12]  # Exercise name from join (after workout_sets columns)
         if exercise_name not in exercises:
             exercises[exercise_name] = {
                 'sets': 0,
@@ -637,6 +637,57 @@ def exercise_set_progression_analysis(exercise_id):
     }
 
     return jsonify(response)
+    """Get set-specific progression analysis for an exercise"""
+    from models.services.advanced_progression_service import AdvancedProgressionService
+    adv_progression_service = AdvancedProgressionService()
+
+    user_id = gym_service.user_id
+
+    # Get current sets for this exercise in the workout
+    # This is a simplified version - in production, you'd pass the workout_id
+    sets_data = []
+
+    # Get the most recent sets for this exercise
+    conn = sqlite3.connect(gym_service.db_path)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT DISTINCT wset.id, wset.set_number, wset.weight, wset.reps
+        FROM workout_sets wset
+        JOIN workout_sessions ws ON wset.session_id = ws.id
+        WHERE ws.user_id = ? AND wset.exercise_id = ?
+              AND ws.status = 'in_progress'
+        ORDER BY wset.set_number
+    ''', (user_id, exercise_id))
+
+    current_sets = cursor.fetchall()
+    conn.close()
+
+    # Analyze each set
+    for set_id, set_number, weight, reps in current_sets:
+        progression = adv_progression_service.analyze_set_progression(
+            user_id, exercise_id, set_number
+        )
+        sets_data.append({
+            'set_id': set_id,
+            'set_number': set_number,
+            'current_weight': weight,
+            'current_reps': reps,
+            'progression': progression
+        })
+
+    # Check if should add new set
+    set_addition_suggestion = adv_progression_service.suggest_set_addition(
+        user_id, exercise_id
+    )
+
+    response = {
+        'sets': sets_data,
+        'pyramid_pattern': adv_progression_service.detect_pyramid_pattern(user_id, exercise_id),
+        **set_addition_suggestion
+    }
+
+    return jsonify(response)
 
 @gym_bp.route('/progression/dashboard')
 @login_required
@@ -705,7 +756,7 @@ def progression_dashboard():
     # Get recent progressions
     cursor.execute('''
         SELECT ph.progression_date, e.name, ph.progression_type,
-               ph.old_weight, ph.new_weight, ph.old_reps, ph.new_reps
+               ph.old_weight, ph.new_weight
         FROM progression_history ph
         JOIN exercises e ON ph.exercise_id = e.id
         WHERE ph.user_id = ?
@@ -724,9 +775,6 @@ def progression_dashboard():
         if row[2] == 'weight' or row[2] == 'weight_increase':
             event['old_value'] = row[3]
             event['new_value'] = row[4]
-        elif row[2] == 'reps' or row[2] == 'reps_increase':
-            event['old_value'] = row[5]
-            event['new_value'] = row[6]
 
         recent_progressions.append(event)
 

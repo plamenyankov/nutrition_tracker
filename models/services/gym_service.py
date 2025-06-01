@@ -184,12 +184,12 @@ class GymService:
         # Group by exercise
         exercises = {}
         for set_data in sets:
-            exercise_id = set_data[11]  # e.id from the join (updated index)
-            exercise_name = set_data[9]  # e.name from the join (updated index)
+            exercise_id = set_data[14]  # e.id from the join (after workout_sets columns)
+            exercise_name = set_data[12]  # e.name from the join
             if exercise_id not in exercises:
                 exercises[exercise_id] = {
                     'name': exercise_name,
-                    'muscle_group': set_data[10],  # e.muscle_group (updated index)
+                    'muscle_group': set_data[13],  # e.muscle_group
                     'sets': []
                 }
             exercises[exercise_id]['sets'].append({
@@ -476,6 +476,23 @@ class GymService:
         ''', (workout_id, self.user_id))
 
         if cursor.rowcount > 0:
+            # Calculate volume metrics for each exercise in the workout
+            from models.services.advanced_progression_service import AdvancedProgressionService
+            adv_service = AdvancedProgressionService(self.db_path)
+
+            # Get all exercises in this workout
+            cursor.execute('''
+                SELECT DISTINCT exercise_id
+                FROM workout_sets
+                WHERE session_id = ?
+            ''', (workout_id,))
+
+            exercises = cursor.fetchall()
+
+            # Calculate volume for each exercise
+            for (exercise_id,) in exercises:
+                adv_service.calculate_volume_metrics(workout_id, exercise_id)
+
             conn.commit()
             conn.close()
             return True, "Workout completed successfully"
