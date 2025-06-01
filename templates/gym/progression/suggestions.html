@@ -1,0 +1,220 @@
+{% extends "layout.html" %}
+
+{% block title %}Progression Suggestions - Gym Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Progression Suggestions</h2>
+        <a href="{{ url_for('gym.preferences') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-gear"></i> Preferences
+        </a>
+    </div>
+
+    <!-- Current Strategy Info -->
+    <div class="alert alert-info mb-4">
+        <strong>Your Strategy:</strong>
+        {% if preferences.progression_strategy == 'reps_first' %}
+            Reps First ({{ preferences.min_reps_target }} → {{ preferences.max_reps_target }} reps)
+        {% elif preferences.progression_strategy == 'weight_first' %}
+            Weight First
+        {% else %}
+            Hybrid
+        {% endif %}
+    </div>
+
+    {% if suggestions %}
+        <!-- Ready to Progress -->
+        {% set ready_suggestions = suggestions | selectattr('ready', 'equalto', true) | list %}
+        {% if ready_suggestions %}
+            <div class="mb-4">
+                <h4 class="text-success mb-3">
+                    <i class="bi bi-check-circle"></i> Ready to Progress
+                </h4>
+                <div class="row">
+                    {% for suggestion in ready_suggestions %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ suggestion.exercise_name }}</h5>
+                                    <p class="text-muted mb-2">{{ suggestion.muscle_group }}</p>
+
+                                    <div class="alert alert-success mb-3">
+                                        <strong>{{ suggestion.reason }}</strong>
+                                    </div>
+
+                                    {% if suggestion.suggestion == 'increase_weight' %}
+                                        <p class="mb-2">
+                                            <strong>Current:</strong> {{ suggestion.current_weight }}kg × {{ preferences.max_reps_target }} reps
+                                        </p>
+                                        <p class="mb-3">
+                                            <strong>Suggested:</strong> {{ suggestion.new_weight }}kg × {{ suggestion.new_reps_target }} reps
+                                        </p>
+
+                                        <button class="btn btn-success btn-sm accept-progression"
+                                                data-exercise-id="{{ suggestion.exercise_id }}"
+                                                data-exercise-name="{{ suggestion.exercise_name }}"
+                                                data-old-weight="{{ suggestion.current_weight }}"
+                                                data-new-weight="{{ suggestion.new_weight }}"
+                                                data-progression-type="weight_increase">
+                                            <i class="bi bi-check"></i> Accept Progression
+                                        </button>
+                                    {% endif %}
+
+                                    <a href="{{ url_for('gym.exercise_progression', exercise_id=suggestion.exercise_id) }}"
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-graph-up"></i> View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Not Ready Yet -->
+        {% set not_ready_suggestions = suggestions | rejectattr('ready') | list %}
+        {% if not_ready_suggestions %}
+            <div class="mb-4">
+                <h4 class="mb-3">
+                    <i class="bi bi-hourglass-split"></i> Keep Working
+                </h4>
+                <div class="row">
+                    {% for suggestion in not_ready_suggestions %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">{{ suggestion.exercise_name }}</h5>
+                                    <p class="text-muted mb-2">{{ suggestion.muscle_group }}</p>
+
+                                    <p class="mb-2">{{ suggestion.reason }}</p>
+
+                                    {% if suggestion.current_avg_reps %}
+                                        <div class="progress mb-3" style="height: 25px;">
+                                            {% set progress_pct = (suggestion.current_avg_reps / suggestion.target_reps * 100) | round %}
+                                            <div class="progress-bar" role="progressbar"
+                                                 style="width: {{ progress_pct }}%"
+                                                 aria-valuenow="{{ suggestion.current_avg_reps }}"
+                                                 aria-valuemin="{{ preferences.min_reps_target }}"
+                                                 aria-valuemax="{{ suggestion.target_reps }}">
+                                                {{ suggestion.current_avg_reps }} / {{ suggestion.target_reps }} reps
+                                            </div>
+                                        </div>
+
+                                        <p class="text-muted small">
+                                            {{ suggestion.reps_to_go }} more reps needed on average
+                                        </p>
+                                    {% endif %}
+
+                                    <a href="{{ url_for('gym.exercise_progression', exercise_id=suggestion.exercise_id) }}"
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-graph-up"></i> View History
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="alert alert-info">
+            <h5 class="alert-heading">No Exercise Data</h5>
+            <p>Complete a few workouts to start seeing progression suggestions.</p>
+            <hr>
+            <p class="mb-0">
+                <a href="{{ url_for('gym.choose_workout') }}" class="btn btn-primary">
+                    Start a Workout
+                </a>
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Progression Modal -->
+<div class="modal fade" id="progressionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Progression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you ready to progress on <strong id="modalExerciseName"></strong>?</p>
+                <p>
+                    From: <span id="modalOldWeight"></span>kg<br>
+                    To: <span id="modalNewWeight"></span>kg
+                </p>
+                <div class="mb-3">
+                    <label for="progressionNotes" class="form-label">Notes (optional)</label>
+                    <textarea class="form-control" id="progressionNotes" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmProgression">Confirm Progression</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = new bootstrap.Modal(document.getElementById('progressionModal'));
+    let currentProgression = {};
+
+    // Handle accept progression buttons
+    document.querySelectorAll('.accept-progression').forEach(button => {
+        button.addEventListener('click', function() {
+            currentProgression = {
+                exercise_id: this.dataset.exerciseId,
+                exercise_name: this.dataset.exerciseName,
+                old_weight: parseFloat(this.dataset.oldWeight),
+                new_weight: parseFloat(this.dataset.newWeight),
+                progression_type: this.dataset.progressionType
+            };
+
+            document.getElementById('modalExerciseName').textContent = currentProgression.exercise_name;
+            document.getElementById('modalOldWeight').textContent = currentProgression.old_weight;
+            document.getElementById('modalNewWeight').textContent = currentProgression.new_weight;
+            document.getElementById('progressionNotes').value = '';
+
+            modal.show();
+        });
+    });
+
+    // Handle confirm progression
+    document.getElementById('confirmProgression').addEventListener('click', function() {
+        const notes = document.getElementById('progressionNotes').value;
+
+        fetch(`/gym/exercise/${currentProgression.exercise_id}/accept-progression`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...currentProgression,
+                notes: notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                modal.hide();
+                // Show success message
+                alert('Progression recorded successfully! Use the new weight in your next workout.');
+                // Reload page to update suggestions
+                window.location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to record progression');
+        });
+    });
+});
+</script>
+{% endblock %}

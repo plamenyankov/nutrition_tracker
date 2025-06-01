@@ -438,3 +438,113 @@ def choose_workout():
     return render_template('gym/workouts/choose.html',
                          user_templates=user_templates,
                          public_templates=public_templates)
+
+# Progressive Overload Routes
+
+@gym_bp.route('/preferences')
+@login_required
+def preferences():
+    """View and edit gym preferences"""
+    from models.services.progression_service import ProgressionService
+    progression_service = ProgressionService()
+
+    user_id = gym_service.user_id
+    preferences = progression_service.get_user_preferences(user_id)
+
+    return render_template('gym/preferences.html', preferences=preferences)
+
+@gym_bp.route('/preferences/update', methods=['POST'])
+@login_required
+def update_preferences():
+    """Update gym preferences"""
+    from models.services.progression_service import ProgressionService
+    progression_service = ProgressionService()
+
+    user_id = gym_service.user_id
+
+    preferences = {
+        'progression_strategy': request.form.get('progression_strategy', 'reps_first'),
+        'min_reps_target': int(request.form.get('min_reps_target', 10)),
+        'max_reps_target': int(request.form.get('max_reps_target', 15)),
+        'weight_increment_upper': float(request.form.get('weight_increment_upper', 2.5)),
+        'weight_increment_lower': float(request.form.get('weight_increment_lower', 5.0)),
+        'rest_timer_enabled': request.form.get('rest_timer_enabled') == 'on',
+        'progression_notification_enabled': request.form.get('progression_notification_enabled') == 'on'
+    }
+
+    if progression_service.update_user_preferences(user_id, preferences):
+        flash('Preferences updated successfully', 'success')
+    else:
+        flash('Error updating preferences', 'error')
+
+    return redirect(url_for('gym.preferences'))
+
+@gym_bp.route('/progression/suggestions')
+@login_required
+def progression_suggestions():
+    """View progression suggestions"""
+    from models.services.progression_service import ProgressionService
+    progression_service = ProgressionService()
+
+    user_id = gym_service.user_id
+    workout_id = request.args.get('workout_id', type=int)
+
+    suggestions = progression_service.get_progression_suggestions(user_id, workout_id)
+    preferences = progression_service.get_user_preferences(user_id)
+
+    return render_template('gym/progression/suggestions.html',
+                         suggestions=suggestions,
+                         preferences=preferences)
+
+@gym_bp.route('/exercise/<int:exercise_id>/progression')
+@login_required
+def exercise_progression(exercise_id):
+    """View exercise progression details"""
+    from models.services.progression_service import ProgressionService
+    progression_service = ProgressionService()
+
+    user_id = gym_service.user_id
+
+    # Get exercise info
+    exercise_info = progression_service._get_exercise_info(exercise_id)
+    exercise_info['id'] = exercise_id  # Add the ID to the info
+
+    # Get progression readiness
+    readiness = progression_service.check_progression_readiness(user_id, exercise_id)
+
+    # Get performance history
+    history = progression_service.get_exercise_performance_history(user_id, exercise_id, limit=10)
+
+    # Get trend data
+    trend = progression_service.get_exercise_trend(user_id, exercise_id, days=30)
+
+    return render_template('gym/progression/exercise_detail.html',
+                         exercise=exercise_info,
+                         readiness=readiness,
+                         history=history,
+                         trend=trend)
+
+@gym_bp.route('/exercise/<int:exercise_id>/accept-progression', methods=['POST'])
+@login_required
+def accept_progression(exercise_id):
+    """Accept a progression suggestion"""
+    from models.services.progression_service import ProgressionService
+    progression_service = ProgressionService()
+
+    user_id = gym_service.user_id
+    data = request.json
+
+    # Record the progression
+    success = progression_service.record_progression(
+        user_id,
+        exercise_id,
+        data.get('old_weight', 0),
+        data.get('new_weight', 0),
+        data.get('progression_type', 'weight_increase'),
+        data.get('notes', '')
+    )
+
+    if success:
+        return jsonify({'success': True, 'message': 'Progression recorded successfully'})
+    else:
+        return jsonify({'success': False, 'message': 'Error recording progression'}), 400

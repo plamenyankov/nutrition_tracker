@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ exercise.name }} Progression - Gym Tracker{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ exercise.name }} Progression</h2>
+        <a href="{{ url_for('gym.progression_suggestions') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Suggestions
+        </a>
+    </div>
+
+    <!-- Exercise Info -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <h6 class="text-muted">Muscle Group</h6>
+                    <p class="mb-0">{{ exercise.muscle_group or 'Not specified' }}</p>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-muted">Equipment</h6>
+                    <p class="mb-0">{{ exercise.equipment or 'Not specified' }}</p>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-muted">30-Day Trend</h6>
+                    <p class="mb-0">
+                        {% if trend.trend == 'improving' %}
+                            <span class="text-success"><i class="bi bi-arrow-up-circle"></i> Improving</span>
+                        {% elif trend.trend == 'declining' %}
+                            <span class="text-danger"><i class="bi bi-arrow-down-circle"></i> Declining</span>
+                        {% elif trend.trend == 'stable' %}
+                            <span class="text-warning"><i class="bi bi-arrow-right-circle"></i> Stable</span>
+                        {% else %}
+                            <span class="text-muted">{{ trend.trend|replace('_', ' ')|title }}</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progression Readiness -->
+    <div class="card mb-4 {% if readiness.ready %}border-success{% endif %}">
+        <div class="card-body">
+            <h5 class="card-title">Progression Status</h5>
+
+            {% if readiness.ready %}
+                <div class="alert alert-success">
+                    <strong>{{ readiness.reason }}</strong>
+                </div>
+
+                {% if readiness.suggestion == 'increase_weight' %}
+                    <p class="mb-2">
+                        <strong>Current:</strong> {{ readiness.current_weight }}kg
+                    </p>
+                    <p class="mb-3">
+                        <strong>Suggested:</strong> {{ readiness.new_weight }}kg × {{ readiness.new_reps_target }} reps
+                    </p>
+
+                    <button class="btn btn-success accept-progression"
+                            data-exercise-id="{{ exercise.id }}"
+                            data-exercise-name="{{ exercise.name }}"
+                            data-old-weight="{{ readiness.current_weight }}"
+                            data-new-weight="{{ readiness.new_weight }}"
+                            data-progression-type="weight_increase">
+                        <i class="bi bi-check"></i> Accept Progression
+                    </button>
+                {% endif %}
+            {% else %}
+                <p class="mb-2">{{ readiness.reason }}</p>
+
+                {% if readiness.current_avg_reps %}
+                    <div class="progress mb-3" style="height: 25px;">
+                        {% set progress_pct = (readiness.current_avg_reps / readiness.target_reps * 100) | round %}
+                        <div class="progress-bar" role="progressbar"
+                             style="width: {{ progress_pct }}%">
+                            {{ readiness.current_avg_reps }} / {{ readiness.target_reps }} reps
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Performance History -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Recent Performance</h5>
+
+            {% if history %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Sets</th>
+                                <th>Weight</th>
+                                <th>Reps</th>
+                                <th>Volume</th>
+                                <th>RPE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for workout in history %}
+                                <tr>
+                                    <td>{{ workout.date }}</td>
+                                    <td>{{ workout.sets|length }}</td>
+                                    <td>
+                                        {% set weights = workout.sets|map(attribute='weight')|list %}
+                                        {{ weights|min }}-{{ weights|max }}kg
+                                    </td>
+                                    <td>
+                                        {% set reps = workout.sets|map(attribute='reps')|list %}
+                                        {{ reps|min }}-{{ reps|max }}
+                                    </td>
+                                    <td>
+                                        {% set total_volume = workout.sets|map(attribute='weight')|sum * workout.sets|map(attribute='reps')|sum %}
+                                        {{ total_volume }}kg
+                                    </td>
+                                    <td>
+                                        {% set rpe_values = workout.sets|selectattr('rpe')|map(attribute='rpe')|list %}
+                                        {% if rpe_values %}
+                                            {{ (rpe_values|sum / rpe_values|length)|round(1) }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">No performance history available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Trend Chart (placeholder for future implementation) -->
+    {% if trend.data_points %}
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Performance Trend</h5>
+                <p class="text-muted">Chart visualization coming soon...</p>
+
+                <!-- Data preview -->
+                <div class="small">
+                    <strong>Recent data points:</strong>
+                    {% for point in trend.data_points[-5:] %}
+                        <div>{{ point.date }}: {{ point.avg_weight }}kg × {{ point.avg_reps }} reps</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// Reuse the same modal and script logic from suggestions page
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle accept progression button if it exists
+    const acceptBtn = document.querySelector('.accept-progression');
+    if (acceptBtn) {
+        acceptBtn.addEventListener('click', function() {
+            if (confirm('Are you ready to progress to ' + this.dataset.newWeight + 'kg?')) {
+                fetch(`/gym/exercise/${this.dataset.exerciseId}/accept-progression`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        exercise_id: this.dataset.exerciseId,
+                        old_weight: parseFloat(this.dataset.oldWeight),
+                        new_weight: parseFloat(this.dataset.newWeight),
+                        progression_type: this.dataset.progressionType,
+                        notes: ''
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Progression recorded successfully!');
+                        window.location.reload();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to record progression');
+                });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
