@@ -120,6 +120,25 @@
     color: #155724;
 }
 
+.progression-close {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.progression-maintain {
+    background-color: #f8f9fa;
+    color: #6c757d;
+}
+
+.set-progression-info {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
 .last-performance {
     font-size: 0.75rem;
     color: #6c757d;
@@ -223,7 +242,12 @@
                                     <tbody id="sets-{{ exercise_id }}">
                                         {% for set in exercise_info.sets %}
                                             <tr id="set-row-{{ set.id }}">
-                                                <td data-label="Set">{{ set.set_number }}</td>
+                                                <td data-label="Set">
+                                                    {{ set.set_number }}
+                                                    <div class="set-progression-info d-none" id="set-progression-{{ set.id }}">
+                                                        <!-- Set-specific progression info will be loaded here -->
+                                                    </div>
+                                                </td>
                                                 <td data-label="Weight">
                                                     <div class="input-group-compact">
                                                         <button class="btn btn-sm btn-outline-secondary btn-increment"
@@ -379,6 +403,7 @@ let nextSetNumber = {};
 document.addEventListener('DOMContentLoaded', function() {
     {% for exercise_id, exercise_info in exercises_data.items() %}
     loadProgressionInfo({{ exercise_id }});
+    loadSetProgressionInfo({{ exercise_id }});
     {% endfor %}
 });
 
@@ -405,6 +430,125 @@ function loadProgressionInfo(exerciseId) {
             }
         })
         .catch(error => console.error('Error loading progression info:', error));
+}
+
+function loadSetProgressionInfo(exerciseId) {
+    // Load set-specific progression data
+    fetch(`/gym/exercise/${exerciseId}/set-progression-analysis`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.sets) {
+                data.sets.forEach(setInfo => {
+                    const setId = setInfo.set_id;
+                    const container = document.getElementById(`set-progression-${setId}`);
+                    if (container) {
+                        let html = '';
+
+                        if (setInfo.progression.ready) {
+                            html += '<span class="badge bg-success"><i class="fas fa-arrow-up"></i> Ready</span>';
+                            html += `<span class="text-success ms-1">Try ${setInfo.progression.suggested_weight}kg</span>`;
+                        } else if (setInfo.progression.confidence > 0.5) {
+                            html += '<span class="badge bg-warning"><i class="fas fa-chart-line"></i> Close</span>';
+                            html += `<span class="text-muted ms-1">${setInfo.progression.reps_to_go} reps to go</span>`;
+                        } else {
+                            html += '<span class="badge bg-secondary"><i class="fas fa-sync"></i> Building</span>';
+                        }
+
+                        container.innerHTML = html;
+                        container.classList.remove('d-none');
+                    }
+                });
+            }
+
+            // Check for set addition suggestion
+            if (data.suggest_add_set) {
+                const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
+                const cardBody = exerciseCard.querySelector('.card-body');
+
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.className = 'alert alert-info mt-3';
+                suggestionDiv.innerHTML = `
+                    <i class="fas fa-plus-circle"></i> <strong>Ready to add set ${data.new_set_number}!</strong><br>
+                    <small>Suggested: ${data.suggested_weight}kg × ${data.suggested_reps} reps</small><br>
+                    <button class="btn btn-sm btn-primary mt-2" onclick="addSuggestedSet(${exerciseId}, ${data.new_set_number}, ${data.suggested_weight})">
+                        Add Set
+                    </button>
+                `;
+
+                cardBody.appendChild(suggestionDiv);
+            }
+        })
+        .catch(error => console.error('Error loading set progression info:', error));
+}
+
+function addSuggestedSet(exerciseId, setNumber, suggestedWeight) {
+    // Add the suggested set with pre-filled weight
+    const tempId = `new-${exerciseId}-${setNumber}`;
+    const tbody = document.getElementById(`sets-${exerciseId}`);
+
+    const row = document.createElement('tr');
+    row.id = `set-row-${tempId}`;
+    row.innerHTML = `
+        <td data-label="Set">
+            ${setNumber}
+            <div class="set-progression-info">
+                <span class="badge bg-info">New Set</span>
+            </div>
+        </td>
+        <td data-label="Weight">
+            <div class="input-group-compact">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustWeight('${tempId}', -0.5)">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <input type="number" class="form-control form-control-sm"
+                       id="weight-${tempId}" value="${suggestedWeight}"
+                       step="0.5" min="0">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustWeight('${tempId}', 0.5)">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </td>
+        <td data-label="Reps">
+            <div class="input-group-compact">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustReps('${tempId}', -1)">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <input type="number" class="form-control form-control-sm"
+                       id="reps-${tempId}" value="6"
+                       min="1">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustReps('${tempId}', 1)">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </td>
+        <td data-label="Actions">
+            <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-success btn-mobile-action"
+                        onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})" title="Save">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="btn btn-sm btn-danger btn-mobile-action"
+                        onclick="document.getElementById('set-row-${tempId}').remove()" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </td>
+    `;
+
+    tbody.appendChild(row);
+
+    // Update next set number
+    nextSetNumber[exerciseId] = setNumber + 1;
+
+    // Remove the suggestion alert
+    const alert = event.target.closest('.alert');
+    if (alert) {
+        alert.remove();
+    }
 }
 
 function adjustWeight(setId, increment) {
