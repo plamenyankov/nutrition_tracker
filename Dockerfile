@@ -21,6 +21,7 @@ EXPOSE 5000
 # Create an entrypoint script
 RUN echo '#!/bin/sh\n\
 python init_db.py\n\
+python run_all_migrations.py\n\
 exec gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 120 app:app' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 

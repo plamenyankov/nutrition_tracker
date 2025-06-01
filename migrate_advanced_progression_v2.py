@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Migration script for Advanced Progressive Overload V2 features
-Adds remaining tables and columns for set-specific progression tracking
+Adds tables and columns for set-specific progression tracking
 """
 
 import sqlite3
