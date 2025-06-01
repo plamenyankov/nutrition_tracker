@@ -120,7 +120,7 @@ def workout_detail(workout_id):
     # Group sets by exercise
     exercises = {}
     for set_data in sets:
-        exercise_name = set_data[6]  # Exercise name from join
+        exercise_name = set_data[9]  # Exercise name from join (updated index due to new columns)
         if exercise_name not in exercises:
             exercises[exercise_name] = []
         exercises[exercise_name].append(set_data)
@@ -408,7 +408,7 @@ def create_template_from_workout(workout_id):
     # Get exercise summary for preview
     exercises = {}
     for set_data in sets:
-        exercise_name = set_data[6]
+        exercise_name = set_data[9]  # Updated index due to new columns
         if exercise_name not in exercises:
             exercises[exercise_name] = {
                 'sets': 0,
