@@ -114,10 +114,10 @@
                                 data-food-unit="{{ food.unit }}">
                             <i class="bi bi-plus"></i> Add to Meal
                         </button>
-                        <button class="btn btn-sm btn-warning">
+                        <button class="btn btn-sm btn-warning" onclick="showEditModal({{ food.id }})">
                             <i class="bi bi-pencil"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger">
+                        <button class="btn btn-sm btn-danger" onclick="deleteFood({{ food.id }}, '{{ food.ingredient|e }}')">
                             <i class="bi bi-trash"></i>
                         </button>
                     </td>
@@ -170,6 +170,12 @@
                         <div class="col">
                             <label class="form-label">Fat (g)</label>
                             <input type="number" class="form-control" name="fat" step="0.1" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Fiber (g)</label>
+                            <input type="number" class="form-control" name="fiber" step="0.1" value="0">
                         </div>
                     </div>
                 </form>
@@ -230,6 +236,71 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" onclick="addToMeal()">Add to Meal</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Food Modal -->
+<div class="modal fade" id="editFoodModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Food</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editFoodForm">
+                    <input type="hidden" id="editFoodId" name="food_id">
+                    <div class="mb-3">
+                        <label class="form-label">Food Name</label>
+                        <input type="text" class="form-control" id="editFoodName" readonly disabled>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" class="form-control" id="editQuantity" name="quantity" step="0.01" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Unit</label>
+                            <input type="text" class="form-control" id="editUnit" readonly disabled>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Calories</label>
+                            <input type="number" class="form-control" id="editCalories" name="calories" step="0.1" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Protein (g)</label>
+                            <input type="number" class="form-control" id="editProtein" name="protein" step="0.1" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Carbs (g)</label>
+                            <input type="number" class="form-control" id="editCarbs" name="carbs" step="0.1" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Fat (g)</label>
+                            <input type="number" class="form-control" id="editFat" name="fat" step="0.1" required>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col">
+                            <label class="form-label">Fiber (g)</label>
+                            <input type="number" class="form-control" id="editFiber" name="fiber" step="0.1">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Net Carbs (g)</label>
+                            <input type="number" class="form-control" id="editNetCarbs" readonly disabled>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateFood()">Update Food</button>
             </div>
         </div>
     </div>
@@ -421,9 +492,134 @@ async function addToMeal() {
     }
 }
 
-// Placeholder for save food function
-function saveFood() {
-    alert('Save food functionality to be implemented');
+// Save new food function
+async function saveFood() {
+    const form = document.getElementById('addFoodForm');
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch('{{ url_for("food_bp.add_food") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('addFoodModal')).hide();
+
+            // Show success message
+            alert(result.message);
+
+            // Reload page to show new food
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error adding food: ' + error);
+    }
+}
+
+// Show edit modal with food details
+async function showEditModal(foodId) {
+    try {
+        // Get food details
+        const response = await fetch(`{{ url_for("food_bp.get_food", food_id=0) }}`.replace('0', foodId));
+        const result = await response.json();
+
+        if (result.success) {
+            const food = result.food;
+
+            // Populate modal fields
+            document.getElementById('editFoodId').value = foodId;
+            document.getElementById('editFoodName').value = food.ingredient;
+            document.getElementById('editQuantity').value = food.qty;
+            document.getElementById('editUnit').value = food.unit;
+            document.getElementById('editCalories').value = food.kcal;
+            document.getElementById('editProtein').value = food.protein;
+            document.getElementById('editCarbs').value = food.carb;
+            document.getElementById('editFat').value = food.fat;
+            document.getElementById('editFiber').value = food.fiber || 0;
+            document.getElementById('editNetCarbs').value = food.net_carb;
+
+            // Show modal
+            new bootstrap.Modal(document.getElementById('editFoodModal')).show();
+        } else {
+            alert('Error loading food details: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error loading food details: ' + error);
+    }
+}
+
+// Update food
+async function updateFood() {
+    const form = document.getElementById('editFoodForm');
+    const formData = new FormData(form);
+    const foodId = document.getElementById('editFoodId').value;
+
+    try {
+        const response = await fetch(`{{ url_for("food_bp.update_food", food_id=0) }}`.replace('0', foodId), {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('editFoodModal')).hide();
+
+            // Show success message
+            alert(result.message);
+
+            // Reload page to show updated food
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error updating food: ' + error);
+    }
+}
+
+// Delete food
+async function deleteFood(foodId, foodName) {
+    if (!confirm(`Are you sure you want to delete "${foodName}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`{{ url_for("food_bp.delete_food", food_id=0) }}`.replace('0', foodId), {
+            method: 'POST'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Show success message
+            alert(result.message);
+
+            // Reload page to remove deleted food
+            window.location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error deleting food: ' + error);
+    }
+}
+
+// Auto-calculate net carbs when carbs or fiber change in edit modal
+document.getElementById('editCarbs').addEventListener('input', calculateEditNetCarbs);
+document.getElementById('editFiber').addEventListener('input', calculateEditNetCarbs);
+
+function calculateEditNetCarbs() {
+    const carbs = parseFloat(document.getElementById('editCarbs').value) || 0;
+    const fiber = parseFloat(document.getElementById('editFiber').value) || 0;
+    document.getElementById('editNetCarbs').value = (carbs - fiber).toFixed(1);
 }
 </script>
 {% endblock %}
