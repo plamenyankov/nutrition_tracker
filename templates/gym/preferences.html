@@ -1,191 +1,388 @@
 {% extends "layout.html" %}
 
-{% block title %}Gym Preferences - Nutrition Tracker{% endblock %}
+{% block title %}Gym Preferences - Gym Tracker{% endblock %}
+
+{% block head %}
+<style>
+.priority-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.priority-item {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.priority-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
+}
+
+.priority-item.dragging {
+    opacity: 0.5;
+}
+
+.priority-item .grip {
+    color: #6c757d;
+    margin-right: 1rem;
+}
+
+.priority-number {
+    background: #007bff;
+    color: white;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    font-weight: bold;
+}
+
+.pyramid-option {
+    cursor: pointer;
+    padding: 1rem;
+    border: 2px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    transition: all 0.2s;
+}
+
+.pyramid-option:hover {
+    border-color: #007bff;
+    background: #f8f9fa;
+}
+
+.pyramid-option.selected {
+    border-color: #007bff;
+    background: #e3f2fd;
+}
+
+.pyramid-visual {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+.preference-section {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    margin-bottom: 2rem;
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="row">
-        <div class="col-md-8 mx-auto">
-            <h1 class="mb-4">Gym Preferences</h1>
+        <div class="col-lg-8 mx-auto">
+            <h2 class="mb-4">Gym Preferences</h2>
 
-            <div class="card">
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('gym.update_preferences') }}">
-
-                        <!-- Progression Strategy -->
-                        <div class="mb-4">
-                            <h5 class="card-title">Progression Strategy</h5>
-                            <p class="text-muted">Choose how you want to progress in your workouts</p>
-
-                            <div class="form-check mb-2">
+            <form method="POST" action="{{ url_for('gym.update_preferences') }}">
+                <!-- Progression Strategy -->
+                <div class="preference-section">
+                    <h4 class="mb-3">Progression Strategy</h4>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-check">
                                 <input class="form-check-input" type="radio" name="progression_strategy"
                                        id="reps_first" value="reps_first"
                                        {% if preferences.progression_strategy == 'reps_first' %}checked{% endif %}>
                                 <label class="form-check-label" for="reps_first">
-                                    <strong>Reps First (Recommended)</strong>
-                                    <br>
-                                    <small class="text-muted">Increase reps from minimum to maximum, then increase weight</small>
+                                    <strong>Reps First</strong><br>
+                                    <small class="text-muted">Increase reps to max, then add weight</small>
                                 </label>
                             </div>
-
-                            <div class="form-check mb-2">
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check">
                                 <input class="form-check-input" type="radio" name="progression_strategy"
                                        id="weight_first" value="weight_first"
                                        {% if preferences.progression_strategy == 'weight_first' %}checked{% endif %}>
                                 <label class="form-check-label" for="weight_first">
-                                    <strong>Weight First</strong>
-                                    <br>
-                                    <small class="text-muted">Increase weight when form is perfect and RPE is low</small>
+                                    <strong>Weight First</strong><br>
+                                    <small class="text-muted">Add weight when form is perfect</small>
                                 </label>
                             </div>
-
+                        </div>
+                        <div class="col-md-4">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="progression_strategy"
                                        id="hybrid" value="hybrid"
                                        {% if preferences.progression_strategy == 'hybrid' %}checked{% endif %}>
                                 <label class="form-check-label" for="hybrid">
-                                    <strong>Hybrid</strong>
-                                    <br>
-                                    <small class="text-muted">Alternate between weight and rep increases</small>
+                                    <strong>Hybrid</strong><br>
+                                    <small class="text-muted">Alternate between both methods</small>
                                 </label>
                             </div>
                         </div>
-
-                        <hr>
-
-                        <!-- Rep Ranges -->
-                        <div class="mb-4">
-                            <h5 class="card-title">Rep Ranges</h5>
-                            <p class="text-muted">Set your target rep ranges for progression</p>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="min_reps_target" class="form-label">Minimum Reps Target</label>
-                                    <input type="number" class="form-control" id="min_reps_target"
-                                           name="min_reps_target" value="{{ preferences.min_reps_target }}"
-                                           min="1" max="50" required>
-                                    <small class="text-muted">Starting reps after weight increase</small>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label for="max_reps_target" class="form-label">Maximum Reps Target</label>
-                                    <input type="number" class="form-control" id="max_reps_target"
-                                           name="max_reps_target" value="{{ preferences.max_reps_target }}"
-                                           min="1" max="50" required>
-                                    <small class="text-muted">Target reps before weight increase</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        <!-- Weight Increments -->
-                        <div class="mb-4">
-                            <h5 class="card-title">Weight Increments</h5>
-                            <p class="text-muted">Default weight increases when progressing</p>
-
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label for="weight_increment_upper" class="form-label">Upper Body (kg)</label>
-                                    <input type="number" class="form-control" id="weight_increment_upper"
-                                           name="weight_increment_upper" value="{{ preferences.weight_increment_upper }}"
-                                           min="0.5" max="10" step="0.5" required>
-                                    <small class="text-muted">For chest, back, shoulders, arms</small>
-                                </div>
-
-                                <div class="col-md-6 mb-3">
-                                    <label for="weight_increment_lower" class="form-label">Lower Body (kg)</label>
-                                    <input type="number" class="form-control" id="weight_increment_lower"
-                                           name="weight_increment_lower" value="{{ preferences.weight_increment_lower }}"
-                                           min="0.5" max="20" step="0.5" required>
-                                    <small class="text-muted">For legs, glutes, compound movements</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <hr>
-
-                        <!-- Notifications -->
-                        <div class="mb-4">
-                            <h5 class="card-title">Notifications</h5>
-
-                            <div class="form-check mb-2">
-                                <input class="form-check-input" type="checkbox" id="rest_timer_enabled"
-                                       name="rest_timer_enabled"
-                                       {% if preferences.rest_timer_enabled %}checked{% endif %}>
-                                <label class="form-check-label" for="rest_timer_enabled">
-                                    Enable rest timer between sets
-                                </label>
-                            </div>
-
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="progression_notification_enabled"
-                                       name="progression_notification_enabled"
-                                       {% if preferences.progression_notification_enabled %}checked{% endif %}>
-                                <label class="form-check-label" for="progression_notification_enabled">
-                                    Show progression suggestions during workouts
-                                </label>
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('gym.dashboard') }}" class="btn btn-secondary">Cancel</a>
-                            <button type="submit" class="btn btn-primary">Save Preferences</button>
-                        </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Info Box -->
-            <div class="alert alert-info mt-4" role="alert">
-                <h6 class="alert-heading">About Progressive Overload</h6>
-                <p class="mb-0">Progressive overload is the gradual increase of stress placed on your body during exercise.
-                It's essential for continuous improvement in strength, muscle size, and endurance.</p>
-                <hr>
-                <p class="mb-0"><strong>Your Strategy:</strong> With the "Reps First" approach, you'll increase reps
-                from {{ preferences.min_reps_target }} to {{ preferences.max_reps_target }}, then increase weight and
-                start again at {{ preferences.min_reps_target }} reps.</p>
-            </div>
+                <!-- Rep Ranges -->
+                <div class="preference-section">
+                    <h4 class="mb-3">Rep Ranges</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="min_reps_target" class="form-label">Minimum Reps Target</label>
+                            <input type="number" class="form-control" id="min_reps_target"
+                                   name="min_reps_target" value="{{ preferences.min_reps_target }}"
+                                   min="1" max="20" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="max_reps_target" class="form-label">Maximum Reps Target</label>
+                            <input type="number" class="form-control" id="max_reps_target"
+                                   name="max_reps_target" value="{{ preferences.max_reps_target }}"
+                                   min="1" max="30" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weight Increments -->
+                <div class="preference-section">
+                    <h4 class="mb-3">Weight Increments</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="weight_increment_upper" class="form-label">Upper Body (kg)</label>
+                            <input type="number" class="form-control" id="weight_increment_upper"
+                                   name="weight_increment_upper" value="{{ preferences.weight_increment_upper }}"
+                                   step="0.5" min="0.5" max="10" required>
+                            <small class="form-text text-muted">For bench, rows, presses, etc.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="weight_increment_lower" class="form-label">Lower Body (kg)</label>
+                            <input type="number" class="form-control" id="weight_increment_lower"
+                                   name="weight_increment_lower" value="{{ preferences.weight_increment_lower }}"
+                                   step="0.5" min="0.5" max="20" required>
+                            <small class="form-text text-muted">For squats, deadlifts, etc.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progression Priorities -->
+                <div class="preference-section">
+                    <h4 class="mb-3">Progression Priorities</h4>
+                    <p class="text-muted">Drag to reorder your progression priorities</p>
+
+                    <ul class="priority-list" id="priorityList">
+                        <li class="priority-item" draggable="true" data-priority="reps">
+                            <span class="grip"><i class="fas fa-grip-vertical"></i></span>
+                            <span class="priority-number">1</span>
+                            <div>
+                                <strong>⬆️ Increase Reps</strong><br>
+                                <small class="text-muted">Add more reps while maintaining weight</small>
+                            </div>
+                            <input type="hidden" name="progression_priority_1" value="{{ preferences.progression_priority_1 or 'reps' }}">
+                        </li>
+                        <li class="priority-item" draggable="true" data-priority="weight">
+                            <span class="grip"><i class="fas fa-grip-vertical"></i></span>
+                            <span class="priority-number">2</span>
+                            <div>
+                                <strong>💪 Increase Weight</strong><br>
+                                <small class="text-muted">Add more weight when rep target achieved</small>
+                            </div>
+                            <input type="hidden" name="progression_priority_2" value="{{ preferences.progression_priority_2 or 'weight' }}">
+                        </li>
+                        <li class="priority-item" draggable="true" data-priority="volume">
+                            <span class="grip"><i class="fas fa-grip-vertical"></i></span>
+                            <span class="priority-number">3</span>
+                            <div>
+                                <strong>📊 Increase Volume</strong><br>
+                                <small class="text-muted">Total weight × reps across all sets</small>
+                            </div>
+                            <input type="hidden" name="progression_priority_3" value="{{ preferences.progression_priority_3 or 'volume' }}">
+                        </li>
+                        <li class="priority-item" draggable="true" data-priority="sets">
+                            <span class="grip"><i class="fas fa-grip-vertical"></i></span>
+                            <span class="priority-number">4</span>
+                            <div>
+                                <strong>➕ Add Sets</strong><br>
+                                <small class="text-muted">Add more sets to exercises</small>
+                            </div>
+                            <input type="hidden" name="progression_priority_4" value="{{ preferences.progression_priority_4 or 'sets' }}">
+                        </li>
+                        <li class="priority-item" draggable="true" data-priority="exercises">
+                            <span class="grip"><i class="fas fa-grip-vertical"></i></span>
+                            <span class="priority-number">5</span>
+                            <div>
+                                <strong>🎯 Add Exercises</strong><br>
+                                <small class="text-muted">Add new exercises for muscle groups</small>
+                            </div>
+                            <input type="hidden" name="progression_priority_5" value="{{ preferences.progression_priority_5 or 'exercises' }}">
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Pyramid Preference -->
+                <div class="preference-section">
+                    <h4 class="mb-3">Pyramid Training Preference</h4>
+
+                    <div class="row">
+                        <div class="col-md-6 col-lg-3">
+                            <div class="pyramid-option {% if preferences.pyramid_preference == 'ascending' %}selected{% endif %}"
+                                 onclick="selectPyramid('ascending')">
+                                <strong>Ascending</strong>
+                                <div class="pyramid-visual">
+                                    40kg → 50kg → 60kg<br>
+                                    <i class="fas fa-arrow-up text-success"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="pyramid-option {% if preferences.pyramid_preference == 'straight' %}selected{% endif %}"
+                                 onclick="selectPyramid('straight')">
+                                <strong>Straight Sets</strong>
+                                <div class="pyramid-visual">
+                                    50kg → 50kg → 50kg<br>
+                                    <i class="fas fa-equals text-primary"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="pyramid-option {% if preferences.pyramid_preference == 'descending' %}selected{% endif %}"
+                                 onclick="selectPyramid('descending')">
+                                <strong>Descending</strong>
+                                <div class="pyramid-visual">
+                                    60kg → 50kg → 40kg<br>
+                                    <i class="fas fa-arrow-down text-danger"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 col-lg-3">
+                            <div class="pyramid-option {% if preferences.pyramid_preference == 'auto_detect' %}selected{% endif %}"
+                                 onclick="selectPyramid('auto_detect')">
+                                <strong>Auto Detect</strong>
+                                <div class="pyramid-visual">
+                                    Let AI analyze<br>
+                                    <i class="fas fa-robot text-info"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="pyramid_preference" name="pyramid_preference"
+                           value="{{ preferences.pyramid_preference or 'auto_detect' }}">
+                </div>
+
+                <!-- Notifications -->
+                <div class="preference-section">
+                    <h4 class="mb-3">Notifications</h4>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="rest_timer_enabled"
+                               name="rest_timer_enabled"
+                               {% if preferences.rest_timer_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="rest_timer_enabled">
+                            Enable rest timer between sets
+                        </label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="progression_notification_enabled"
+                               name="progression_notification_enabled"
+                               {% if preferences.progression_notification_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="progression_notification_enabled">
+                            Show progression suggestions during workouts
+                        </label>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mb-4">
+                    <a href="{{ url_for('gym.dashboard') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Preferences</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
-// Update info box when strategy changes
-document.querySelectorAll('input[name="progression_strategy"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        updateStrategyInfo(this.value);
+// Drag and drop functionality
+let draggedElement = null;
+
+document.querySelectorAll('.priority-item').forEach(item => {
+    item.addEventListener('dragstart', function(e) {
+        draggedElement = this;
+        this.classList.add('dragging');
+    });
+
+    item.addEventListener('dragend', function(e) {
+        this.classList.remove('dragging');
+    });
+
+    item.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        if (this !== draggedElement) {
+            const rect = this.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            if (e.clientY < midpoint) {
+                this.parentNode.insertBefore(draggedElement, this);
+            } else {
+                this.parentNode.insertBefore(draggedElement, this.nextSibling);
+            }
+        }
     });
 });
 
-function updateStrategyInfo(strategy) {
-    const infoBox = document.querySelector('.alert-info p:last-child');
-    const minReps = document.getElementById('min_reps_target').value;
-    const maxReps = document.getElementById('max_reps_target').value;
+// Update priority numbers and hidden inputs after drag
+document.getElementById('priorityList').addEventListener('drop', function(e) {
+    updatePriorities();
+});
 
-    let strategyText = '';
-    switch(strategy) {
-        case 'reps_first':
-            strategyText = `With the "Reps First" approach, you'll increase reps from ${minReps} to ${maxReps}, then increase weight and start again at ${minReps} reps.`;
-            break;
-        case 'weight_first':
-            strategyText = `With the "Weight First" approach, you'll increase weight when your form is perfect and the exercise feels too easy, maintaining reps in the ${minReps}-${maxReps} range.`;
-            break;
-        case 'hybrid':
-            strategyText = `With the "Hybrid" approach, you'll alternate between increasing reps and weight, keeping workouts varied and challenging.`;
-            break;
-    }
+function updatePriorities() {
+    const items = document.querySelectorAll('.priority-item');
+    items.forEach((item, index) => {
+        // Update visual number
+        item.querySelector('.priority-number').textContent = index + 1;
 
-    infoBox.innerHTML = `<strong>Your Strategy:</strong> ${strategyText}`;
+        // Update hidden input
+        const priority = item.dataset.priority;
+        const input = item.querySelector('input[type="hidden"]');
+        input.name = `progression_priority_${index + 1}`;
+        input.value = priority;
+    });
 }
 
-// Update rep range validation
-document.getElementById('min_reps_target').addEventListener('change', function() {
-    const maxReps = document.getElementById('max_reps_target');
-    maxReps.min = parseInt(this.value) + 1;
-    if (parseInt(maxReps.value) <= parseInt(this.value)) {
-        maxReps.value = parseInt(this.value) + 5;
-    }
+// Pyramid selection
+function selectPyramid(type) {
+    document.querySelectorAll('.pyramid-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    document.getElementById('pyramid_preference').value = type;
+}
+
+// Initialize priorities based on saved preferences
+document.addEventListener('DOMContentLoaded', function() {
+    const priorities = [
+        '{{ preferences.progression_priority_1 or "reps" }}',
+        '{{ preferences.progression_priority_2 or "weight" }}',
+        '{{ preferences.progression_priority_3 or "volume" }}',
+        '{{ preferences.progression_priority_4 or "sets" }}',
+        '{{ preferences.progression_priority_5 or "exercises" }}'
+    ];
+
+    const container = document.getElementById('priorityList');
+    const items = Array.from(container.children);
+
+    // Sort items based on saved priorities
+    priorities.forEach((priority, index) => {
+        const item = items.find(el => el.dataset.priority === priority);
+        if (item) {
+            container.appendChild(item);
+        }
+    });
+
+    updatePriorities();
 });
 </script>
 {% endblock %}

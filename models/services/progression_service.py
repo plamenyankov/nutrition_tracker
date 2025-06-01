@@ -23,7 +23,10 @@ class ProgressionService:
         cursor.execute('''
             SELECT progression_strategy, min_reps_target, max_reps_target,
                    weight_increment_upper, weight_increment_lower,
-                   rest_timer_enabled, progression_notification_enabled
+                   rest_timer_enabled, progression_notification_enabled,
+                   progression_priority_1, progression_priority_2,
+                   progression_priority_3, progression_priority_4,
+                   progression_priority_5, pyramid_preference
             FROM user_gym_preferences
             WHERE user_id = ?
         ''', (user_id,))
@@ -39,7 +42,13 @@ class ProgressionService:
                 'weight_increment_upper': row[3],
                 'weight_increment_lower': row[4],
                 'rest_timer_enabled': bool(row[5]),
-                'progression_notification_enabled': bool(row[6])
+                'progression_notification_enabled': bool(row[6]),
+                'progression_priority_1': row[7] or 'reps',
+                'progression_priority_2': row[8] or 'weight',
+                'progression_priority_3': row[9] or 'volume',
+                'progression_priority_4': row[10] or 'sets',
+                'progression_priority_5': row[11] or 'exercises',
+                'pyramid_preference': row[12] or 'auto_detect'
             }
         else:
             # Return defaults if no preferences found
@@ -50,7 +59,13 @@ class ProgressionService:
                 'weight_increment_upper': 2.5,
                 'weight_increment_lower': 5.0,
                 'rest_timer_enabled': True,
-                'progression_notification_enabled': True
+                'progression_notification_enabled': True,
+                'progression_priority_1': 'reps',
+                'progression_priority_2': 'weight',
+                'progression_priority_3': 'volume',
+                'progression_priority_4': 'sets',
+                'progression_priority_5': 'exercises',
+                'pyramid_preference': 'auto_detect'
             }
 
     def update_user_preferences(self, user_id: int, preferences: Dict) -> bool:
@@ -64,8 +79,11 @@ class ProgressionService:
                 (user_id, progression_strategy, min_reps_target, max_reps_target,
                  weight_increment_upper, weight_increment_lower,
                  rest_timer_enabled, progression_notification_enabled,
+                 progression_priority_1, progression_priority_2,
+                 progression_priority_3, progression_priority_4,
+                 progression_priority_5, pyramid_preference,
                  updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ''', (
                 user_id,
                 preferences.get('progression_strategy', 'reps_first'),
@@ -74,7 +92,13 @@ class ProgressionService:
                 preferences.get('weight_increment_upper', 2.5),
                 preferences.get('weight_increment_lower', 5.0),
                 preferences.get('rest_timer_enabled', True),
-                preferences.get('progression_notification_enabled', True)
+                preferences.get('progression_notification_enabled', True),
+                preferences.get('progression_priority_1', 'reps'),
+                preferences.get('progression_priority_2', 'weight'),
+                preferences.get('progression_priority_3', 'volume'),
+                preferences.get('progression_priority_4', 'sets'),
+                preferences.get('progression_priority_5', 'exercises'),
+                preferences.get('pyramid_preference', 'auto_detect')
             ))
 
             conn.commit()

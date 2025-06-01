@@ -1,0 +1,313 @@
+{% extends "layout.html" %}
+
+{% block title %}Progression Dashboard - Gym Tracker{% endblock %}
+
+{% block head %}
+<style>
+.pattern-card {
+    border-left: 4px solid;
+    transition: transform 0.2s;
+}
+
+.pattern-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.pattern-ascending { border-left-color: #28a745; }
+.pattern-descending { border-left-color: #dc3545; }
+.pattern-straight { border-left-color: #007bff; }
+.pattern-pyramid { border-left-color: #ffc107; }
+
+.volume-chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.progression-metric {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: #f8f9fa;
+    margin-bottom: 1rem;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #495057;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.exercise-progression-card {
+    cursor: pointer;
+}
+
+.progression-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+    border-left: 2px solid #dee2e6;
+    padding-left: 1.5rem;
+}
+
+.timeline-item:last-child {
+    border-left: none;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -0.5rem;
+    top: 0.25rem;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #007bff;
+}
+
+.timeline-dot.success {
+    background: #28a745;
+    border-color: #28a745;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Progression Dashboard</h2>
+        <div>
+            <a href="{{ url_for('gym.progression_suggestions') }}" class="btn btn-primary">
+                <i class="fas fa-lightbulb"></i> Get Suggestions
+            </a>
+            <a href="{{ url_for('gym.preferences') }}" class="btn btn-secondary">
+                <i class="fas fa-cog"></i> Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-6">
+            <div class="progression-metric">
+                <div class="metric-value">{{ metrics.total_progressions }}</div>
+                <div class="metric-label">Total Progressions</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="progression-metric">
+                <div class="metric-value">{{ metrics.this_month }}</div>
+                <div class="metric-label">This Month</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="progression-metric">
+                <div class="metric-value">+{{ metrics.volume_increase }}%</div>
+                <div class="metric-label">Volume Increase</div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="progression-metric">
+                <div class="metric-value">{{ metrics.exercises_progressed }}/{{ metrics.total_exercises }}</div>
+                <div class="metric-label">Exercises Progressed</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pattern Analysis -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h4>Your Training Patterns</h4>
+            <div class="row">
+                {% for exercise in pattern_analysis %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card pattern-card pattern-{{ exercise.pattern }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ exercise.name }}</h5>
+                            <p class="card-text">
+                                <span class="badge bg-secondary">{{ exercise.pattern|title }}</span>
+                                <span class="text-muted ms-2">{{ exercise.typical_sets }} sets</span>
+                            </p>
+                            <div class="small">
+                                {% if exercise.pattern == 'ascending' %}
+                                    <i class="fas fa-arrow-up text-success"></i> Weight increases each set
+                                {% elif exercise.pattern == 'descending' %}
+                                    <i class="fas fa-arrow-down text-danger"></i> Weight decreases each set
+                                {% elif exercise.pattern == 'straight' %}
+                                    <i class="fas fa-equals text-primary"></i> Same weight all sets
+                                {% else %}
+                                    <i class="fas fa-random text-warning"></i> Mixed pattern
+                                {% endif %}
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">Confidence: {{ (exercise.confidence * 100)|round }}%</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Volume Trends -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Volume Trends (30 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="volume-chart-container">
+                        <canvas id="volumeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recent Progressions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progression-timeline">
+                        {% for event in recent_progressions %}
+                        <div class="timeline-item">
+                            <div class="timeline-dot {% if event.type == 'weight' %}success{% endif %}"></div>
+                            <div class="small text-muted">{{ event.date }}</div>
+                            <div class="fw-bold">{{ event.exercise }}</div>
+                            <div class="small">
+                                {% if event.type == 'weight' %}
+                                    <i class="fas fa-weight"></i> {{ event.old_value }}kg → {{ event.new_value }}kg
+                                {% elif event.type == 'reps' %}
+                                    <i class="fas fa-redo"></i> {{ event.old_value }} → {{ event.new_value }} reps
+                                {% elif event.type == 'sets' %}
+                                    <i class="fas fa-plus"></i> Added set {{ event.new_value }}
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercise-Specific Progress -->
+    <div class="row">
+        <div class="col-12">
+            <h4>Exercise Progress</h4>
+            <div class="row">
+                {% for exercise in exercises_progress %}
+                <div class="col-lg-6 mb-3">
+                    <div class="card exercise-progression-card" onclick="window.location.href='{{ url_for('gym.exercise_progression', exercise_id=exercise.id) }}'">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title mb-1">{{ exercise.name }}</h6>
+                                    <p class="card-text small text-muted mb-2">{{ exercise.muscle_group }}</p>
+                                </div>
+                                <div class="text-end">
+                                    {% if exercise.ready_for_progression %}
+                                        <span class="badge bg-success">Ready</span>
+                                    {% elif exercise.close_to_progression %}
+                                        <span class="badge bg-warning">Close</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Building</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-6">
+                                    <small class="text-muted">Current</small>
+                                    <div class="fw-bold">{{ exercise.current_weight }}kg × {{ exercise.current_reps }}</div>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <small class="text-muted">Volume Trend</small>
+                                    <div class="fw-bold {% if exercise.volume_trend > 0 %}text-success{% elif exercise.volume_trend < 0 %}text-danger{% endif %}">
+                                        {% if exercise.volume_trend > 0 %}+{% endif %}{{ exercise.volume_trend }}%
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="progress mt-2" style="height: 5px;">
+                                <div class="progress-bar {% if exercise.progress_percent >= 80 %}bg-success{% elif exercise.progress_percent >= 50 %}bg-warning{% endif %}"
+                                     style="width: {{ exercise.progress_percent }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Volume Chart
+const ctx = document.getElementById('volumeChart').getContext('2d');
+const volumeData = {{ volume_chart_data|tojson }};
+
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: volumeData.labels,
+        datasets: [{
+            label: 'Total Volume (kg)',
+            data: volumeData.volume,
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            tension: 0.1
+        }, {
+            label: 'Average Intensity (kg)',
+            data: volumeData.intensity,
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            tension: 0.1,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false,
+        },
+        scales: {
+            y: {
+                type: 'linear',
+                display: true,
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'Volume (kg)'
+                }
+            },
+            y1: {
+                type: 'linear',
+                display: true,
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'Intensity (kg)'
+                },
+                grid: {
+                    drawOnChartArea: false,
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
