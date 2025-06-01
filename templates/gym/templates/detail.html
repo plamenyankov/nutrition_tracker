@@ -1,0 +1,127 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>{{ template[1] }}</h2>
+        <a href="{{ url_for('gym.templates') }}" class="btn btn-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i> Back to Templates
+        </a>
+    </div>
+
+    <!-- Template Info -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <p class="text-muted">{{ template[2] or 'No description provided.' }}</p>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Created:</strong> {{ template[5] }}</p>
+                    <p class="mb-1"><strong>Visibility:</strong>
+                        {% if template[4] %}
+                            <span class="badge bg-info">Public Template</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Private Template</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p class="mb-1"><strong>Total Exercises:</strong> {{ exercises|length }}</p>
+                    <p class="mb-1"><strong>Estimated Duration:</strong>
+                        {% set total_sets = 0 %}
+                        {% set total_rest = 0 %}
+                        {% for ex in exercises %}
+                            {% set total_sets = total_sets + ex[4] %}
+                            {% set total_rest = total_rest + ex[7] %}
+                        {% endfor %}
+                        {% set avg_rest = (total_rest / exercises|length) if exercises else 90 %}
+                        {% set duration = ((total_sets * 30) + (total_sets * avg_rest)) / 60 %}
+                        ~{{ duration|round|int }} minutes
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exercises -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Workout Plan</h5>
+        </div>
+        <div class="card-body">
+            {% if exercises %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Exercise</th>
+                                <th>Muscle Group</th>
+                                <th>Sets</th>
+                                <th>Target Reps</th>
+                                <th>Target Weight (kg)</th>
+                                <th>Rest Time</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for exercise in exercises %}
+                            <tr>
+                                <td>{{ exercise[3] }}</td>
+                                <td><strong>{{ exercise[9] }}</strong></td>
+                                <td><span class="badge bg-secondary">{{ exercise[10] or 'N/A' }}</span></td>
+                                <td>{{ exercise[4] }}</td>
+                                <td>{{ exercise[5] or '-' }}</td>
+                                <td>{{ exercise[6] or '-' }}</td>
+                                <td>{{ exercise[7] }}s</td>
+                                <td class="text-muted small">{{ exercise[8] or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Workout Summary -->
+                <div class="alert alert-info mt-3">
+                    <h6>Workout Summary:</h6>
+                    <ul class="mb-0">
+                        {% set muscle_groups = {} %}
+                        {% set summary_total_sets = 0 %}
+                        {% for exercise in exercises %}
+                            {% set summary_total_sets = summary_total_sets + exercise[4] %}
+                            {% if exercise[10] %}
+                                {% if exercise[10] in muscle_groups %}
+                                    {% set _ = muscle_groups.update({exercise[10]: muscle_groups[exercise[10]] + 1}) %}
+                                {% else %}
+                                    {% set _ = muscle_groups.update({exercise[10]: 1}) %}
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+
+                        <li><strong>Total Exercises:</strong> {{ exercises|length }}</li>
+                        <li><strong>Total Sets:</strong> {{ summary_total_sets }}</li>
+                        <li><strong>Muscle Groups:</strong>
+                            {% for muscle, count in muscle_groups.items() %}
+                                {{ muscle }} ({{ count }}){% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </li>
+                    </ul>
+                </div>
+            {% else %}
+                <p class="text-muted text-center">This template has no exercises yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="d-flex justify-content-center gap-2">
+        {% if template[3] == current_user_id %}
+            <a href="{{ url_for('gym.edit_template', template_id=template[0]) }}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Edit Template
+            </a>
+        {% endif %}
+        <a href="{{ url_for('gym.start_workout_from_template', template_id=template[0]) }}" class="btn btn-success">
+            <i class="bi bi-play-circle"></i> Start This Workout
+        </a>
+    </div>
+</div>
+{% endblock %}

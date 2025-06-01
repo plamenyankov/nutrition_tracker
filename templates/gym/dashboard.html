@@ -6,13 +6,18 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Gym Tracker Dashboard</h2>
-        <a href="{{ url_for('gym.start_workout') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> Start New Workout
-        </a>
+        <div>
+            <a href="{{ url_for('gym.templates') }}" class="btn btn-secondary">
+                <i class="bi bi-collection"></i> Templates
+            </a>
+            <a href="{{ url_for('gym.choose_workout') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Start Workout
+            </a>
+        </div>
     </div>
 
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title">Total Workouts</h5>
@@ -20,18 +25,36 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card text-center">
                 <div class="card-body">
-                    <h5 class="card-title">Quick Links</h5>
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('gym.exercises') }}" class="btn btn-outline-primary">Manage Exercises</a>
-                        <a href="{{ url_for('gym.history') }}" class="btn btn-outline-primary">View History</a>
+                    <h5 class="card-title">Quick Actions</h5>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <a href="{{ url_for('gym.exercises') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-list-ul"></i> Exercises
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('gym.history') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-clock-history"></i> History
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('gym.templates') }}" class="btn btn-outline-primary w-100">
+                                <i class="bi bi-collection"></i> Templates
+                            </a>
+                        </div>
+                        <div class="col-6">
+                            <a href="{{ url_for('gym.create_template') }}" class="btn btn-outline-success w-100">
+                                <i class="bi bi-plus"></i> New Template
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="card text-center">
                 <div class="card-body">
                     <h5 class="card-title">This Week</h5>
@@ -64,7 +87,7 @@
         </div>
     {% else %}
         <div class="alert alert-info">
-            <p class="mb-0">No workouts recorded yet. <a href="{{ url_for('gym.start_workout') }}" class="alert-link">Start your first workout!</a></p>
+            <p class="mb-0">No workouts recorded yet. <a href="{{ url_for('gym.choose_workout') }}" class="alert-link">Start your first workout!</a></p>
         </div>
     {% endif %}
 </div>

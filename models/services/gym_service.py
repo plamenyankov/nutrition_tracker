@@ -236,3 +236,222 @@ class GymService:
         conn.commit()
         conn.close()
         return True, "Workout deleted successfully"
+
+    # Template Management Methods
+
+    def create_workout_template(self, name, description=None, is_public=False):
+        """Create a new workout template"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO workout_templates (name, description, user_id, is_public)
+            VALUES (?, ?, ?, ?)
+        ''', (name, description, self.user_id, is_public))
+        template_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return template_id
+
+    def get_user_templates(self):
+        """Get all templates for the current user"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT wt.*, COUNT(wte.id) as exercise_count
+            FROM workout_templates wt
+            LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
+            WHERE wt.user_id = ?
+            GROUP BY wt.id
+            ORDER BY wt.name
+        ''', (self.user_id,))
+        templates = cursor.fetchall()
+        conn.close()
+        return templates
+
+    def get_public_templates(self):
+        """Get all public templates"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT wt.*, COUNT(wte.id) as exercise_count
+            FROM workout_templates wt
+            LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
+            WHERE wt.is_public = 1
+            GROUP BY wt.id
+            ORDER BY wt.name
+        ''', ())
+        templates = cursor.fetchall()
+        conn.close()
+        return templates
+
+    def get_template_details(self, template_id):
+        """Get template details including all exercises"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get template info
+        cursor.execute('''
+            SELECT * FROM workout_templates
+            WHERE id = ? AND (user_id = ? OR is_public = 1)
+        ''', (template_id, self.user_id))
+        template = cursor.fetchone()
+
+        if not template:
+            conn.close()
+            return None, []
+
+        # Get all exercises in this template
+        cursor.execute('''
+            SELECT wte.*, e.name, e.muscle_group
+            FROM workout_template_exercises wte
+            JOIN exercises e ON wte.exercise_id = e.id
+            WHERE wte.template_id = ?
+            ORDER BY wte.order_index
+        ''', (template_id,))
+        exercises = cursor.fetchall()
+
+        conn.close()
+        return template, exercises
+
+    def add_exercise_to_template(self, template_id, exercise_id, order_index, sets=3, target_reps=None, target_weight=None, rest_seconds=90, notes=None):
+        """Add an exercise to a workout template"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Verify template belongs to user
+        cursor.execute('SELECT id FROM workout_templates WHERE id = ? AND user_id = ?', (template_id, self.user_id))
+        if not cursor.fetchone():
+            conn.close()
+            return False, "Template not found or unauthorized"
+
+        try:
+            cursor.execute('''
+                INSERT INTO workout_template_exercises
+                (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds, notes))
+            conn.commit()
+            conn.close()
+            return True, "Exercise added to template"
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False, "Order index already exists in template"
+
+    def update_template_exercise(self, template_exercise_id, sets, target_reps, target_weight, rest_seconds, notes):
+        """Update exercise details in a template"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Verify the template exercise belongs to user's template
+        cursor.execute('''
+            SELECT wte.id FROM workout_template_exercises wte
+            JOIN workout_templates wt ON wte.template_id = wt.id
+            WHERE wte.id = ? AND wt.user_id = ?
+        ''', (template_exercise_id, self.user_id))
+
+        if not cursor.fetchone():
+            conn.close()
+            return False, "Template exercise not found or unauthorized"
+
+        cursor.execute('''
+            UPDATE workout_template_exercises
+            SET sets = ?, target_reps = ?, target_weight = ?, rest_seconds = ?, notes = ?
+            WHERE id = ?
+        ''', (sets, target_reps, target_weight, rest_seconds, notes, template_exercise_id))
+        conn.commit()
+        conn.close()
+        return True, "Template exercise updated"
+
+    def remove_exercise_from_template(self, template_exercise_id):
+        """Remove an exercise from a template"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Verify the template exercise belongs to user's template
+        cursor.execute('''
+            SELECT wte.id FROM workout_template_exercises wte
+            JOIN workout_templates wt ON wte.template_id = wt.id
+            WHERE wte.id = ? AND wt.user_id = ?
+        ''', (template_exercise_id, self.user_id))
+
+        if not cursor.fetchone():
+            conn.close()
+            return False, "Template exercise not found or unauthorized"
+
+        cursor.execute('DELETE FROM workout_template_exercises WHERE id = ?', (template_exercise_id,))
+        conn.commit()
+        conn.close()
+        return True, "Exercise removed from template"
+
+    def start_workout_from_template(self, template_id, notes=None):
+        """Start a new workout session from a template"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get template exercises
+        cursor.execute('''
+            SELECT exercise_id, sets, target_weight, target_reps
+            FROM workout_template_exercises
+            WHERE template_id = ?
+            ORDER BY order_index
+        ''', (template_id,))
+        template_exercises = cursor.fetchall()
+
+        if not template_exercises:
+            conn.close()
+            return None, "Template has no exercises"
+
+        # Create workout session
+        cursor.execute('''
+            INSERT INTO workout_sessions (user_id, date, notes, template_id)
+            VALUES (?, ?, ?, ?)
+        ''', (self.user_id, datetime.now().date(), notes, template_id))
+        session_id = cursor.lastrowid
+
+        # Pre-populate sets based on template
+        for exercise_id, num_sets, target_weight, target_reps in template_exercises:
+            for set_num in range(1, num_sets + 1):
+                cursor.execute('''
+                    INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (session_id, exercise_id, set_num, target_weight or 0, target_reps or 0))
+
+        conn.commit()
+        conn.close()
+        return session_id, "Workout started from template"
+
+    def delete_template(self, template_id):
+        """Delete a workout template"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Verify template belongs to user
+        cursor.execute('SELECT id FROM workout_templates WHERE id = ? AND user_id = ?', (template_id, self.user_id))
+        if not cursor.fetchone():
+            conn.close()
+            return False, "Template not found or unauthorized"
+
+        # Delete template (cascade will delete template exercises)
+        cursor.execute('DELETE FROM workout_templates WHERE id = ?', (template_id,))
+        conn.commit()
+        conn.close()
+        return True, "Template deleted successfully"
+
+    def update_template(self, template_id, name, description, is_public):
+        """Update template details"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE workout_templates
+            SET name = ?, description = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+        ''', (name, description, is_public, template_id, self.user_id))
+
+        if cursor.rowcount > 0:
+            conn.commit()
+            conn.close()
+            return True, "Template updated successfully"
+        else:
+            conn.close()
+            return False, "Template not found or unauthorized"

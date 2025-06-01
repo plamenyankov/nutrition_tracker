@@ -176,3 +176,177 @@ def delete_workout(workout_id):
     else:
         flash(message, 'error')
     return redirect(url_for('gym.history'))
+
+# Template Routes
+
+@gym_bp.route('/templates')
+@login_required
+def templates():
+    """List user's workout templates"""
+    user_templates = gym_service.get_user_templates()
+    public_templates = gym_service.get_public_templates()
+    return render_template('gym/templates/list.html',
+                         user_templates=user_templates,
+                         public_templates=public_templates)
+
+@gym_bp.route('/templates/create', methods=['GET', 'POST'])
+@login_required
+def create_template():
+    """Create a new workout template"""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        is_public = request.form.get('is_public') == 'on'
+
+        if not name:
+            flash('Template name is required', 'error')
+            return redirect(url_for('gym.create_template'))
+
+        try:
+            template_id = gym_service.create_workout_template(name, description, is_public)
+            flash('Template created successfully', 'success')
+            return redirect(url_for('gym.edit_template', template_id=template_id))
+        except Exception as e:
+            flash(f'Error creating template: {str(e)}', 'error')
+            return redirect(url_for('gym.create_template'))
+
+    return render_template('gym/templates/create.html')
+
+@gym_bp.route('/templates/<int:template_id>')
+@login_required
+def template_detail(template_id):
+    """View template details"""
+    template, exercises = gym_service.get_template_details(template_id)
+    if not template:
+        flash('Template not found', 'error')
+        return redirect(url_for('gym.templates'))
+
+    return render_template('gym/templates/detail.html',
+                         template=template,
+                         exercises=exercises,
+                         current_user_id=gym_service.user_id)
+
+@gym_bp.route('/templates/<int:template_id>/edit')
+@login_required
+def edit_template(template_id):
+    """Edit a workout template"""
+    template, template_exercises = gym_service.get_template_details(template_id)
+    if not template:
+        flash('Template not found', 'error')
+        return redirect(url_for('gym.templates'))
+
+    # Check if user owns this template
+    if template[3] != gym_service.user_id:
+        flash('You can only edit your own templates', 'error')
+        return redirect(url_for('gym.templates'))
+
+    all_exercises = gym_service.get_all_exercises()
+    muscle_groups = set([ex[2] for ex in all_exercises if ex[2]])
+
+    return render_template('gym/templates/edit.html',
+                         template=template,
+                         template_exercises=template_exercises,
+                         all_exercises=all_exercises,
+                         muscle_groups=sorted(muscle_groups))
+
+@gym_bp.route('/templates/<int:template_id>/update', methods=['POST'])
+@login_required
+def update_template(template_id):
+    """Update template details"""
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+    is_public = request.form.get('is_public') == 'on'
+
+    if not name:
+        flash('Template name is required', 'error')
+        return redirect(url_for('gym.edit_template', template_id=template_id))
+
+    success, message = gym_service.update_template(template_id, name, description, is_public)
+    if success:
+        flash(message, 'success')
+    else:
+        flash(message, 'error')
+
+    return redirect(url_for('gym.edit_template', template_id=template_id))
+
+@gym_bp.route('/templates/<int:template_id>/add-exercise', methods=['POST'])
+@login_required
+def add_exercise_to_template(template_id):
+    """Add an exercise to a template"""
+    data = request.json
+    try:
+        success, message = gym_service.add_exercise_to_template(
+            template_id,
+            data['exercise_id'],
+            data['order_index'],
+            data.get('sets', 3),
+            data.get('target_reps'),
+            data.get('target_weight'),
+            data.get('rest_seconds', 90),
+            data.get('notes')
+        )
+        return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@gym_bp.route('/templates/exercise/<int:template_exercise_id>/update', methods=['POST'])
+@login_required
+def update_template_exercise(template_exercise_id):
+    """Update exercise in a template"""
+    data = request.json
+    try:
+        success, message = gym_service.update_template_exercise(
+            template_exercise_id,
+            data['sets'],
+            data.get('target_reps'),
+            data.get('target_weight'),
+            data.get('rest_seconds', 90),
+            data.get('notes')
+        )
+        return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@gym_bp.route('/templates/exercise/<int:template_exercise_id>/remove', methods=['POST'])
+@login_required
+def remove_exercise_from_template(template_exercise_id):
+    """Remove exercise from a template"""
+    try:
+        success, message = gym_service.remove_exercise_from_template(template_exercise_id)
+        return jsonify({'success': success, 'message': message})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+
+@gym_bp.route('/templates/<int:template_id>/delete', methods=['POST'])
+@login_required
+def delete_template(template_id):
+    """Delete a workout template"""
+    success, message = gym_service.delete_template(template_id)
+    if success:
+        flash(message, 'success')
+    else:
+        flash(message, 'error')
+    return redirect(url_for('gym.templates'))
+
+@gym_bp.route('/workout/start/<int:template_id>')
+@login_required
+def start_workout_from_template(template_id):
+    """Start a workout from a template"""
+    session_id, message = gym_service.start_workout_from_template(template_id)
+    if session_id:
+        flash('Workout started from template', 'success')
+        return redirect(url_for('gym.edit_workout', workout_id=session_id))
+    else:
+        flash(message, 'error')
+        return redirect(url_for('gym.templates'))
+
+# Update the existing start_workout route to show template selection
+@gym_bp.route('/workout/choose')
+@login_required
+def choose_workout():
+    """Choose to start from template or custom workout"""
+    user_templates = gym_service.get_user_templates()
+    public_templates = gym_service.get_public_templates()
+    return render_template('gym/workouts/choose.html',
+                         user_templates=user_templates,
+                         public_templates=public_templates)

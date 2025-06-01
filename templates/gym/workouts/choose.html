@@ -1,0 +1,133 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Start New Workout</h2>
+
+    <!-- Choice Cards -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-5 mb-3">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-lightning-fill text-warning" style="font-size: 3rem;"></i>
+                    <h4 class="card-title mt-3">Quick Start</h4>
+                    <p class="card-text text-muted">
+                        Create a custom workout on the fly. Add exercises as you go.
+                    </p>
+                    <a href="{{ url_for('gym.start_workout') }}" class="btn btn-primary">
+                        <i class="bi bi-play-circle"></i> Start Custom Workout
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-5 mb-3">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-clipboard-check text-success" style="font-size: 3rem;"></i>
+                    <h4 class="card-title mt-3">Use Template</h4>
+                    <p class="card-text text-muted">
+                        Start from a pre-made template with exercises already planned.
+                    </p>
+                    <a href="#templates" class="btn btn-success">
+                        <i class="bi bi-list-check"></i> Choose Template
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Selection -->
+    <div id="templates">
+        {% if user_templates or public_templates %}
+            <hr class="my-4">
+            <h3 class="text-center mb-4">Select a Template</h3>
+
+            <!-- My Templates -->
+            {% if user_templates %}
+            <div class="mb-4">
+                <h5 class="mb-3">My Templates</h5>
+                <div class="row">
+                    {% for template in user_templates %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ template[1] }}</h6>
+                                <p class="card-text text-muted small">{{ template[2] or 'No description' }}</p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-list-check"></i> {{ template[7] }} exercises
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{{ url_for('gym.start_workout_from_template', template_id=template[0]) }}"
+                                   class="btn btn-sm btn-success w-100">
+                                    <i class="bi bi-play"></i> Use This Template
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Public Templates -->
+            {% if public_templates %}
+            <div class="mb-4">
+                <h5 class="mb-3">Public Templates</h5>
+                <div class="row">
+                    {% for template in public_templates %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    {{ template[1] }}
+                                    <span class="badge bg-info text-white ms-1" style="font-size: 0.7rem;">Public</span>
+                                </h6>
+                                <p class="card-text text-muted small">{{ template[2] or 'No description' }}</p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-list-check"></i> {{ template[7] }} exercises
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent d-flex gap-2">
+                                <a href="{{ url_for('gym.template_detail', template_id=template[0]) }}"
+                                   class="btn btn-sm btn-outline-primary flex-fill">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{{ url_for('gym.start_workout_from_template', template_id=template[0]) }}"
+                                   class="btn btn-sm btn-success flex-fill">
+                                    <i class="bi bi-play"></i> Use
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- No Templates Message -->
+    {% if not user_templates and not public_templates %}
+    <div class="text-center mt-5">
+        <p class="text-muted mb-3">No templates available yet.</p>
+        <a href="{{ url_for('gym.create_template') }}" class="btn btn-outline-primary">
+            <i class="bi bi-plus-circle"></i> Create Your First Template
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Smooth scroll to templates section when clicking "Choose Template"
+document.querySelector('a[href="#templates"]').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('templates').scrollIntoView({ behavior: 'smooth' });
+});
+</script>
+{% endblock %}
