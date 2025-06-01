@@ -1,0 +1,111 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Workout Templates</h2>
+        <div>
+            <a href="{{ url_for('gym.create_template') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Create Template
+            </a>
+            <a href="{{ url_for('gym.choose_workout') }}" class="btn btn-success">
+                <i class="bi bi-play-circle"></i> Start Workout
+            </a>
+        </div>
+    </div>
+
+    <!-- My Templates -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">My Templates</h5>
+        </div>
+        <div class="card-body">
+            {% if user_templates %}
+                <div class="row">
+                    {% for template in user_templates %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">{{ template[1] }}</h6>
+                                <p class="card-text text-muted small">{{ template[2] or 'No description' }}</p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-list-check"></i> {{ template[7] }} exercises
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <a href="{{ url_for('gym.template_detail', template_id=template[0]) }}"
+                                       class="btn btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a href="{{ url_for('gym.edit_template', template_id=template[0]) }}"
+                                       class="btn btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <a href="{{ url_for('gym.start_workout_from_template', template_id=template[0]) }}"
+                                       class="btn btn-outline-success">
+                                        <i class="bi bi-play"></i> Start
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">You haven't created any templates yet.</p>
+                <a href="{{ url_for('gym.create_template') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-circle"></i> Create Your First Template
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Public Templates -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Public Templates</h5>
+        </div>
+        <div class="card-body">
+            {% if public_templates %}
+                <div class="row">
+                    {% for template in public_templates %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">
+                                    {{ template[1] }}
+                                    <span class="badge bg-info text-white ms-2">Public</span>
+                                </h6>
+                                <p class="card-text text-muted small">{{ template[2] or 'No description' }}</p>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        <i class="bi bi-list-check"></i> {{ template[7] }} exercises
+                                    </small>
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <a href="{{ url_for('gym.template_detail', template_id=template[0]) }}"
+                                       class="btn btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a href="{{ url_for('gym.start_workout_from_template', template_id=template[0]) }}"
+                                       class="btn btn-outline-success">
+                                        <i class="bi bi-play"></i> Use
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">No public templates available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
