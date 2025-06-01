@@ -213,29 +213,35 @@ class GymService:
         conn.close()
 
     def delete_workout(self, workout_id):
-        """Delete an entire workout session and all its sets"""
+        """Delete a workout and all its sets"""
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        # Check if workout belongs to current user
-        cursor.execute(
-            'SELECT id FROM workout_sessions WHERE id = ? AND user_id = ?',
-            (workout_id, self.user_id)
-        )
+        try:
+            # Check if workout belongs to user
+            cursor.execute('''
+                SELECT id FROM workout_sessions
+                WHERE id = ? AND user_id = ?
+            ''', (workout_id, self.user_id))
 
-        if not cursor.fetchone():
+            if not cursor.fetchone():
+                conn.close()
+                return False
+
+            # Delete all sets for this workout
+            cursor.execute('DELETE FROM workout_sets WHERE session_id = ?', (workout_id,))
+
+            # Delete the workout session
+            cursor.execute('DELETE FROM workout_sessions WHERE id = ?', (workout_id,))
+
+            conn.commit()
             conn.close()
-            return False, "Workout not found or unauthorized"
-
-        # Delete all sets first (due to foreign key constraint)
-        cursor.execute('DELETE FROM workout_sets WHERE session_id = ?', (workout_id,))
-
-        # Delete the workout session
-        cursor.execute('DELETE FROM workout_sessions WHERE id = ?', (workout_id,))
-
-        conn.commit()
-        conn.close()
-        return True, "Workout deleted successfully"
+            return True
+        except Exception as e:
+            print(f"Error deleting workout: {e}")
+            conn.rollback()
+            conn.close()
+            return False
 
     # Template Management Methods
 
@@ -621,3 +627,32 @@ class GymService:
             conn.rollback()
             conn.close()
             return None, f"Error creating template: {str(e)}"
+
+    def get_last_exercise_performance(self, exercise_id):
+        """Get the last performance for a specific exercise"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                MAX(ws.weight) as max_weight,
+                MAX(ws.reps) as max_reps,
+                wss.date
+            FROM workout_sets ws
+            JOIN workout_sessions wss ON ws.session_id = wss.id
+            WHERE ws.exercise_id = ? AND wss.user_id = ?
+            GROUP BY wss.id
+            ORDER BY wss.date DESC, wss.id DESC
+            LIMIT 1
+        ''', (exercise_id, self.user_id))
+
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            return {
+                'max_weight': result[0],
+                'max_reps': result[1],
+                'workout_date': result[2]
+            }
+        return None

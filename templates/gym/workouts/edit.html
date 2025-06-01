@@ -2,11 +2,146 @@
 
 {% block title %}Edit Workout - Gym Tracker{% endblock %}
 
+{% block head %}
+<style>
+/* Mobile-friendly styles */
+@media (max-width: 768px) {
+    /* Stack buttons vertically on mobile */
+    .mobile-button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    /* Make action buttons larger on mobile */
+    .btn-mobile-action {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Better spacing for mobile */
+    .mobile-compact {
+        padding: 0.5rem !important;
+    }
+
+    /* Hide table headers on mobile and display as cards */
+    .mobile-sets-table thead {
+        display: none;
+    }
+
+    .mobile-sets-table tbody tr {
+        display: block;
+        border: 1px solid #dee2e6;
+        margin-bottom: 0.5rem;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+    }
+
+    .mobile-sets-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        border: none;
+    }
+
+    .mobile-sets-table tbody td:before {
+        content: attr(data-label);
+        font-weight: bold;
+        margin-right: 0.5rem;
+    }
+
+    /* Make inputs full width on mobile */
+    .mobile-sets-table input {
+        max-width: 100px;
+    }
+}
+
+/* Larger touch targets */
+.btn-touch {
+    min-width: 44px;
+    min-height: 38px;
+}
+
+/* Fixed bottom action bar for mobile */
+@media (max-width: 768px) {
+    .workout-actions-mobile {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid #dee2e6;
+        padding: 0.5rem;
+        z-index: 1000;
+    }
+
+    /* Add padding to prevent content being hidden behind fixed bar */
+    body {
+        padding-bottom: 80px;
+    }
+}
+
+/* Input group styles for increment/decrement */
+.input-group-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.input-group-compact input {
+    text-align: center;
+    max-width: 80px;
+}
+
+.btn-increment {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+/* Progressive overload indicator */
+.progression-indicator {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+    margin-left: 0.5rem;
+}
+
+.progression-ready {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.last-performance {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .progression-indicator {
+        display: block;
+        margin-left: 0;
+        margin-top: 0.25rem;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid mt-3">
+    <!-- Mobile-friendly header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
         <div>
-            <h2 class="d-inline">Edit Workout</h2>
+            <h2 class="h4 h2-md d-inline">Edit Workout</h2>
             {% if workout_status == 'in_progress' %}
                 <span class="badge bg-warning ms-2">In Progress</span>
             {% elif workout_status == 'completed' %}
@@ -15,69 +150,32 @@
                 <span class="badge bg-secondary ms-2">Abandoned</span>
             {% endif %}
         </div>
-        <div>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left d-md-none"></i>
+                <span class="d-none d-md-inline"><i class="fas fa-arrow-left"></i> Back to Details</span>
+                <span class="d-md-none">Back</span>
+            </a>
             <form method="POST" action="{{ url_for('gym.delete_workout', workout_id=workout[0]) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this workout? This cannot be undone.');">
-                <button type="submit" class="btn btn-danger">
-                    <i class="fas fa-trash"></i> Delete Workout
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <i class="fas fa-trash d-md-none"></i>
+                    <span class="d-none d-md-inline"><i class="fas fa-trash"></i> Delete Workout</span>
+                    <span class="d-md-none">Delete</span>
                 </button>
             </form>
-            <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Details
-            </a>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-8">
-            <!-- Workout Info -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Workout Information</h5>
-                </div>
-                <div class="card-body">
-                    <p class="mb-2"><strong>Date:</strong> {{ workout[2] }}</p>
-                    <div class="mb-3">
-                        <label for="workout-notes" class="form-label">Notes</label>
-                        <textarea id="workout-notes" class="form-control" rows="2">{{ workout[3] or '' }}</textarea>
-                        <button class="btn btn-sm btn-primary mt-2" onclick="saveNotes()">Save Notes</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Workout Completion Actions -->
-            {% if workout_status == 'in_progress' %}
-            <div class="card mb-3 border-primary">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Workout Actions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex gap-2">
-                        <form method="POST" action="{{ url_for('gym.complete_workout', workout_id=workout[0]) }}" style="flex: 1;">
-                            <button type="submit" class="btn btn-success w-100" onclick="return confirm('Mark this workout as completed?');">
-                                <i class="fas fa-check-circle"></i> Finish Workout
-                            </button>
-                        </form>
-                        <form method="POST" action="{{ url_for('gym.abandon_workout', workout_id=workout[0]) }}" style="flex: 1;">
-                            <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Abandon this workout? You can still view it later.');">
-                                <i class="fas fa-times-circle"></i> Abandon Workout
-                            </button>
-                        </form>
-                    </div>
-                    <small class="text-muted d-block mt-2">
-                        <i class="fas fa-info-circle"></i> Finish when you've completed all exercises, or abandon to save progress and stop.
-                    </small>
-                </div>
-            </div>
-            {% endif %}
-
+        <div class="col-12 col-lg-8 order-2 order-lg-1">
             <!-- Add New Exercise -->
             <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Add Exercise</h5>
+                <div class="card-header mobile-compact">
+                    <h5 class="mb-0 h6">Add Exercise</h5>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
+                <div class="card-body mobile-compact">
+                    <div class="row g-2">
+                        <div class="col-12 col-md-8">
                             <select id="exercise-select" class="form-select">
                                 <option value="">Choose an exercise...</option>
                                 {% for exercise in all_exercises %}
@@ -87,8 +185,8 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <button class="btn btn-primary w-100" onclick="addNewExercise()">
+                        <div class="col-12 col-md-4">
+                            <button class="btn btn-primary w-100 btn-touch" onclick="addNewExercise()">
                                 <i class="fas fa-plus"></i> Add Exercise
                             </button>
                         </div>
@@ -100,15 +198,20 @@
             <div id="exercises-container">
                 {% for exercise_id, exercise_info in exercises_data.items() %}
                     <div class="card mb-3" id="exercise-{{ exercise_id }}">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">{{ exercise_info.name }}{% if exercise_info.muscle_group %} ({{ exercise_info.muscle_group }}){% endif %}</h6>
-                            <button class="btn btn-sm btn-primary" data-exercise-id="{{ exercise_id }}" data-exercise-name="{{ exercise_info.name }}" onclick="addSetToExercise(this)">
-                                <i class="fas fa-plus"></i> Add Set
+                        <div class="card-header d-flex justify-content-between align-items-center mobile-compact">
+                            <div>
+                                <h6 class="mb-0 text-break">{{ exercise_info.name }}{% if exercise_info.muscle_group %} <small class="text-muted d-block d-md-inline">({{ exercise_info.muscle_group }})</small>{% endif %}</h6>
+                                <div class="progression-info" id="progression-{{ exercise_id }}">
+                                    <!-- Progressive overload info will be loaded here -->
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-primary btn-touch ms-2" data-exercise-id="{{ exercise_id }}" data-exercise-name="{{ exercise_info.name }}" onclick="addSetToExercise(this)">
+                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Add Set</span>
                             </button>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body mobile-compact">
                             <div class="table-responsive">
-                                <table class="table table-sm">
+                                <table class="table table-sm mobile-sets-table">
                                     <thead>
                                         <tr>
                                             <th>Set</th>
@@ -120,30 +223,56 @@
                                     <tbody id="sets-{{ exercise_id }}">
                                         {% for set in exercise_info.sets %}
                                             <tr id="set-row-{{ set.id }}">
-                                                <td>{{ set.set_number }}</td>
-                                                <td>
-                                                    <input type="number" class="form-control form-control-sm"
-                                                           id="weight-{{ set.id }}" value="{{ set.weight }}"
-                                                           step="0.5" min="0" disabled>
+                                                <td data-label="Set">{{ set.set_number }}</td>
+                                                <td data-label="Weight">
+                                                    <div class="input-group-compact">
+                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
+                                                                onclick="adjustWeight({{ set.id }}, -0.5)"
+                                                                id="weight-dec-{{ set.id }}" disabled>
+                                                            <i class="fas fa-minus"></i>
+                                                        </button>
+                                                        <input type="number" class="form-control form-control-sm"
+                                                               id="weight-{{ set.id }}" value="{{ set.weight }}"
+                                                               step="0.5" min="0" disabled>
+                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
+                                                                onclick="adjustWeight({{ set.id }}, 0.5)"
+                                                                id="weight-inc-{{ set.id }}" disabled>
+                                                            <i class="fas fa-plus"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
-                                                <td>
-                                                    <input type="number" class="form-control form-control-sm"
-                                                           id="reps-{{ set.id }}" value="{{ set.reps }}"
-                                                           min="1" disabled>
+                                                <td data-label="Reps">
+                                                    <div class="input-group-compact">
+                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
+                                                                onclick="adjustReps({{ set.id }}, -1)"
+                                                                id="reps-dec-{{ set.id }}" disabled>
+                                                            <i class="fas fa-minus"></i>
+                                                        </button>
+                                                        <input type="number" class="form-control form-control-sm"
+                                                               id="reps-{{ set.id }}" value="{{ set.reps }}"
+                                                               min="1" disabled>
+                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
+                                                                onclick="adjustReps({{ set.id }}, 1)"
+                                                                id="reps-inc-{{ set.id }}" disabled>
+                                                            <i class="fas fa-plus"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-warning" id="edit-btn-{{ set.id }}"
-                                                            onclick="editSet({{ set.id }})">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-success d-none" id="save-btn-{{ set.id }}"
-                                                            onclick="saveSet({{ set.id }})">
-                                                        <i class="fas fa-check"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-danger"
-                                                            onclick="deleteSet({{ set.id }})">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
+                                                <td data-label="Actions">
+                                                    <div class="btn-group" role="group">
+                                                        <button class="btn btn-sm btn-warning btn-mobile-action" id="edit-btn-{{ set.id }}"
+                                                                onclick="editSet({{ set.id }})" title="Edit">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-success d-none btn-mobile-action" id="save-btn-{{ set.id }}"
+                                                                onclick="saveSet({{ set.id }})" title="Save">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                        <button class="btn btn-sm btn-danger btn-mobile-action"
+                                                                onclick="deleteSet({{ set.id }})" title="Delete">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         {% endfor %}
@@ -154,15 +283,30 @@
                     </div>
                 {% endfor %}
             </div>
+
+            <!-- Workout Info (moved to bottom) -->
+            <div class="card mb-3">
+                <div class="card-header mobile-compact">
+                    <h5 class="mb-0 h6">Workout Information</h5>
+                </div>
+                <div class="card-body mobile-compact">
+                    <p class="mb-2"><strong>Date:</strong> {{ workout[2] }}</p>
+                    <div class="mb-3">
+                        <label for="workout-notes" class="form-label">Notes</label>
+                        <textarea id="workout-notes" class="form-control" rows="2">{{ workout[3] or '' }}</textarea>
+                        <button class="btn btn-sm btn-primary mt-2 btn-touch" onclick="saveNotes()">Save Notes</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-12 col-lg-4 order-1 order-lg-2 mb-3 mb-lg-0">
             <!-- Summary -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Summary</h5>
+            <div class="card position-sticky" style="top: 1rem;">
+                <div class="card-header mobile-compact">
+                    <h5 class="mb-0 h6">Summary</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body mobile-compact">
                     <p class="mb-2">Exercises: <strong id="exercise-count">{{ exercises_data|length }}</strong></p>
                     <p class="mb-0">Total Sets: <strong id="total-sets">
                         {% set total = namespace(value=0) %}
@@ -177,6 +321,50 @@
     </div>
 </div>
 
+<!-- Mobile Workout Actions (Fixed Bottom) -->
+{% if workout_status == 'in_progress' %}
+<div class="workout-actions-mobile d-md-none">
+    <div class="d-flex gap-2">
+        <form method="POST" action="{{ url_for('gym.complete_workout', workout_id=workout[0]) }}" style="flex: 1;">
+            <button type="submit" class="btn btn-success w-100" onclick="return confirm('Mark this workout as completed?');">
+                <i class="fas fa-check-circle"></i> Finish
+            </button>
+        </form>
+        <form method="POST" action="{{ url_for('gym.abandon_workout', workout_id=workout[0]) }}" style="flex: 1;">
+            <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Abandon this workout?');">
+                <i class="fas fa-times-circle"></i> Abandon
+            </button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Desktop Workout Actions -->
+{% if workout_status == 'in_progress' %}
+<div class="card mb-3 border-primary d-none d-md-block">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Workout Actions</h5>
+    </div>
+    <div class="card-body">
+        <div class="d-flex gap-2">
+            <form method="POST" action="{{ url_for('gym.complete_workout', workout_id=workout[0]) }}" style="flex: 1;">
+                <button type="submit" class="btn btn-success w-100" onclick="return confirm('Mark this workout as completed?');">
+                    <i class="fas fa-check-circle"></i> Finish Workout
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('gym.abandon_workout', workout_id=workout[0]) }}" style="flex: 1;">
+                <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Abandon this workout? You can still view it later.');">
+                    <i class="fas fa-times-circle"></i> Abandon Workout
+                </button>
+            </form>
+        </div>
+        <small class="text-muted d-block mt-2">
+            <i class="fas fa-info-circle"></i> Finish when you've completed all exercises, or abandon to save progress and stop.
+        </small>
+    </div>
+</div>
+{% endif %}
+
 <script>
 const workoutId = {{ workout[0] }};
 const sessionId = workoutId;
@@ -186,6 +374,52 @@ let nextSetNumber = {};
 {% for exercise_id, exercise_info in exercises_data.items() %}
     nextSetNumber[{{ exercise_id }}] = {{ exercise_info.sets|length + 1 }};
 {% endfor %}
+
+// Load progressive overload info for all exercises
+document.addEventListener('DOMContentLoaded', function() {
+    {% for exercise_id, exercise_info in exercises_data.items() %}
+    loadProgressionInfo({{ exercise_id }});
+    {% endfor %}
+});
+
+function loadProgressionInfo(exerciseId) {
+    fetch(`/gym/exercise/${exerciseId}/progression-summary`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById(`progression-${exerciseId}`);
+            if (data.last_performance) {
+                let html = '<div class="last-performance">';
+                html += `Last: ${data.last_performance.weight}kg × ${data.last_performance.reps} reps`;
+                if (data.days_ago) {
+                    html += ` (${data.days_ago} days ago)`;
+                }
+                html += '</div>';
+
+                if (data.ready_for_progression) {
+                    html += '<span class="progression-indicator progression-ready">';
+                    html += '<i class="fas fa-arrow-up"></i> Ready to progress!';
+                    html += '</span>';
+                }
+
+                container.innerHTML = html;
+            }
+        })
+        .catch(error => console.error('Error loading progression info:', error));
+}
+
+function adjustWeight(setId, increment) {
+    const input = document.getElementById(`weight-${setId}`);
+    const currentValue = parseFloat(input.value) || 0;
+    const newValue = Math.max(0, currentValue + increment);
+    input.value = newValue.toFixed(1);
+}
+
+function adjustReps(setId, increment) {
+    const input = document.getElementById(`reps-${setId}`);
+    const currentValue = parseInt(input.value) || 0;
+    const newValue = Math.max(1, currentValue + increment);
+    input.value = newValue;
+}
 
 function saveNotes() {
     const notes = document.getElementById('workout-notes').value;
@@ -209,9 +443,13 @@ function saveNotes() {
 }
 
 function editSet(setId) {
-    // Enable inputs
+    // Enable inputs and increment/decrement buttons
     document.getElementById(`weight-${setId}`).disabled = false;
     document.getElementById(`reps-${setId}`).disabled = false;
+    document.getElementById(`weight-dec-${setId}`).disabled = false;
+    document.getElementById(`weight-inc-${setId}`).disabled = false;
+    document.getElementById(`reps-dec-${setId}`).disabled = false;
+    document.getElementById(`reps-inc-${setId}`).disabled = false;
 
     // Toggle buttons
     document.getElementById(`edit-btn-${setId}`).classList.add('d-none');
@@ -242,9 +480,13 @@ function saveSet(setId) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Disable inputs
+            // Disable inputs and increment/decrement buttons
             document.getElementById(`weight-${setId}`).disabled = true;
             document.getElementById(`reps-${setId}`).disabled = true;
+            document.getElementById(`weight-dec-${setId}`).disabled = true;
+            document.getElementById(`weight-inc-${setId}`).disabled = true;
+            document.getElementById(`reps-dec-${setId}`).disabled = true;
+            document.getElementById(`reps-inc-${setId}`).disabled = true;
 
             // Toggle buttons
             document.getElementById(`edit-btn-${setId}`).classList.remove('d-none');
@@ -300,15 +542,20 @@ function addNewExercise() {
     exerciseCard.className = 'card mb-3';
     exerciseCard.id = `exercise-${exerciseId}`;
     exerciseCard.innerHTML = `
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">${exerciseName}</h6>
-            <button class="btn btn-sm btn-primary" onclick="addSetToExercise(${exerciseId}, '${exerciseName}')">
-                <i class="fas fa-plus"></i> Add Set
+        <div class="card-header d-flex justify-content-between align-items-center mobile-compact">
+            <div>
+                <h6 class="mb-0 text-break">${exerciseName}</h6>
+                <div class="progression-info" id="progression-${exerciseId}">
+                    <!-- Progressive overload info will be loaded here -->
+                </div>
+            </div>
+            <button class="btn btn-sm btn-primary btn-touch ms-2" onclick="addSetToExercise(${exerciseId}, '${exerciseName}')">
+                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Add Set</span>
             </button>
         </div>
-        <div class="card-body">
+        <div class="card-body mobile-compact">
             <div class="table-responsive">
-                <table class="table table-sm">
+                <table class="table table-sm mobile-sets-table">
                     <thead>
                         <tr>
                             <th>Set</th>
@@ -329,6 +576,9 @@ function addNewExercise() {
     // Initialize next set number
     nextSetNumber[exerciseId] = 1;
 
+    // Load progression info for new exercise
+    loadProgressionInfo(exerciseId);
+
     // Add first set
     addSetToExercise(exerciseId, exerciseName);
 
@@ -346,26 +596,48 @@ function addSetToExercise(button) {
     const row = document.createElement('tr');
     row.id = `set-row-${tempId}`;
     row.innerHTML = `
-        <td>${setNumber}</td>
-        <td>
-            <input type="number" class="form-control form-control-sm"
-                   id="weight-${tempId}" placeholder="Weight (kg)"
-                   step="0.5" min="0">
+        <td data-label="Set">${setNumber}</td>
+        <td data-label="Weight">
+            <div class="input-group-compact">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustWeight('${tempId}', -0.5)">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <input type="number" class="form-control form-control-sm"
+                       id="weight-${tempId}" placeholder="0"
+                       step="0.5" min="0">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustWeight('${tempId}', 0.5)">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
         </td>
-        <td>
-            <input type="number" class="form-control form-control-sm"
-                   id="reps-${tempId}" placeholder="Reps"
-                   min="1">
+        <td data-label="Reps">
+            <div class="input-group-compact">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustReps('${tempId}', -1)">
+                    <i class="fas fa-minus"></i>
+                </button>
+                <input type="number" class="form-control form-control-sm"
+                       id="reps-${tempId}" placeholder="0"
+                       min="1">
+                <button class="btn btn-sm btn-outline-secondary btn-increment"
+                        onclick="adjustReps('${tempId}', 1)">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
         </td>
-        <td>
-            <button class="btn btn-sm btn-success"
-                    onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})">
-                <i class="fas fa-check"></i>
-            </button>
-            <button class="btn btn-sm btn-danger"
-                    onclick="document.getElementById('set-row-${tempId}').remove()">
-                <i class="fas fa-trash"></i>
-            </button>
+        <td data-label="Actions">
+            <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-success btn-mobile-action"
+                        onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})" title="Save">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="btn btn-sm btn-danger btn-mobile-action"
+                        onclick="document.getElementById('set-row-${tempId}').remove()" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
         </td>
     `;
 

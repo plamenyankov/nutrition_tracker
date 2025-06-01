@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Nutrition Tracker</title>
+    <title>{% block title %}Nutrition Tracker{% endblock %}</title>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -13,9 +13,35 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+    /* Ensure minimum height and push footer to bottom */
+    body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    main {
+        flex: 1 0 auto;
+    }
+
+    footer {
+        flex-shrink: 0;
+    }
+
+    /* Add padding at bottom for fixed mobile actions */
+    @media (max-width: 768px) {
+        body.has-fixed-actions {
+            padding-bottom: 80px;
+        }
+    }
+    </style>
+
+    {% block head %}{% endblock %}
 </head>
 
-<body>
+<body {% if request.endpoint and 'gym' in request.endpoint and 'edit' in request.endpoint %}class="has-fixed-actions"{% endif %}>
 {% if current_user.is_authenticated %}
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
@@ -63,22 +89,39 @@
 </nav>
 {% endif %}
 
-<div class="container vh-100 justify-content-center align-items-center">
+<main>
+    {% block content %}
+    {% endblock %}
+</main>
 
+<footer class="bg-light mt-5">
+    <div class="container-fluid py-3">
+        <div class="row">
+            <div class="col-md-6">
+                <p class="text-muted mb-0">&copy; 2024 Nutrition Tracker. All rights reserved.</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="text-muted mb-0">
+                    <a href="/gym" class="text-decoration-none text-muted me-3">
+                        <i class="fas fa-dumbbell"></i> Gym Tracker
+                    </a>
+                    <a href="/analytics" class="text-decoration-none text-muted me-3">
+                        <i class="fas fa-chart-line"></i> Analytics
+                    </a>
+                    <a href="/recipes" class="text-decoration-none text-muted">
+                        <i class="fas fa-utensils"></i> Recipes
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
 
-        {% block content %}
-        {% endblock %}
-
-
-
-<!-- Add links to external JS scripts here, if any. For example: -->
-<!-- <script src="{{ url_for('static', filename='js/script.js') }}"></script> -->
-</div>
-</body>
 <script type="text/javascript">
     function confirmSubmit() {
         var result = confirm("Are you sure you want to delete?");
         return result;  // if result is true, the form will submit; otherwise, it won't
     }
 </script>
+</body>
 </html>
