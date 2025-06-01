@@ -7,9 +7,12 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 import statistics
+import os
 
 class ProgressionService:
-    def __init__(self, db_path='database.db'):
+    def __init__(self, db_path=None):
+        if db_path is None:
+            db_path = os.getenv('DATABASE_PATH', 'database.db')
         self.db_path = db_path
 
     def get_user_preferences(self, user_id: int) -> Dict:
