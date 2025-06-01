@@ -238,7 +238,7 @@ class ProgressionService:
         cursor = conn.cursor()
 
         cursor.execute('''
-            SELECT name, muscle_group, equipment
+            SELECT name, muscle_group
             FROM exercises
             WHERE id = ?
         ''', (exercise_id,))
@@ -250,7 +250,7 @@ class ProgressionService:
             return {
                 'name': row[0],
                 'muscle_group': row[1],
-                'equipment': row[2]
+                'equipment': None  # Equipment column doesn't exist in production
             }
         return {}
 
