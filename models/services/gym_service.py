@@ -184,12 +184,12 @@ class GymService:
         # Group by exercise
         exercises = {}
         for set_data in sets:
-            exercise_id = set_data[8]
-            exercise_name = set_data[6]
+            exercise_id = set_data[11]  # e.id from the join (updated index)
+            exercise_name = set_data[9]  # e.name from the join (updated index)
             if exercise_id not in exercises:
                 exercises[exercise_id] = {
                     'name': exercise_name,
-                    'muscle_group': set_data[7],
+                    'muscle_group': set_data[10],  # e.muscle_group (updated index)
                     'sets': []
                 }
             exercises[exercise_id]['sets'].append({
