@@ -7,6 +7,9 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Workout Details</h2>
         <div>
+            <a href="{{ url_for('gym.create_template_from_workout', workout_id=workout[0]) }}" class="btn btn-success">
+                <i class="fas fa-save"></i> Save as Template
+            </a>
             <a href="{{ url_for('gym.edit_workout', workout_id=workout[0]) }}" class="btn btn-primary">
                 <i class="fas fa-edit"></i> Edit Workout
             </a>

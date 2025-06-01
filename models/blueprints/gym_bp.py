@@ -130,19 +130,30 @@ def workout_detail(workout_id):
 @gym_bp.route('/history/<int:workout_id>/edit')
 @login_required
 def edit_workout(workout_id):
-    """Edit a completed workout"""
+    """Edit a workout"""
     workout, _ = gym_service.get_workout_details(workout_id)
     if not workout:
         flash('Workout not found', 'error')
         return redirect(url_for('gym.history'))
 
+    # Get workout status
+    status, completed_at = gym_service.get_workout_status(workout_id)
+
     exercises_data = gym_service.get_workout_sets_grouped(workout_id)
     all_exercises = gym_service.get_all_exercises()
 
-    return render_template('gym/workouts/edit.html',
+    # Check if user is on mobile device
+    user_agent = request.headers.get('User-Agent', '').lower()
+    is_mobile = any(device in user_agent for device in ['mobile', 'android', 'iphone', 'ipad'])
+
+    template = 'gym/workouts/edit_mobile.html' if is_mobile else 'gym/workouts/edit.html'
+
+    return render_template(template,
                          workout=workout,
                          exercises_data=exercises_data,
-                         all_exercises=all_exercises)
+                         all_exercises=all_exercises,
+                         workout_status=status,
+                         completed_at=completed_at)
 
 @gym_bp.route('/workout/update-notes', methods=['POST'])
 @login_required
@@ -173,6 +184,30 @@ def delete_workout(workout_id):
     success, message = gym_service.delete_workout(workout_id)
     if success:
         flash(message, 'success')
+    else:
+        flash(message, 'error')
+    return redirect(url_for('gym.history'))
+
+@gym_bp.route('/workout/<int:workout_id>/complete', methods=['POST'])
+@login_required
+def complete_workout(workout_id):
+    """Mark a workout as completed"""
+    success, message = gym_service.complete_workout(workout_id)
+    if success:
+        # Get workout summary for display
+        summary = gym_service.get_workout_summary(workout_id)
+        flash(f'Workout completed! Duration: {summary["duration_minutes"]} minutes, Total volume: {summary["total_volume"]:.0f}kg', 'success')
+    else:
+        flash(message, 'error')
+    return redirect(url_for('gym.workout_detail', workout_id=workout_id))
+
+@gym_bp.route('/workout/<int:workout_id>/abandon', methods=['POST'])
+@login_required
+def abandon_workout(workout_id):
+    """Abandon a workout"""
+    success, message = gym_service.abandon_workout(workout_id)
+    if success:
+        flash('Workout abandoned', 'warning')
     else:
         flash(message, 'error')
     return redirect(url_for('gym.history'))
@@ -339,6 +374,59 @@ def start_workout_from_template(template_id):
     else:
         flash(message, 'error')
         return redirect(url_for('gym.templates'))
+
+@gym_bp.route('/template/from-workout/<int:workout_id>', methods=['GET', 'POST'])
+@login_required
+def create_template_from_workout(workout_id):
+    """Create a template from an existing workout"""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        is_public = request.form.get('is_public') == 'on'
+
+        if not name:
+            flash('Template name is required', 'error')
+            return redirect(url_for('gym.create_template_from_workout', workout_id=workout_id))
+
+        template_id, message = gym_service.create_template_from_workout(
+            workout_id, name, description, is_public
+        )
+
+        if template_id:
+            flash('Template created successfully!', 'success')
+            return redirect(url_for('gym.template_detail', template_id=template_id))
+        else:
+            flash(message, 'error')
+            return redirect(url_for('gym.workout_detail', workout_id=workout_id))
+
+    # GET request - show form
+    workout, sets = gym_service.get_workout_details(workout_id)
+    if not workout:
+        flash('Workout not found', 'error')
+        return redirect(url_for('gym.history'))
+
+    # Get exercise summary for preview
+    exercises = {}
+    for set_data in sets:
+        exercise_name = set_data[6]
+        if exercise_name not in exercises:
+            exercises[exercise_name] = {
+                'sets': 0,
+                'total_weight': 0,
+                'total_reps': 0
+            }
+        exercises[exercise_name]['sets'] += 1
+        exercises[exercise_name]['total_weight'] += set_data[4]
+        exercises[exercise_name]['total_reps'] += set_data[5]
+
+    # Calculate averages
+    for name, data in exercises.items():
+        data['avg_weight'] = round(data['total_weight'] / data['sets'], 1)
+        data['avg_reps'] = round(data['total_reps'] / data['sets'])
+
+    return render_template('gym/templates/create_from_workout.html',
+                         workout=workout,
+                         exercises=exercises)
 
 # Update the existing start_workout route to show template selection
 @gym_bp.route('/workout/choose')

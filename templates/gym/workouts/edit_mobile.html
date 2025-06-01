@@ -1,0 +1,456 @@
+{% extends "layout.html" %}
+
+{% block title %}Edit Workout - Gym Tracker{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gym_mobile.css') }}">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid workout-edit-container workout-content">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center py-3">
+        <div>
+            <h4 class="mb-0">{{ workout[2] }}</h4>
+            {% if workout_status == 'in_progress' %}
+                <span class="badge bg-warning">In Progress</span>
+            {% elif workout_status == 'completed' %}
+                <span class="badge bg-success">Completed</span>
+            {% elif workout_status == 'abandoned' %}
+                <span class="badge bg-secondary">Abandoned</span>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-x-lg"></i>
+        </a>
+    </div>
+
+    <!-- Workout Notes -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <label class="form-label small text-muted">Workout Notes</label>
+            <textarea id="workout-notes" class="form-control" rows="2" placeholder="Add notes...">{{ workout[3] or '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Exercise List -->
+    <div id="exercises-container">
+        {% for exercise_id, exercise_info in exercises_data.items() %}
+            <div class="card exercise-card mb-3" id="exercise-{{ exercise_id }}">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">{{ exercise_info.name }}</h6>
+                        <button class="btn btn-sm btn-primary" onclick="addMobileSet({{ exercise_id }}, '{{ exercise_info.name }}')">
+                            <i class="bi bi-plus"></i> Set
+                        </button>
+                    </div>
+                    {% if exercise_info.muscle_group %}
+                        <small class="text-muted">{{ exercise_info.muscle_group }}</small>
+                    {% endif %}
+                </div>
+                <div class="card-body p-0">
+                    <div class="sets-container" id="sets-{{ exercise_id }}">
+                        {% for set in exercise_info.sets %}
+                            <div class="set-row" id="set-row-{{ set.id }}">
+                                <div class="set-number">{{ set.set_number }}</div>
+                                <div class="set-inputs">
+                                    <div class="set-input-group">
+                                        <div class="set-input-label">Weight</div>
+                                        <input type="number"
+                                               class="form-control weight-input"
+                                               id="weight-{{ set.id }}"
+                                               value="{{ set.weight }}"
+                                               step="0.5"
+                                               min="0"
+                                               onclick="showNumberPicker(this, 'weight')"
+                                               readonly>
+                                    </div>
+                                    <div class="set-input-group">
+                                        <div class="set-input-label">Reps</div>
+                                        <input type="number"
+                                               class="form-control reps-input"
+                                               id="reps-{{ set.id }}"
+                                               value="{{ set.reps }}"
+                                               min="1"
+                                               onclick="showNumberPicker(this, 'reps')"
+                                               readonly>
+                                    </div>
+                                </div>
+                                <div class="set-actions">
+                                    <button class="btn btn-sm btn-success" onclick="saveSet({{ set.id }})">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteSet({{ set.id }})">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Add Exercise Button -->
+    <button class="btn btn-primary w-100 mb-3" onclick="showExerciseSelector()">
+        <i class="bi bi-plus-circle"></i> Add Exercise
+    </button>
+</div>
+
+<!-- Bottom Navigation for In-Progress Workouts -->
+{% if workout_status == 'in_progress' %}
+<div class="bottom-nav">
+    <form method="POST" action="{{ url_for('gym.abandon_workout', workout_id=workout[0]) }}" style="flex: 1;">
+        <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Abandon this workout?');">
+            <i class="bi bi-x-circle"></i> Abandon
+        </button>
+    </form>
+    <form method="POST" action="{{ url_for('gym.complete_workout', workout_id=workout[0]) }}" style="flex: 1;">
+        <button type="submit" class="btn btn-success w-100" onclick="return confirm('Complete this workout?');">
+            <i class="bi bi-check-circle"></i> Finish
+        </button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Exercise Selection Modal -->
+<div class="exercise-select-modal" id="exerciseModal">
+    <div class="exercise-select-header">
+        <button class="btn btn-sm" onclick="hideExerciseSelector()">
+            <i class="bi bi-arrow-left"></i>
+        </button>
+        <h5 class="mb-0">Select Exercise</h5>
+        <div style="width: 40px;"></div>
+    </div>
+    <div class="p-3">
+        <input type="search" class="form-control mb-3" id="exerciseSearch" placeholder="Search exercises...">
+    </div>
+    <div id="exerciseList">
+        {% for exercise in all_exercises %}
+            <div class="exercise-list-item" onclick="selectExercise({{ exercise[0] }}, '{{ exercise[1] }}')">
+                <div>
+                    <div class="fw-bold">{{ exercise[1] }}</div>
+                    {% if exercise[2] %}
+                        <small class="text-muted">{{ exercise[2] }}</small>
+                    {% endif %}
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Number Picker Overlay -->
+<div class="number-picker-overlay" id="numberPicker">
+    <div class="number-picker">
+        <div class="number-picker-header">
+            <h5 id="pickerTitle">Enter Value</h5>
+            <button class="btn btn-sm" onclick="hideNumberPicker()">Done</button>
+        </div>
+        <div class="mb-3">
+            <input type="number" class="form-control form-control-lg text-center" id="pickerValue" readonly>
+        </div>
+        <div class="increment-controls mb-3">
+            <button class="increment-btn" onclick="incrementValue(-5)">-5</button>
+            <button class="increment-btn" onclick="incrementValue(-1)">-1</button>
+            <button class="increment-btn" onclick="incrementValue(1)">+1</button>
+            <button class="increment-btn" onclick="incrementValue(5)">+5</button>
+        </div>
+        <div class="number-grid">
+            <button class="number-btn" onclick="appendNumber(1)">1</button>
+            <button class="number-btn" onclick="appendNumber(2)">2</button>
+            <button class="number-btn" onclick="appendNumber(3)">3</button>
+            <button class="number-btn" onclick="appendNumber(4)">4</button>
+            <button class="number-btn" onclick="appendNumber(5)">5</button>
+            <button class="number-btn" onclick="appendNumber(6)">6</button>
+            <button class="number-btn" onclick="appendNumber(7)">7</button>
+            <button class="number-btn" onclick="appendNumber(8)">8</button>
+            <button class="number-btn" onclick="appendNumber(9)">9</button>
+            <button class="number-btn" onclick="clearNumber()">C</button>
+            <button class="number-btn" onclick="appendNumber(0)">0</button>
+            <button class="number-btn" onclick="appendNumber('.')">.</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const workoutId = {{ workout[0] }};
+let currentInput = null;
+let currentType = null;
+let nextSetNumber = {};
+
+// Initialize next set numbers
+{% for exercise_id, exercise_info in exercises_data.items() %}
+    nextSetNumber[{{ exercise_id }}] = {{ exercise_info.sets|length + 1 }};
+{% endfor %}
+
+// Touch support
+let touchStartY = 0;
+let touchEndY = 0;
+
+// Number picker functions
+function showNumberPicker(input, type) {
+    currentInput = input;
+    currentType = type;
+
+    const picker = document.getElementById('numberPicker');
+    const pickerValue = document.getElementById('pickerValue');
+    const pickerTitle = document.getElementById('pickerTitle');
+
+    pickerValue.value = input.value || '';
+    pickerTitle.textContent = type === 'weight' ? 'Weight (kg)' : 'Repetitions';
+
+    picker.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function hideNumberPicker() {
+    const picker = document.getElementById('numberPicker');
+    picker.style.display = 'none';
+    document.body.style.overflow = '';
+
+    if (currentInput) {
+        currentInput.value = document.getElementById('pickerValue').value;
+        // Auto-save when closing picker
+        const setId = currentInput.id.split('-')[1];
+        if (!currentInput.id.includes('new')) {
+            updateSet(setId);
+        }
+    }
+}
+
+function incrementValue(amount) {
+    const pickerValue = document.getElementById('pickerValue');
+    const currentVal = parseFloat(pickerValue.value) || 0;
+    const step = currentType === 'weight' ? 0.5 : 1;
+    const newVal = Math.max(0, currentVal + (amount * step));
+    pickerValue.value = currentType === 'weight' ? newVal.toFixed(1) : Math.round(newVal);
+}
+
+function appendNumber(num) {
+    const pickerValue = document.getElementById('pickerValue');
+    if (num === '.') {
+        if (currentType !== 'weight' || pickerValue.value.includes('.')) return;
+    }
+    pickerValue.value += num;
+}
+
+function clearNumber() {
+    document.getElementById('pickerValue').value = '';
+}
+
+// Exercise selection
+function showExerciseSelector() {
+    document.getElementById('exerciseModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    document.getElementById('exerciseSearch').focus();
+}
+
+function hideExerciseSelector() {
+    document.getElementById('exerciseModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function selectExercise(exerciseId, exerciseName) {
+    hideExerciseSelector();
+
+    // Check if exercise already exists
+    if (document.getElementById(`exercise-${exerciseId}`)) {
+        alert('This exercise is already in your workout');
+        return;
+    }
+
+    // Create exercise card
+    const exerciseCard = createExerciseCard(exerciseId, exerciseName);
+    document.getElementById('exercises-container').appendChild(exerciseCard);
+
+    // Initialize next set number
+    nextSetNumber[exerciseId] = 1;
+
+    // Add first set
+    addMobileSet(exerciseId, exerciseName);
+}
+
+function createExerciseCard(exerciseId, exerciseName) {
+    const div = document.createElement('div');
+    div.className = 'card exercise-card mb-3';
+    div.id = `exercise-${exerciseId}`;
+    div.innerHTML = `
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">${exerciseName}</h6>
+                <button class="btn btn-sm btn-primary" onclick="addMobileSet(${exerciseId}, '${exerciseName}')">
+                    <i class="bi bi-plus"></i> Set
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="sets-container" id="sets-${exerciseId}"></div>
+        </div>
+    `;
+    return div;
+}
+
+function addMobileSet(exerciseId, exerciseName) {
+    const setNumber = nextSetNumber[exerciseId] || 1;
+    const tempId = `new-${exerciseId}-${setNumber}`;
+
+    const setRow = document.createElement('div');
+    setRow.className = 'set-row';
+    setRow.id = `set-row-${tempId}`;
+    setRow.innerHTML = `
+        <div class="set-number">${setNumber}</div>
+        <div class="set-inputs">
+            <div class="set-input-group">
+                <div class="set-input-label">Weight</div>
+                <input type="number"
+                       class="form-control weight-input"
+                       id="weight-${tempId}"
+                       step="0.5"
+                       min="0"
+                       onclick="showNumberPicker(this, 'weight')"
+                       placeholder="0"
+                       readonly>
+            </div>
+            <div class="set-input-group">
+                <div class="set-input-label">Reps</div>
+                <input type="number"
+                       class="form-control reps-input"
+                       id="reps-${tempId}"
+                       min="1"
+                       onclick="showNumberPicker(this, 'reps')"
+                       placeholder="0"
+                       readonly>
+            </div>
+        </div>
+        <div class="set-actions">
+            <button class="btn btn-sm btn-success" onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})">
+                <i class="bi bi-check"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" onclick="document.getElementById('set-row-${tempId}').remove()">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `;
+
+    document.getElementById(`sets-${exerciseId}`).appendChild(setRow);
+    nextSetNumber[exerciseId] = setNumber + 1;
+}
+
+// Set management
+function updateSet(setId) {
+    const weight = document.getElementById(`weight-${setId}`).value;
+    const reps = document.getElementById(`reps-${setId}`).value;
+
+    if (!weight || !reps) return;
+
+    fetch('/gym/workout/update-set', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            set_id: setId,
+            weight: parseFloat(weight),
+            reps: parseInt(reps)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error updating set');
+        }
+    });
+}
+
+function saveSet(setId) {
+    updateSet(setId);
+}
+
+function deleteSet(setId) {
+    if (!confirm('Delete this set?')) return;
+
+    fetch('/gym/workout/delete-set', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({set_id: setId})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`set-row-${setId}`).remove();
+        }
+    });
+}
+
+function saveNewSet(tempId, exerciseId, setNumber) {
+    const weight = document.getElementById(`weight-${tempId}`).value;
+    const reps = document.getElementById(`reps-${tempId}`).value;
+
+    if (!weight || !reps) {
+        alert('Please enter both weight and reps');
+        return;
+    }
+
+    fetch('/gym/workout/log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            session_id: workoutId,
+            exercise_id: exerciseId,
+            set_number: setNumber,
+            weight: parseFloat(weight),
+            reps: parseInt(reps)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+// Exercise search
+document.getElementById('exerciseSearch')?.addEventListener('input', function(e) {
+    const search = e.target.value.toLowerCase();
+    const items = document.querySelectorAll('.exercise-list-item');
+
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        item.style.display = text.includes(search) ? 'flex' : 'none';
+    });
+});
+
+// Auto-save notes
+let notesTimeout;
+document.getElementById('workout-notes')?.addEventListener('input', function() {
+    clearTimeout(notesTimeout);
+    notesTimeout = setTimeout(() => {
+        fetch('/gym/workout/update-notes', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                workout_id: workoutId,
+                notes: this.value
+            })
+        });
+    }, 1000);
+});
+
+// Close modals on background click
+document.getElementById('numberPicker')?.addEventListener('click', function(e) {
+    if (e.target === this) hideNumberPicker();
+});
+
+// Prevent zoom on double tap
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+</script>
+{% endblock %}
