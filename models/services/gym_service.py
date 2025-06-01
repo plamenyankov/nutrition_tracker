@@ -37,8 +37,8 @@ class GymService:
         conn = self.get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            'INSERT INTO workout_sessions (user_id, date, notes) VALUES (?, ?, ?)',
-            (self.user_id, datetime.now().date(), notes)
+            'INSERT INTO workout_sessions (user_id, date, notes, status) VALUES (?, ?, ?, ?)',
+            (self.user_id, datetime.now().date(), notes, 'in_progress')
         )
         session_id = cursor.lastrowid
         conn.commit()
@@ -97,7 +97,7 @@ class GymService:
             SELECT ws.*, COUNT(DISTINCT wset.exercise_id) as exercise_count
             FROM workout_sessions ws
             LEFT JOIN workout_sets wset ON ws.id = wset.session_id
-            WHERE ws.user_id = ?
+            WHERE ws.user_id = ? AND ws.status != 'abandoned'
             GROUP BY ws.id
             ORDER BY ws.date DESC, ws.created_at DESC
             LIMIT ?
@@ -401,11 +401,11 @@ class GymService:
             conn.close()
             return None, "Template has no exercises"
 
-        # Create workout session
+        # Create workout session with 'in_progress' status
         cursor.execute('''
-            INSERT INTO workout_sessions (user_id, date, notes, template_id)
-            VALUES (?, ?, ?, ?)
-        ''', (self.user_id, datetime.now().date(), notes, template_id))
+            INSERT INTO workout_sessions (user_id, date, notes, template_id, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (self.user_id, datetime.now().date(), notes, template_id, 'in_progress'))
         session_id = cursor.lastrowid
 
         # Pre-populate sets based on template
@@ -455,3 +455,169 @@ class GymService:
         else:
             conn.close()
             return False, "Template not found or unauthorized"
+
+    # Workout Completion Methods
+
+    def complete_workout(self, workout_id):
+        """Mark a workout as completed"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE workout_sessions
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ? AND status = 'in_progress'
+        ''', (workout_id, self.user_id))
+
+        if cursor.rowcount > 0:
+            conn.commit()
+            conn.close()
+            return True, "Workout completed successfully"
+        else:
+            conn.close()
+            return False, "Workout not found, already completed, or unauthorized"
+
+    def abandon_workout(self, workout_id):
+        """Mark a workout as abandoned"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE workout_sessions
+            SET status = 'abandoned', completed_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ? AND status = 'in_progress'
+        ''', (workout_id, self.user_id))
+
+        if cursor.rowcount > 0:
+            conn.commit()
+            conn.close()
+            return True, "Workout abandoned"
+        else:
+            conn.close()
+            return False, "Workout not found, already completed, or unauthorized"
+
+    def get_workout_status(self, workout_id):
+        """Get the status of a workout"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT status, completed_at FROM workout_sessions
+            WHERE id = ? AND user_id = ?
+        ''', (workout_id, self.user_id))
+
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            return result[0], result[1]
+        return None, None
+
+    def get_workout_summary(self, workout_id):
+        """Get summary statistics for a completed workout"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        # Get workout info
+        cursor.execute('''
+            SELECT date, created_at, completed_at, status
+            FROM workout_sessions
+            WHERE id = ? AND user_id = ?
+        ''', (workout_id, self.user_id))
+
+        workout_info = cursor.fetchone()
+        if not workout_info:
+            conn.close()
+            return None
+
+        # Calculate duration if completed
+        duration = None
+        if workout_info[2]:  # completed_at exists
+            created = datetime.fromisoformat(workout_info[1])
+            completed = datetime.fromisoformat(workout_info[2])
+            duration = int((completed - created).total_seconds() / 60)  # minutes
+
+        # Get statistics
+        cursor.execute('''
+            SELECT
+                COUNT(DISTINCT exercise_id) as exercise_count,
+                COUNT(*) as total_sets,
+                SUM(weight * reps) as total_volume,
+                SUM(reps) as total_reps
+            FROM workout_sets
+            WHERE session_id = ?
+        ''', (workout_id,))
+
+        stats = cursor.fetchone()
+        conn.close()
+
+        return {
+            'date': workout_info[0],
+            'status': workout_info[3],
+            'duration_minutes': duration,
+            'exercise_count': stats[0] or 0,
+            'total_sets': stats[1] or 0,
+            'total_volume': stats[2] or 0,
+            'total_reps': stats[3] or 0
+        }
+
+    def create_template_from_workout(self, workout_id, name, description=None, is_public=False):
+        """Create a workout template from an existing workout"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            # Verify workout belongs to user
+            cursor.execute('''
+                SELECT id FROM workout_sessions
+                WHERE id = ? AND user_id = ?
+            ''', (workout_id, self.user_id))
+
+            if not cursor.fetchone():
+                conn.close()
+                return None, "Workout not found or unauthorized"
+
+            # Get all exercises from the workout
+            cursor.execute('''
+                SELECT DISTINCT ws.exercise_id,
+                       COUNT(*) as num_sets,
+                       AVG(ws.weight) as avg_weight,
+                       AVG(ws.reps) as avg_reps,
+                       MIN(ws.set_number) as min_set_num
+                FROM workout_sets ws
+                WHERE ws.session_id = ?
+                GROUP BY ws.exercise_id
+                ORDER BY MIN(ws.id)
+            ''', (workout_id,))
+
+            exercises = cursor.fetchall()
+
+            if not exercises:
+                conn.close()
+                return None, "No exercises found in workout"
+
+            # Create the template
+            cursor.execute('''
+                INSERT INTO workout_templates (name, description, user_id, is_public)
+                VALUES (?, ?, ?, ?)
+            ''', (name, description, self.user_id, is_public))
+
+            template_id = cursor.lastrowid
+
+            # Add exercises to template
+            for order, (exercise_id, num_sets, avg_weight, avg_reps, _) in enumerate(exercises, 1):
+                cursor.execute('''
+                    INSERT INTO workout_template_exercises
+                    (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (template_id, exercise_id, order, num_sets,
+                      int(round(avg_reps)), round(avg_weight, 1), 90))
+
+            conn.commit()
+            conn.close()
+            return template_id, "Template created successfully"
+
+        except sqlite3.Error as e:
+            conn.rollback()
+            conn.close()
+            return None, f"Error creating template: {str(e)}"

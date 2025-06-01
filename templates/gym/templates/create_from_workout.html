@@ -1,0 +1,82 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Create Template from Workout</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">
+                        Save this workout as a reusable template. The template will include all exercises
+                        with their average weights and reps from this workout.
+                    </p>
+
+                    <!-- Workout Preview -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Workout Preview</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Date:</strong> {{ workout[2] }}</p>
+                            <p class="mb-3"><strong>Exercises:</strong></p>
+                            <ul class="list-unstyled">
+                                {% for name, data in exercises.items() %}
+                                    <li class="mb-2">
+                                        <strong>{{ name }}</strong>
+                                        <ul class="small text-muted">
+                                            <li>{{ data.sets }} sets</li>
+                                            <li>Average: {{ data.avg_weight }}kg × {{ data.avg_reps }} reps</li>
+                                        </ul>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Template Form -->
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Template Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required
+                                   placeholder="e.g., My Push Day Workout">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                      placeholder="Brief description of this workout template"></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_public" name="is_public">
+                                <label class="form-check-label" for="is_public">
+                                    Make this template public (other users can use it)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Note:</strong> The template will use the average weights and reps from this workout.
+                            You can adjust these values later when editing the template.
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Create Template
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
