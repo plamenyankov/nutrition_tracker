@@ -161,6 +161,34 @@ def update_notes():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+@gym_bp.route('/exercises/edit/<int:exercise_id>', methods=['GET', 'POST'])
+@login_required
+def edit_exercise(exercise_id):
+    """Edit an exercise"""
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        muscle_group = request.form.get('muscle_group', '').strip()
+
+        if not name:
+            flash('Exercise name is required', 'error')
+            return redirect(url_for('gym.edit_exercise', exercise_id=exercise_id))
+
+        success, message = gym_service.update_exercise(exercise_id, name, muscle_group)
+        if success:
+            flash('Exercise updated successfully', 'success')
+            return redirect(url_for('gym.exercises'))
+        else:
+            flash(message, 'error')
+            return redirect(url_for('gym.edit_exercise', exercise_id=exercise_id))
+
+    # GET request
+    exercise = gym_service.get_exercise_by_id(exercise_id)
+    if not exercise:
+        flash('Exercise not found', 'error')
+        return redirect(url_for('gym.exercises'))
+
+    return render_template('gym/exercises/edit.html', exercise=exercise)
+
 @gym_bp.route('/exercises/delete/<int:exercise_id>', methods=['POST'])
 @login_required
 def delete_exercise(exercise_id):

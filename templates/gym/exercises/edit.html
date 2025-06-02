@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+
+{% block title %}Edit Exercise{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6 offset-md-3">
+            <h2 class="text-center mb-4">Edit Exercise</h2>
+
+            <form method="POST" action="{{ url_for('gym.edit_exercise', exercise_id=exercise[0]) }}">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Exercise Name</label>
+                    <input type="text" class="form-control" id="name" name="name"
+                           value="{{ exercise[1] }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="muscle_group" class="form-label">Muscle Group (Optional)</label>
+                    <select class="form-control" id="muscle_group" name="muscle_group">
+                        <option value="">-- Select Muscle Group --</option>
+                        <option value="chest" {% if exercise[2] == 'chest' %}selected{% endif %}>Chest</option>
+                        <option value="back" {% if exercise[2] == 'back' %}selected{% endif %}>Back</option>
+                        <option value="shoulders" {% if exercise[2] == 'shoulders' %}selected{% endif %}>Shoulders</option>
+                        <option value="biceps" {% if exercise[2] == 'biceps' %}selected{% endif %}>Biceps</option>
+                        <option value="triceps" {% if exercise[2] == 'triceps' %}selected{% endif %}>Triceps</option>
+                        <option value="legs" {% if exercise[2] == 'legs' %}selected{% endif %}>Legs</option>
+                        <option value="abs" {% if exercise[2] == 'abs' %}selected{% endif %}>Abs</option>
+                        <option value="glutes" {% if exercise[2] == 'glutes' %}selected{% endif %}>Glutes</option>
+                        <option value="cardio" {% if exercise[2] == 'cardio' %}selected{% endif %}>Cardio</option>
+                    </select>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Update Exercise</button>
+                    <a href="{{ url_for('gym.exercises') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
