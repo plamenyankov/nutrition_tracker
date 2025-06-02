@@ -14,6 +14,23 @@
                     <h5 class="mb-0">Add Exercise</h5>
                 </div>
                 <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label for="muscle-group-filter" class="form-label">Filter by Muscle Group:</label>
+                            <select id="muscle-group-filter" class="form-select">
+                                <option value="">All Muscle Groups</option>
+                                <option value="chest">Chest</option>
+                                <option value="back">Back</option>
+                                <option value="shoulders">Shoulders</option>
+                                <option value="biceps">Biceps</option>
+                                <option value="triceps">Triceps</option>
+                                <option value="legs">Legs</option>
+                                <option value="abs">Abs</option>
+                                <option value="glutes">Glutes</option>
+                                <option value="cardio">Cardio</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-md-8">
                             <select id="exercise-select" class="form-select">
@@ -97,6 +114,26 @@ let totalSets = 0;
 
 // Set today's date
 document.getElementById('workout-date').textContent = new Date().toISOString().split('T')[0];
+
+// Muscle group filter
+document.getElementById('muscle-group-filter').addEventListener('change', function() {
+    const selectedGroup = this.value;
+    const exerciseSelect = document.getElementById('exercise-select');
+    const options = exerciseSelect.querySelectorAll('option[data-muscle-group]');
+
+    options.forEach(option => {
+        if (selectedGroup === '' || option.dataset.muscleGroup === selectedGroup) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    });
+
+    // Reset selection if current selection is hidden
+    if (exerciseSelect.value && exerciseSelect.selectedOptions[0].style.display === 'none') {
+        exerciseSelect.value = '';
+    }
+});
 
 // Add exercise button click
 document.getElementById('add-exercise-btn').addEventListener('click', function() {

@@ -146,6 +146,35 @@ class GymService:
         conn.close()
         return exercises
 
+    def get_exercise_by_id(self, exercise_id):
+        """Get a specific exercise by ID"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM exercises WHERE id = ?', (exercise_id,))
+        exercise = cursor.fetchone()
+        conn.close()
+        return exercise
+
+    def update_exercise(self, exercise_id, name, muscle_group=None):
+        """Update an exercise"""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                'UPDATE exercises SET name = ?, muscle_group = ? WHERE id = ?',
+                (name, muscle_group if muscle_group else None, exercise_id)
+            )
+            conn.commit()
+            conn.close()
+            return True, "Exercise updated successfully"
+        except sqlite3.IntegrityError:
+            conn.close()
+            return False, "An exercise with this name already exists"
+        except Exception as e:
+            conn.close()
+            return False, f"Error updating exercise: {str(e)}"
+
     def delete_exercise(self, exercise_id):
         """Delete an exercise (only if not used in any workouts)"""
         conn = self.get_connection()
