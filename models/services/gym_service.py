@@ -10,7 +10,10 @@ class GymService:
         self.user_id = 2
 
     def get_connection(self):
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path)
+        # Enable WAL mode to prevent database locking issues
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
 
     def get_all_exercises(self):
         """Get all exercises from database"""
@@ -534,11 +537,7 @@ class GymService:
         ''', (workout_id, self.user_id))
 
         if cursor.rowcount > 0:
-            # Calculate volume metrics for each exercise in the workout
-            from models.services.advanced_progression_service import AdvancedProgressionService
-            adv_service = AdvancedProgressionService(self.db_path)
-
-            # Get all exercises in this workout
+            # Get all exercises in this workout before committing
             cursor.execute('''
                 SELECT DISTINCT exercise_id
                 FROM workout_sets
@@ -547,12 +546,19 @@ class GymService:
 
             exercises = cursor.fetchall()
 
+            # Commit the workout completion first
+            conn.commit()
+            conn.close()
+
+            # Calculate volume metrics for each exercise in the workout
+            # This now happens after the connection is closed to avoid locks
+            from models.services.advanced_progression_service import AdvancedProgressionService
+            adv_service = AdvancedProgressionService(self.db_path)
+
             # Calculate volume for each exercise
             for (exercise_id,) in exercises:
                 adv_service.calculate_volume_metrics(workout_id, exercise_id)
 
-            conn.commit()
-            conn.close()
             return True, "Workout completed successfully"
         else:
             conn.close()

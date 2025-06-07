@@ -168,7 +168,13 @@ function addExerciseCard(exerciseId, exerciseName) {
     exerciseCard.id = `exercise-${exerciseId}`;
     exerciseCard.innerHTML = `
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">${exerciseName}</h6>
+            <div>
+                <h6 class="mb-0">${exerciseName}</h6>
+                <div class="progression-info text-muted small" id="progression-info-${exerciseId}">
+                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                    Loading history...
+                </div>
+            </div>
             <button class="btn btn-sm btn-danger remove-exercise" data-exercise-id="${exerciseId}">
                 <i class="fas fa-times"></i>
             </button>
@@ -182,6 +188,25 @@ function addExerciseCard(exerciseId, exerciseName) {
     `;
 
     document.getElementById('exercises-container').appendChild(exerciseCard);
+
+    // Fetch and display progression info
+    fetch(`/gym/exercise/${exerciseId}/quick-progression`)
+        .then(response => response.json())
+        .then(data => {
+            const infoDiv = document.getElementById(`progression-info-${exerciseId}`);
+            if (data.has_history) {
+                let infoHtml = `Last: ${data.last_weight}kg × ${data.last_reps} reps`;
+                if (data.ready_for_progression) {
+                    infoHtml += ' <span class="badge bg-success"><i class="fas fa-arrow-up"></i> Ready to progress!</span>';
+                }
+                infoDiv.innerHTML = infoHtml;
+            } else {
+                infoDiv.innerHTML = 'No previous history';
+            }
+        })
+        .catch(error => {
+            document.getElementById(`progression-info-${exerciseId}`).innerHTML = '';
+        });
 
     // Add event listeners
     exerciseCard.querySelector('.remove-exercise').addEventListener('click', function() {
@@ -211,6 +236,38 @@ function removeExercise(exerciseId) {
 function addSetRow(exerciseId) {
     const setNumber = exerciseData[exerciseId].sets.length + 1;
     const setId = `${exerciseId}-${setNumber}`;
+
+    // Fetch progression suggestion if this is the first set
+    if (setNumber === 1) {
+        fetch(`/gym/exercise/${exerciseId}/quick-progression`)
+            .then(response => response.json())
+            .then(data => {
+                // Update the weight and reps inputs with suggestions
+                if (data.has_history) {
+                    const weightInput = document.getElementById(`weight-${setId}`);
+                    const repsInput = document.getElementById(`reps-${setId}`);
+
+                    if (weightInput) {
+                        weightInput.value = data.suggested_weight;
+                        weightInput.placeholder = `Last: ${data.last_weight}kg`;
+                    }
+                    if (repsInput) {
+                        repsInput.value = data.suggested_reps;
+                        repsInput.placeholder = `Last: ${data.last_reps} reps`;
+                    }
+
+                    // Add progression indicator if ready
+                    if (data.ready_for_progression) {
+                        const setDiv = document.getElementById(`set-${setId}`);
+                        const progressionBadge = document.createElement('span');
+                        progressionBadge.className = 'badge bg-success ms-2';
+                        progressionBadge.innerHTML = '<i class="fas fa-arrow-up"></i> Ready to progress!';
+                        setDiv.querySelector('strong').appendChild(progressionBadge);
+                    }
+                }
+            })
+            .catch(error => console.error('Error fetching progression data:', error));
+    }
 
     const setDiv = document.createElement('div');
     setDiv.className = 'set-row';
@@ -421,7 +478,7 @@ document.getElementById('finish-workout').addEventListener('click', function() {
         const notes = document.getElementById('workout-notes').value.trim();
 
         if (notes && sessionId) {
-            // Save notes
+            // Save notes first
             fetch('/gym/workout/update-notes', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -430,10 +487,22 @@ document.getElementById('finish-workout').addEventListener('click', function() {
                     notes: notes
                 })
             }).then(() => {
+                // Then complete the workout
+                return fetch(`/gym/workout/${sessionId}/complete`, {
+                    method: 'POST'
+                });
+            }).then(() => {
+                window.location.href = '{{ url_for("gym.history") }}';
+            });
+        } else if (sessionId) {
+            // Complete workout without notes
+            fetch(`/gym/workout/${sessionId}/complete`, {
+                method: 'POST'
+            }).then(() => {
                 window.location.href = '{{ url_for("gym.history") }}';
             });
         } else {
-            window.location.href = '{{ url_for("gym.history") }}';
+            alert('No workout session to complete');
         }
     }
 });

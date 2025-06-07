@@ -15,9 +15,15 @@ class ProgressionService:
             db_path = os.getenv('DATABASE_PATH', 'database.db')
         self.db_path = db_path
 
+    def _get_connection(self):
+        """Get a database connection with WAL mode enabled"""
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
     def get_user_preferences(self, user_id: int) -> Dict:
         """Get user's gym preferences"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
@@ -70,7 +76,7 @@ class ProgressionService:
 
     def update_user_preferences(self, user_id: int, preferences: Dict) -> bool:
         """Update user's gym preferences"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         try:
@@ -112,7 +118,7 @@ class ProgressionService:
     def get_exercise_performance_history(self, user_id: int, exercise_id: int,
                                        limit: int = 5) -> List[Dict]:
         """Get last N performances for an exercise"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
@@ -258,7 +264,7 @@ class ProgressionService:
 
     def _get_exercise_info(self, exercise_id: int) -> Dict:
         """Get exercise information"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
@@ -283,7 +289,7 @@ class ProgressionService:
                           progression_type: str = 'weight_increase',
                           notes: str = '') -> bool:
         """Record a progression event"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         try:
@@ -305,7 +311,7 @@ class ProgressionService:
 
     def get_progression_suggestions(self, user_id: int, workout_id: Optional[int] = None) -> List[Dict]:
         """Get progression suggestions for user's exercises"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         # Get exercises from current workout or recent workouts
@@ -349,7 +355,7 @@ class ProgressionService:
 
     def get_exercise_trend(self, user_id: int, exercise_id: int, days: int = 30) -> Dict:
         """Get exercise performance trend over time"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
