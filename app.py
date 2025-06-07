@@ -209,10 +209,11 @@ if __name__ == "__main__":
     debug_mode = os.getenv('DEBUG', 'True').lower() == 'true'
 
     # Enable debug mode for development
+    port = int(os.getenv('FLASK_RUN_PORT', 8080))  # Use port 8080 to avoid AirPlay conflict
     app.run(
         debug=debug_mode,
         host='127.0.0.1',  # Localhost
-        port=5000,         # Default Flask port
+        port=port,
         use_reloader=True, # Auto-reload on file changes
         use_debugger=True  # Enable interactive debugger
     )

@@ -443,17 +443,46 @@ class GymService:
         ''', (self.user_id, datetime.now().date(), notes, template_id, 'in_progress'))
         session_id = cursor.lastrowid
 
-        # Pre-populate sets based on template
-        for exercise_id, num_sets, target_weight, target_reps in template_exercises:
+        # Import progression service for historical analysis
+        from models.services.progression_service import ProgressionService
+        progression_service = ProgressionService()
+
+        # Pre-populate sets based on historical performance analysis, not template defaults
+        for exercise_id, num_sets, template_weight, template_reps in template_exercises:
+            # Get last performance for this exercise
+            last_performance = self.get_last_exercise_performance(exercise_id)
+
+            # Get progression readiness to determine suggested weights/reps
+            readiness = progression_service.check_progression_readiness(self.user_id, exercise_id)
+
+            # Determine starting weight and reps based on analysis
+            if last_performance:
+                # Use historical performance as starting point
+                suggested_weight = last_performance['max_weight']
+                suggested_reps = last_performance['max_reps']
+
+                # If ready for progression, use suggested progression values
+                if readiness.get('ready') and readiness.get('suggestion') == 'increase_weight':
+                    suggested_weight = readiness.get('new_weight', suggested_weight)
+                    suggested_reps = readiness.get('new_reps_target', suggested_reps)
+                elif readiness.get('current_avg_reps'):
+                    # Use current average reps if available
+                    suggested_reps = int(readiness['current_avg_reps'])
+            else:
+                # Fallback to template values if no historical data
+                suggested_weight = template_weight or 0
+                suggested_reps = template_reps or 0
+
+            # Create sets with analyzed values
             for set_num in range(1, num_sets + 1):
                 cursor.execute('''
                     INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (session_id, exercise_id, set_num, target_weight or 0, target_reps or 0))
+                ''', (session_id, exercise_id, set_num, suggested_weight, suggested_reps))
 
         conn.commit()
         conn.close()
-        return session_id, "Workout started from template"
+        return session_id, "Workout started from template with progression analysis"
 
     def delete_template(self, template_id):
         """Delete a workout template"""
