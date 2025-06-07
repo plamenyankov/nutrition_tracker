@@ -648,6 +648,95 @@ def exercise_progression_summary(exercise_id):
         'ready_for_progression': ready_for_progression
     })
 
+@gym_bp.route('/exercise/<int:exercise_id>/comprehensive-progression')
+@login_required
+def exercise_comprehensive_progression(exercise_id):
+    """Get comprehensive progression data including pyramid pattern and all sets"""
+    from models.services.advanced_progression_service import AdvancedProgressionService
+    from models.services.progression_service import ProgressionService
+
+    adv_service = AdvancedProgressionService()
+    prog_service = ProgressionService()
+
+    user_id = gym_service.user_id
+
+    # Get pyramid pattern
+    pyramid_data = adv_service.detect_pyramid_pattern(user_id, exercise_id)
+
+    # Get current workout sets if in progress
+    conn = sqlite3.connect(gym_service.db_path)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT wset.id, wset.set_number, wset.weight, wset.reps
+        FROM workout_sets wset
+        JOIN workout_sessions ws ON wset.session_id = ws.id
+        WHERE ws.user_id = ? AND wset.exercise_id = ?
+              AND ws.status = 'in_progress'
+        ORDER BY wset.set_number
+    ''', (user_id, exercise_id))
+
+    current_sets = cursor.fetchall()
+    conn.close()
+
+    # Analyze each set with detailed progression info
+    sets_analysis = []
+    for set_id, set_number, weight, reps in current_sets:
+        progression = adv_service.analyze_set_progression(user_id, exercise_id, set_number)
+
+        # Add historical context
+        set_history = adv_service.get_set_history(user_id, exercise_id, set_number, limit=3)
+
+        sets_analysis.append({
+            'set_id': set_id,
+            'set_number': set_number,
+            'current_weight': weight,
+            'current_reps': reps,
+            'progression': progression,
+            'history': set_history[:2] if set_history else []
+        })
+
+    # Get set addition suggestion
+    set_addition = adv_service.suggest_set_addition(user_id, exercise_id)
+
+    # Get user preferences for context
+    preferences = prog_service.get_user_preferences(user_id)
+
+    # Get overall exercise trend
+    trend = adv_service.get_volume_trend(user_id, exercise_id, days=30)
+
+    # Build comprehensive response
+    response = {
+        'pyramid': {
+            'pattern': pyramid_data['pattern'],
+            'confidence': pyramid_data['confidence'],
+            'typical_sets': pyramid_data['typical_sets'],
+            'description': _get_pyramid_description(pyramid_data['pattern'])
+        },
+        'sets': sets_analysis,
+        'set_addition': set_addition,
+        'preferences': {
+            'min_reps': preferences.get('min_reps_target', 10),
+            'max_reps': preferences.get('max_reps_target', 15),
+            'strategy': preferences.get('progression_strategy', 'reps_first')
+        },
+        'volume_trend': trend,
+        'exercise_name': gym_service.get_exercise_by_id(exercise_id)[0] if gym_service.get_exercise_by_id(exercise_id) else 'Unknown'
+    }
+
+    return jsonify(response)
+
+def _get_pyramid_description(pattern):
+    """Get user-friendly description of pyramid pattern"""
+    descriptions = {
+        'ascending': 'Weight increases with each set (light → heavy)',
+        'descending': 'Weight decreases with each set (heavy → light)',
+        'straight': 'Same weight across all sets',
+        'mixed': 'Variable weight pattern',
+        'unknown': 'Pattern not yet established'
+    }
+    return descriptions.get(pattern, 'Custom pattern')
+
 @gym_bp.route('/exercise/<int:exercise_id>/set-progression-analysis')
 @login_required
 def exercise_set_progression_analysis(exercise_id):
