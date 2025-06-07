@@ -580,6 +580,43 @@ def accept_progression(exercise_id):
     else:
         return jsonify({'success': False, 'message': 'Error recording progression'}), 400
 
+@gym_bp.route('/exercise/<int:exercise_id>/quick-progression')
+@login_required
+def get_exercise_quick_progression(exercise_id):
+    """Get quick progression suggestion for adding exercise to workout"""
+    from models.services.progression_service import ProgressionService
+    progression_service = ProgressionService()
+
+    # Get last performance
+    last_performance = gym_service.get_last_exercise_performance(exercise_id)
+
+    if not last_performance:
+        return jsonify({
+            'has_history': False,
+            'suggested_weight': 0,
+            'suggested_reps': 10
+        })
+
+    # Get progression readiness
+    readiness = progression_service.check_progression_readiness(gym_service.user_id, exercise_id)
+
+    # Determine suggested values
+    if readiness.get('ready') and readiness.get('suggestion') == 'increase_weight':
+        suggested_weight = readiness.get('new_weight', last_performance['max_weight'])
+        suggested_reps = readiness.get('new_reps_target', 10)
+    else:
+        suggested_weight = last_performance['max_weight']
+        suggested_reps = last_performance['max_reps']
+
+    return jsonify({
+        'has_history': True,
+        'last_weight': last_performance['max_weight'],
+        'last_reps': last_performance['max_reps'],
+        'suggested_weight': suggested_weight,
+        'suggested_reps': suggested_reps,
+        'ready_for_progression': readiness.get('ready', False)
+    })
+
 @gym_bp.route('/exercise/<int:exercise_id>/progression-summary')
 @login_required
 def exercise_progression_summary(exercise_id):
@@ -614,57 +651,6 @@ def exercise_progression_summary(exercise_id):
 @gym_bp.route('/exercise/<int:exercise_id>/set-progression-analysis')
 @login_required
 def exercise_set_progression_analysis(exercise_id):
-    """Get set-specific progression analysis for an exercise"""
-    from models.services.advanced_progression_service import AdvancedProgressionService
-    adv_progression_service = AdvancedProgressionService()
-
-    user_id = gym_service.user_id
-
-    # Get current sets for this exercise in the workout
-    # This is a simplified version - in production, you'd pass the workout_id
-    sets_data = []
-
-    # Get the most recent sets for this exercise
-    conn = sqlite3.connect(gym_service.db_path)
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        SELECT DISTINCT wset.id, wset.set_number, wset.weight, wset.reps
-        FROM workout_sets wset
-        JOIN workout_sessions ws ON wset.session_id = ws.id
-        WHERE ws.user_id = ? AND wset.exercise_id = ?
-              AND ws.status = 'in_progress'
-        ORDER BY wset.set_number
-    ''', (user_id, exercise_id))
-
-    current_sets = cursor.fetchall()
-    conn.close()
-
-    # Analyze each set
-    for set_id, set_number, weight, reps in current_sets:
-        progression = adv_progression_service.analyze_set_progression(
-            user_id, exercise_id, set_number
-        )
-        sets_data.append({
-            'set_id': set_id,
-            'set_number': set_number,
-            'current_weight': weight,
-            'current_reps': reps,
-            'progression': progression
-        })
-
-    # Check if should add new set
-    set_addition_suggestion = adv_progression_service.suggest_set_addition(
-        user_id, exercise_id
-    )
-
-    response = {
-        'sets': sets_data,
-        'pyramid_pattern': adv_progression_service.detect_pyramid_pattern(user_id, exercise_id),
-        **set_addition_suggestion
-    }
-
-    return jsonify(response)
     """Get set-specific progression analysis for an exercise"""
     from models.services.advanced_progression_service import AdvancedProgressionService
     adv_progression_service = AdvancedProgressionService()

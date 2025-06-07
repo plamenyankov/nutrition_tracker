@@ -15,6 +15,12 @@ class AdvancedProgressionService:
             db_path = os.getenv('DATABASE_PATH', 'database.db')
         self.db_path = db_path
 
+    def _get_connection(self):
+        """Get a database connection with WAL mode enabled"""
+        conn = sqlite3.connect(self.db_path)
+        conn.execute("PRAGMA journal_mode=WAL")
+        return conn
+
     def analyze_set_progression(self, user_id: int, exercise_id: int, set_number: int) -> Dict:
         """Analyze progression readiness for a specific set"""
         # Get last 3-5 performances for this specific set
@@ -29,7 +35,7 @@ class AdvancedProgressionService:
             }
 
         # Get user preferences
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute('''
             SELECT min_reps_target, max_reps_target, weight_increment_upper, weight_increment_lower
@@ -93,7 +99,7 @@ class AdvancedProgressionService:
 
     def get_set_history(self, user_id: int, exercise_id: int, set_number: int, limit: int = 5) -> List[Dict]:
         """Get history for a specific set number"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
@@ -119,7 +125,7 @@ class AdvancedProgressionService:
 
     def detect_pyramid_pattern(self, user_id: int, exercise_id: int) -> Dict:
         """Detect the user's typical pyramid pattern for an exercise"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         # Get recent workouts with multiple sets
@@ -185,7 +191,7 @@ class AdvancedProgressionService:
 
     def suggest_set_addition(self, user_id: int, exercise_id: int) -> Dict:
         """Suggest when to add a new set to an exercise"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         # Get current typical set count
@@ -275,7 +281,7 @@ class AdvancedProgressionService:
 
     def calculate_volume_metrics(self, workout_id: int, exercise_id: int) -> Dict:
         """Calculate and store volume metrics for a workout"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         # Get all sets for this exercise in this workout
@@ -316,7 +322,7 @@ class AdvancedProgressionService:
 
     def get_volume_trend(self, user_id: int, exercise_id: int, days: int = 30) -> Dict:
         """Get volume trend for an exercise over specified days"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
@@ -368,7 +374,7 @@ class AdvancedProgressionService:
 
     def _is_upper_body_exercise(self, exercise_id: int) -> bool:
         """Determine if exercise is upper body based on muscle groups"""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
