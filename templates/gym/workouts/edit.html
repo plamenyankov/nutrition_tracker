@@ -152,6 +152,132 @@
         margin-top: 0.25rem;
     }
 }
+
+/* Pyramid Pattern Display */
+.pyramid-pattern-display {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.pyramid-pattern-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.pyramid-pattern-icon {
+    font-size: 1.5rem;
+}
+
+.pyramid-pattern-title {
+    font-weight: bold;
+    margin: 0;
+}
+
+.pyramid-pattern-description {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.pyramid-confidence {
+    display: inline-block;
+    background: rgba(255,255,255,0.7);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+/* Enhanced Set Progression Display */
+.set-progression-detail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.set-history-hint {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-left: 0.5rem;
+}
+
+.progression-badge-ready {
+    background: #28a745;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.progression-badge-close {
+    background: #ffc107;
+    color: #212529;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.progression-badge-building {
+    background: #6c757d;
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.progression-suggestion {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.volume-trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255,255,255,0.9);
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.trend-up { color: #28a745; }
+.trend-down { color: #dc3545; }
+.trend-stable { color: #6c757d; }
+
+/* Set Addition Suggestion Card */
+.set-addition-suggestion {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 1rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.set-addition-suggestion h6 {
+    color: white;
+    margin-bottom: 0.5rem;
+}
+
+.set-addition-suggestion small {
+    opacity: 0.9;
+}
+
+.set-addition-suggestion .btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+}
+
+.set-addition-suggestion .btn:hover {
+    background: rgba(255,255,255,0.3);
+}
 </style>
 {% endblock %}
 
@@ -243,9 +369,11 @@
                                         {% for set in exercise_info.sets %}
                                             <tr id="set-row-{{ set.id }}">
                                                 <td data-label="Set">
-                                                    {{ set.set_number }}
-                                                    <div class="set-progression-info d-none" id="set-progression-{{ set.id }}">
-                                                        <!-- Set-specific progression info will be loaded here -->
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="fw-bold">{{ set.set_number }}</span>
+                                                        <div class="set-progression-info ms-2" id="set-progression-{{ set.id }}">
+                                                            <!-- Set-specific progression info will be loaded here -->
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td data-label="Weight">
@@ -433,66 +561,174 @@ function loadProgressionInfo(exerciseId) {
 }
 
 function loadSetProgressionInfo(exerciseId) {
-    // Load set-specific progression data
-    fetch(`/gym/exercise/${exerciseId}/set-progression-analysis`)
+    // Load comprehensive progression data
+    fetch(`/gym/exercise/${exerciseId}/comprehensive-progression`)
         .then(response => response.json())
         .then(data => {
+            // Display pyramid pattern if detected
+            if (data.pyramid && data.pyramid.confidence > 0.5) {
+                displayPyramidPattern(exerciseId, data.pyramid, data.volume_trend);
+            }
+
+            // Display set-specific progression
             if (data.sets) {
                 data.sets.forEach(setInfo => {
-                    const setId = setInfo.set_id;
-                    const container = document.getElementById(`set-progression-${setId}`);
-                    if (container) {
-                        let html = '';
-
-                        if (setInfo.progression.ready) {
-                            html += '<span class="badge bg-success"><i class="fas fa-arrow-up"></i> Ready</span>';
-                            html += `<span class="text-success ms-1">Try ${setInfo.progression.suggested_weight}kg</span>`;
-                        } else if (setInfo.progression.confidence > 0.5) {
-                            html += '<span class="badge bg-warning"><i class="fas fa-chart-line"></i> Close</span>';
-                            html += `<span class="text-muted ms-1">${setInfo.progression.reps_to_go} reps to go</span>`;
-                        } else {
-                            html += '<span class="badge bg-secondary"><i class="fas fa-sync"></i> Building</span>';
-                        }
-
-                        container.innerHTML = html;
-                        container.classList.remove('d-none');
-                    }
+                    displaySetProgression(setInfo, data.preferences);
                 });
             }
 
-            // Check for set addition suggestion
-            if (data.suggest_add_set) {
-                const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
-                const cardBody = exerciseCard.querySelector('.card-body');
-
-                const suggestionDiv = document.createElement('div');
-                suggestionDiv.className = 'alert alert-info mt-3';
-                suggestionDiv.innerHTML = `
-                    <i class="fas fa-plus-circle"></i> <strong>Ready to add set ${data.new_set_number}!</strong><br>
-                    <small>Suggested: ${data.suggested_weight}kg × ${data.suggested_reps} reps</small><br>
-                    <button class="btn btn-sm btn-primary mt-2" onclick="addSuggestedSet(${exerciseId}, ${data.new_set_number}, ${data.suggested_weight})">
-                        Add Set
-                    </button>
-                `;
-
-                cardBody.appendChild(suggestionDiv);
+            // Display set addition suggestion with enhanced UI
+            if (data.set_addition && data.set_addition.suggest_add_set) {
+                displaySetAdditionSuggestion(exerciseId, data.set_addition);
             }
         })
-        .catch(error => console.error('Error loading set progression info:', error));
+        .catch(error => console.error('Error loading progression info:', error));
 }
 
-function addSuggestedSet(exerciseId, setNumber, suggestedWeight) {
-    // Add the suggested set with pre-filled weight
+function displayPyramidPattern(exerciseId, pyramidData, volumeTrend) {
+    const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
+    const progressionInfo = exerciseCard.querySelector('.progression-info');
+
+    // Create pyramid pattern display
+    const pyramidDiv = document.createElement('div');
+    pyramidDiv.className = 'pyramid-pattern-display mt-2';
+
+    let pyramidIcon = '';
+    if (pyramidData.pattern === 'ascending') {
+        pyramidIcon = '📈';
+    } else if (pyramidData.pattern === 'descending') {
+        pyramidIcon = '📉';
+    } else if (pyramidData.pattern === 'straight') {
+        pyramidIcon = '➡️';
+    } else {
+        pyramidIcon = '🔄';
+    }
+
+    let trendHtml = '';
+    if (volumeTrend && volumeTrend.trend) {
+        const trendClass = volumeTrend.trend === 'increasing' ? 'trend-up' :
+                          volumeTrend.trend === 'decreasing' ? 'trend-down' : 'trend-stable';
+        const trendIcon = volumeTrend.trend === 'increasing' ? '↗️' :
+                         volumeTrend.trend === 'decreasing' ? '↘️' : '→';
+        const trendPercent = volumeTrend.volume_change_percent || 0;
+
+        trendHtml = `
+            <div class="volume-trend-indicator ${trendClass}">
+                ${trendIcon} Volume ${trendPercent > 0 ? '+' : ''}${trendPercent}% (30d)
+            </div>
+        `;
+    }
+
+    pyramidDiv.innerHTML = `
+        <div class="pyramid-pattern-header">
+            <span class="pyramid-pattern-icon">${pyramidIcon}</span>
+            <div>
+                <p class="pyramid-pattern-title">Your Pattern: ${pyramidData.pattern.charAt(0).toUpperCase() + pyramidData.pattern.slice(1)}</p>
+                <p class="pyramid-pattern-description">${pyramidData.description}</p>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center">
+            <span class="pyramid-confidence">
+                <i class="fas fa-chart-bar"></i> ${Math.round(pyramidData.confidence * 100)}% confidence
+            </span>
+            ${trendHtml}
+        </div>
+    `;
+
+    progressionInfo.appendChild(pyramidDiv);
+}
+
+function displaySetProgression(setInfo, preferences) {
+    const container = document.getElementById(`set-progression-${setInfo.set_id}`);
+    if (!container) return;
+
+    let html = '<div class="set-progression-detail">';
+
+    // Show progression status badge
+    if (setInfo.progression.ready) {
+        html += `<span class="progression-badge-ready">
+                    <i class="fas fa-arrow-up"></i> Ready!
+                 </span>`;
+        html += `<span class="progression-suggestion">
+                    ${setInfo.progression.suggested_weight}kg × ${setInfo.progression.suggested_reps}
+                 </span>`;
+    } else if (setInfo.progression.confidence > 0.5) {
+        html += `<span class="progression-badge-close">
+                    <i class="fas fa-chart-line"></i> Close
+                 </span>`;
+        html += `<span class="text-muted">
+                    ${setInfo.progression.reps_to_go} reps to ${preferences.max_reps}
+                 </span>`;
+    } else {
+        html += `<span class="progression-badge-building">
+                    <i class="fas fa-dumbbell"></i> Building
+                 </span>`;
+        if (setInfo.progression.current_avg_reps) {
+            html += `<span class="text-muted">
+                        Avg: ${setInfo.progression.current_avg_reps} reps
+                     </span>`;
+        }
+    }
+
+    // Show historical context if available
+    if (setInfo.history && setInfo.history.length > 0) {
+        const lastPerf = setInfo.history[0];
+        html += `<span class="set-history-hint">
+                    (Last: ${lastPerf.weight}kg × ${lastPerf.reps})
+                 </span>`;
+    }
+
+    html += '</div>';
+
+    container.innerHTML = html;
+}
+
+function displaySetAdditionSuggestion(exerciseId, suggestionData) {
+    const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
+    const cardBody = exerciseCard.querySelector('.card-body');
+
+    // Check if suggestion already exists
+    if (cardBody.querySelector('.set-addition-suggestion')) {
+        return;
+    }
+
+    const suggestionDiv = document.createElement('div');
+    suggestionDiv.className = 'set-addition-suggestion';
+
+    suggestionDiv.innerHTML = `
+        <h6><i class="fas fa-trophy"></i> Level Up! Ready for Set ${suggestionData.new_set_number}</h6>
+        <p class="mb-2">${suggestionData.reason}</p>
+        <div class="d-flex justify-content-between align-items-center">
+            <small>
+                <i class="fas fa-weight"></i> Suggested: ${suggestionData.suggested_weight}kg × ${suggestionData.suggested_reps} reps
+                ${suggestionData.pattern ? `<br><i class="fas fa-info-circle"></i> Based on your ${suggestionData.pattern} pattern` : ''}
+            </small>
+            <button class="btn btn-sm" onclick="addSuggestedSetEnhanced(${exerciseId}, ${suggestionData.new_set_number}, ${suggestionData.suggested_weight}, ${suggestionData.suggested_reps})">
+                <i class="fas fa-plus"></i> Add Set
+            </button>
+        </div>
+    `;
+
+    cardBody.appendChild(suggestionDiv);
+}
+
+function addSuggestedSetEnhanced(exerciseId, setNumber, suggestedWeight, suggestedReps) {
+    // Add the suggested set with pre-filled values and enhanced UI feedback
     const tempId = `new-${exerciseId}-${setNumber}`;
     const tbody = document.getElementById(`sets-${exerciseId}`);
 
     const row = document.createElement('tr');
     row.id = `set-row-${tempId}`;
+    row.className = 'table-success'; // Highlight new row
     row.innerHTML = `
         <td data-label="Set">
-            ${setNumber}
-            <div class="set-progression-info">
-                <span class="badge bg-info">New Set</span>
+            <div class="d-flex align-items-center">
+                <span class="fw-bold">${setNumber}</span>
+                <div class="set-progression-info ms-2">
+                    <span class="badge bg-success">
+                        <i class="fas fa-sparkles"></i> New Set
+                    </span>
+                </div>
             </div>
         </td>
         <td data-label="Weight">
@@ -517,7 +753,7 @@ function addSuggestedSet(exerciseId, setNumber, suggestedWeight) {
                     <i class="fas fa-minus"></i>
                 </button>
                 <input type="number" class="form-control form-control-sm"
-                       id="reps-${tempId}" value="6"
+                       id="reps-${tempId}" value="${suggestedReps}"
                        min="1">
                 <button class="btn btn-sm btn-outline-secondary btn-increment"
                         onclick="adjustReps('${tempId}', 1)">
@@ -532,7 +768,7 @@ function addSuggestedSet(exerciseId, setNumber, suggestedWeight) {
                     <i class="fas fa-check"></i>
                 </button>
                 <button class="btn btn-sm btn-danger btn-mobile-action"
-                        onclick="document.getElementById('set-row-${tempId}').remove()" title="Delete">
+                        onclick="removeNewSet('${tempId}')" title="Remove">
                     <i class="fas fa-trash"></i>
                 </button>
             </div>
@@ -544,10 +780,22 @@ function addSuggestedSet(exerciseId, setNumber, suggestedWeight) {
     // Update next set number
     nextSetNumber[exerciseId] = setNumber + 1;
 
-    // Remove the suggestion alert
-    const alert = event.target.closest('.alert');
-    if (alert) {
-        alert.remove();
+    // Remove the suggestion card
+    const suggestionCard = event.target.closest('.set-addition-suggestion');
+    if (suggestionCard) {
+        // Fade out animation
+        suggestionCard.style.transition = 'opacity 0.3s';
+        suggestionCard.style.opacity = '0';
+        setTimeout(() => suggestionCard.remove(), 300);
+    }
+}
+
+function removeNewSet(tempId) {
+    const row = document.getElementById(`set-row-${tempId}`);
+    if (row) {
+        row.style.transition = 'opacity 0.3s';
+        row.style.opacity = '0';
+        setTimeout(() => row.remove(), 300);
     }
 }
 
