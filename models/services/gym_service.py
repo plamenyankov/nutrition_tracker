@@ -97,7 +97,7 @@ class GymService:
             SELECT ws.*, COUNT(DISTINCT wset.exercise_id) as exercise_count
             FROM workout_sessions ws
             LEFT JOIN workout_sets wset ON ws.id = wset.session_id
-            WHERE ws.user_id = ? AND ws.status != 'abandoned'
+            WHERE ws.user_id = ?
             GROUP BY ws.id
             ORDER BY ws.date DESC, ws.created_at DESC
             LIMIT ?
