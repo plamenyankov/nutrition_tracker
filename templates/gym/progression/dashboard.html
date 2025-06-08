@@ -4,261 +4,740 @@
 
 {% block head %}
 <style>
+/* Enhanced Pattern Cards with Accessibility */
 .pattern-card {
     border-left: 4px solid;
-    transition: transform 0.2s;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .pattern-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
 }
 
-.pattern-ascending { border-left-color: #28a745; }
-.pattern-descending { border-left-color: #dc3545; }
-.pattern-straight { border-left-color: #007bff; }
-.pattern-pyramid { border-left-color: #ffc107; }
+.pattern-card:focus-within {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
 
+/* Color-blind friendly patterns with shapes */
+.pattern-ascending {
+    border-left-color: #28a745;
+    background: linear-gradient(135deg, rgba(40, 167, 69, 0.05) 0%, transparent 100%);
+}
+.pattern-descending {
+    border-left-color: #dc3545;
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.05) 0%, transparent 100%);
+}
+.pattern-straight {
+    border-left-color: #007bff;
+    background: linear-gradient(135deg, rgba(0, 123, 255, 0.05) 0%, transparent 100%);
+}
+.pattern-pyramid {
+    border-left-color: #ffc107;
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, transparent 100%);
+}
+
+/* Pattern indicators with shapes for accessibility */
+.pattern-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    opacity: 0.3;
+}
+
+.pattern-indicator.ascending::before {
+    content: "▲";
+    color: #28a745;
+}
+
+.pattern-indicator.descending::before {
+    content: "▼";
+    color: #dc3545;
+}
+
+.pattern-indicator.straight::before {
+    content: "■";
+    color: #007bff;
+}
+
+.pattern-indicator.pyramid::before {
+    content: "◆";
+    color: #ffc107;
+}
+
+/* Enhanced Volume Chart Container */
 .volume-chart-container {
-    height: 300px;
+    height: 350px;
     position: relative;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px;
 }
 
+/* Improved Progression Metrics */
 .progression-metric {
     text-align: center;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     margin-bottom: 1rem;
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progression-metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.progression-metric::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #007bff, #28a745);
 }
 
 .metric-value {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #495057;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    line-height: 1;
 }
 
 .metric-label {
     font-size: 0.875rem;
     color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
+.metric-icon {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    font-size: 1.5rem;
+    opacity: 0.2;
+}
+
+/* Enhanced Exercise Cards */
 .exercise-progression-card {
     cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    overflow: hidden;
 }
 
+.exercise-progression-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    border-color: #007bff;
+}
+
+.exercise-progression-card:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Enhanced Timeline */
 .progression-timeline {
     position: relative;
     padding-left: 2rem;
+    max-height: 400px;
+    overflow-y: auto;
 }
 
 .timeline-item {
     position: relative;
-    padding-bottom: 1rem;
-    border-left: 2px solid #dee2e6;
-    padding-left: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-left: 3px solid #e9ecef;
+    padding-left: 2rem;
+    transition: all 0.3s ease;
+}
+
+.timeline-item:hover {
+    border-left-color: #007bff;
 }
 
 .timeline-item:last-child {
-    border-left: none;
+    border-left: 3px solid transparent;
 }
 
 .timeline-dot {
     position: absolute;
-    left: -0.5rem;
+    left: -0.75rem;
     top: 0.25rem;
-    width: 1rem;
-    height: 1rem;
+    width: 1.5rem;
+    height: 1.5rem;
     border-radius: 50%;
     background: #fff;
-    border: 2px solid #007bff;
+    border: 3px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
 }
 
 .timeline-dot.success {
     background: #28a745;
     border-color: #28a745;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .metric-value {
+        font-size: 2rem;
+    }
+
+    .progression-metric {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .volume-chart-container {
+        height: 250px;
+    }
+
+    .pattern-card {
+        margin-bottom: 1rem;
+    }
+
+    .exercise-progression-card {
+        margin-bottom: 1rem;
+    }
+
+    .timeline-item {
+        padding-bottom: 1rem;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .d-flex.justify-content-between > div {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 576px) {
+    .metric-value {
+        font-size: 1.75rem;
+    }
+
+    .progression-metric {
+        padding: 0.75rem;
+    }
+
+    .volume-chart-container {
+        height: 200px;
+    }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+    .pattern-card {
+        border-width: 3px;
+    }
+
+    .progression-metric {
+        border-width: 2px;
+    }
+
+    .timeline-dot {
+        border-width: 4px;
+    }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+    .pattern-card,
+    .progression-metric,
+    .exercise-progression-card,
+    .timeline-item,
+    .timeline-dot {
+        transition: none;
+    }
+
+    .timeline-dot.success {
+        animation: none;
+    }
+}
+
+/* Loading States */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Tooltips for better UX */
+.tooltip-trigger {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip-trigger:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #333;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* Progress Bar Enhancements */
+.progress {
+    height: 8px;
+    border-radius: 4px;
+    overflow: hidden;
+    background-color: #e9ecef;
+}
+
+.progress-bar {
+    transition: width 0.6s ease;
+    border-radius: 4px;
+}
+
+/* Badge Enhancements */
+.badge {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+/* Empty State Styling */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+}
+
+/* Focus Management */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #007bff;
+    color: white;
+    padding: 8px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 1000;
+}
+
+.skip-link:focus {
+    top: 6px;
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3">
+<!-- Skip Link for Accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div class="container-fluid mt-3" id="main-content">
+    <!-- Enhanced Header with Better Mobile Layout -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Progression Dashboard</h2>
         <div>
-            <a href="{{ url_for('gym.progression_suggestions') }}" class="btn btn-primary">
-                <i class="fas fa-lightbulb"></i> Get Suggestions
-            </a>
-            <a href="{{ url_for('gym.preferences') }}" class="btn btn-secondary">
-                <i class="fas fa-cog"></i> Settings
-            </a>
+            <h1 class="h2 mb-1">Progression Dashboard</h1>
+            <p class="text-muted mb-0">Track your strength journey and progression patterns</p>
         </div>
+                 <div class="d-flex" style="gap: 0.5rem;">
+             <a href="{{ url_for('gym.progression_suggestions') }}"
+                class="btn btn-primary"
+                aria-label="Get progression suggestions">
+                 <i class="fas fa-lightbulb" aria-hidden="true"></i>
+                 <span class="d-none d-sm-inline ms-1">Suggestions</span>
+             </a>
+             <a href="{{ url_for('gym.preferences') }}"
+                class="btn btn-outline-secondary"
+                aria-label="Open settings">
+                 <i class="fas fa-cog" aria-hidden="true"></i>
+                 <span class="d-none d-sm-inline ms-1">Settings</span>
+             </a>
+         </div>
     </div>
 
-    <!-- Summary Metrics -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-6">
-            <div class="progression-metric">
-                <div class="metric-value">{{ metrics.total_progressions }}</div>
-                <div class="metric-label">Total Progressions</div>
+    <!-- Enhanced Summary Metrics with Icons and Better Accessibility -->
+    <section aria-labelledby="metrics-heading" class="mb-4">
+        <h2 id="metrics-heading" class="visually-hidden">Performance Metrics</h2>
+        <div class="row">
+            <div class="col-md-3 col-6">
+                <div class="progression-metric"
+                     role="button"
+                     tabindex="0"
+                     data-tooltip="Total number of successful progressions">
+                    <i class="fas fa-trophy metric-icon" aria-hidden="true"></i>
+                    <div class="metric-value" aria-label="{{ metrics.total_progressions }} total progressions">
+                        {{ metrics.total_progressions }}
+                    </div>
+                    <div class="metric-label">Total Progressions</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="progression-metric"
+                     role="button"
+                     tabindex="0"
+                     data-tooltip="Progressions achieved this month">
+                    <i class="fas fa-calendar-check metric-icon" aria-hidden="true"></i>
+                    <div class="metric-value" aria-label="{{ metrics.this_month }} progressions this month">
+                        {{ metrics.this_month }}
+                    </div>
+                    <div class="metric-label">This Month</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="progression-metric"
+                     role="button"
+                     tabindex="0"
+                     data-tooltip="Percentage increase in training volume">
+                    <i class="fas fa-chart-line metric-icon" aria-hidden="true"></i>
+                    <div class="metric-value" aria-label="{{ metrics.volume_increase }}% volume increase">
+                        {% if metrics.volume_increase > 0 %}+{% endif %}{{ metrics.volume_increase }}%
+                    </div>
+                    <div class="metric-label">Volume Change</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6">
+                <div class="progression-metric"
+                     role="button"
+                     tabindex="0"
+                     data-tooltip="Exercises ready for progression out of total">
+                    <i class="fas fa-dumbbell metric-icon" aria-hidden="true"></i>
+                    <div class="metric-value" aria-label="{{ metrics.exercises_progressed }} out of {{ metrics.total_exercises }} exercises progressed">
+                        {{ metrics.exercises_progressed }}/{{ metrics.total_exercises }}
+                    </div>
+                    <div class="metric-label">Exercises Ready</div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3 col-6">
-            <div class="progression-metric">
-                <div class="metric-value">{{ metrics.this_month }}</div>
-                <div class="metric-label">This Month</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="progression-metric">
-                <div class="metric-value">+{{ metrics.volume_increase }}%</div>
-                <div class="metric-label">Volume Increase</div>
-            </div>
-        </div>
-        <div class="col-md-3 col-6">
-            <div class="progression-metric">
-                <div class="metric-value">{{ metrics.exercises_progressed }}/{{ metrics.total_exercises }}</div>
-                <div class="metric-label">Exercises Progressed</div>
-            </div>
-        </div>
-    </div>
+    </section>
 
-    <!-- Pattern Analysis -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4>Your Training Patterns</h4>
-            <div class="row">
-                {% for exercise in pattern_analysis %}
-                <div class="col-lg-4 col-md-6 mb-3">
-                    <div class="card pattern-card pattern-{{ exercise.pattern }}">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ exercise.name }}</h5>
-                            <p class="card-text">
-                                <span class="badge bg-secondary">{{ exercise.pattern|title }}</span>
-                                <span class="text-muted ms-2">{{ exercise.typical_sets }} sets</span>
-                            </p>
-                            <div class="small">
-                                {% if exercise.pattern == 'ascending' %}
-                                    <i class="fas fa-arrow-up text-success"></i> Weight increases each set
-                                {% elif exercise.pattern == 'descending' %}
-                                    <i class="fas fa-arrow-down text-danger"></i> Weight decreases each set
-                                {% elif exercise.pattern == 'straight' %}
-                                    <i class="fas fa-equals text-primary"></i> Same weight all sets
-                                {% else %}
-                                    <i class="fas fa-random text-warning"></i> Mixed pattern
-                                {% endif %}
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-muted">Confidence: {{ (exercise.confidence * 100)|round }}%</small>
+    <!-- Enhanced Pattern Analysis with Better Descriptions -->
+    {% if pattern_analysis %}
+    <section aria-labelledby="patterns-heading" class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 id="patterns-heading" class="h4 mb-0">Your Training Patterns</h2>
+            <button class="btn btn-sm btn-outline-info"
+                    data-bs-toggle="modal"
+                    data-bs-target="#patternsHelpModal"
+                    aria-label="Learn about training patterns">
+                <i class="fas fa-question-circle" aria-hidden="true"></i>
+                <span class="d-none d-sm-inline ms-1">What are patterns?</span>
+            </button>
+        </div>
+        <div class="row">
+            {% for exercise in pattern_analysis %}
+            <div class="col-lg-4 col-md-6 mb-3">
+                <div class="card pattern-card pattern-{{ exercise.pattern }}"
+                     role="button"
+                     tabindex="0"
+                     aria-label="Training pattern for {{ exercise.name }}">
+                    <div class="pattern-indicator {{ exercise.pattern }}" aria-hidden="true"></div>
+                    <div class="card-body">
+                        <h3 class="card-title h5">{{ exercise.name }}</h3>
+                        <p class="card-text">
+                            <span class="badge bg-secondary">{{ exercise.pattern|title }}</span>
+                            <span class="text-muted ms-2" aria-label="{{ exercise.typical_sets }} typical sets">
+                                {{ exercise.typical_sets }} sets
+                            </span>
+                        </p>
+                        <div class="small mb-2">
+                            {% if exercise.pattern == 'ascending' %}
+                                <i class="fas fa-arrow-up text-success" aria-hidden="true"></i>
+                                <span>Weight increases each set (light → heavy)</span>
+                            {% elif exercise.pattern == 'descending' %}
+                                <i class="fas fa-arrow-down text-danger" aria-hidden="true"></i>
+                                <span>Weight decreases each set (heavy → light)</span>
+                            {% elif exercise.pattern == 'straight' %}
+                                <i class="fas fa-equals text-primary" aria-hidden="true"></i>
+                                <span>Same weight across all sets</span>
+                            {% else %}
+                                <i class="fas fa-random text-warning" aria-hidden="true"></i>
+                                <span>Variable weight pattern</span>
+                            {% endif %}
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                Confidence: {{ (exercise.confidence * 100)|round }}%
+                            </small>
+                            <div class="progress" style="width: 60px; height: 4px;">
+                                <div class="progress-bar bg-info"
+                                     style="width: {{ (exercise.confidence * 100)|round }}%"
+                                     aria-label="Pattern confidence {{ (exercise.confidence * 100)|round }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
             </div>
+            {% endfor %}
         </div>
-    </div>
+    </section>
+    {% endif %}
 
-    <!-- Volume Trends -->
-    <div class="row mb-4">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Volume Trends (30 Days)</h5>
-                </div>
-                <div class="card-body">
-                    <div class="volume-chart-container">
-                        <canvas id="volumeChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Recent Progressions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="progression-timeline">
-                        {% for event in recent_progressions %}
-                        <div class="timeline-item">
-                            <div class="timeline-dot {% if event.type == 'weight' %}success{% endif %}"></div>
-                            <div class="small text-muted">{{ event.date }}</div>
-                            <div class="fw-bold">{{ event.exercise }}</div>
-                            <div class="small">
-                                {% if event.type == 'weight' %}
-                                    <i class="fas fa-weight"></i> {{ event.old_value }}kg → {{ event.new_value }}kg
-                                {% elif event.type == 'reps' %}
-                                    <i class="fas fa-redo"></i> {{ event.old_value }} → {{ event.new_value }} reps
-                                {% elif event.type == 'sets' %}
-                                    <i class="fas fa-plus"></i> Added set {{ event.new_value }}
-                                {% endif %}
-                            </div>
+    <!-- Enhanced Volume Trends and Recent Progressions -->
+    <section aria-labelledby="trends-heading" class="mb-4">
+        <h2 id="trends-heading" class="visually-hidden">Volume Trends and Recent Activity</h2>
+        <div class="row">
+            <div class="col-lg-8 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="h5 mb-0">Volume Trends (30 Days)</h3>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Chart view options">
+                            <button type="button" class="btn btn-outline-secondary active" data-chart-view="volume">
+                                Volume
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" data-chart-view="intensity">
+                                Intensity
+                            </button>
                         </div>
-                        {% endfor %}
+                    </div>
+                    <div class="card-body">
+                        <div class="volume-chart-container">
+                            <canvas id="volumeChart"
+                                    role="img"
+                                    aria-label="Volume and intensity trends over the last 30 days"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Exercise-Specific Progress -->
-    <div class="row">
-        <div class="col-12">
-            <h4>Exercise Progress</h4>
-            <div class="row">
-                {% for exercise in exercises_progress %}
-                <div class="col-lg-6 mb-3">
-                    <div class="card exercise-progression-card" onclick="window.location.href='{{ url_for('gym.exercise_progression', exercise_id=exercise.id) }}'">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <h6 class="card-title mb-1">{{ exercise.name }}</h6>
-                                    <p class="card-text small text-muted mb-2">{{ exercise.muscle_group }}</p>
-                                </div>
-                                <div class="text-end">
-                                    {% if exercise.ready_for_progression %}
-                                        <span class="badge bg-success">Ready</span>
-                                    {% elif exercise.close_to_progression %}
-                                        <span class="badge bg-warning">Close</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Building</span>
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h3 class="h5 mb-0">Recent Progressions</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_progressions %}
+                        <div class="progression-timeline" role="list" aria-label="Recent progression events">
+                            {% for event in recent_progressions %}
+                            <div class="timeline-item" role="listitem">
+                                <div class="timeline-dot {% if event.type == 'weight' or event.type == 'weight_increase' %}success{% endif %}"
+                                     aria-hidden="true"></div>
+                                <div class="small text-muted">{{ event.date }}</div>
+                                <div class="fw-bold">{{ event.exercise }}</div>
+                                <div class="small">
+                                    {% if event.type == 'weight' or event.type == 'weight_increase' %}
+                                        <i class="fas fa-weight-hanging" aria-hidden="true"></i>
+                                        <span>{{ event.old_value }}kg → {{ event.new_value }}kg</span>
+                                    {% elif event.type == 'reps' %}
+                                        <i class="fas fa-redo" aria-hidden="true"></i>
+                                        <span>{{ event.old_value }} → {{ event.new_value }} reps</span>
+                                    {% elif event.type == 'sets' %}
+                                        <i class="fas fa-plus" aria-hidden="true"></i>
+                                        <span>Added set {{ event.new_value }}</span>
                                     {% endif %}
                                 </div>
                             </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-state">
+                            <div class="empty-state-icon">
+                                <i class="fas fa-chart-line" aria-hidden="true"></i>
+                            </div>
+                            <p>No recent progressions</p>
+                            <small class="text-muted">Complete workouts to see your progress here</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                            <div class="row mt-3">
-                                <div class="col-6">
-                                    <small class="text-muted">Current</small>
-                                    <div class="fw-bold">{{ exercise.current_weight }}kg × {{ exercise.current_reps }}</div>
-                                </div>
-                                <div class="col-6 text-end">
-                                    <small class="text-muted">Volume Trend</small>
-                                    <div class="fw-bold {% if exercise.volume_trend > 0 %}text-success{% elif exercise.volume_trend < 0 %}text-danger{% endif %}">
-                                        {% if exercise.volume_trend > 0 %}+{% endif %}{{ exercise.volume_trend }}%
-                                    </div>
+    <!-- Enhanced Exercise-Specific Progress -->
+    <section aria-labelledby="exercises-heading">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 id="exercises-heading" class="h4 mb-0">Exercise Progress</h2>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Filter exercises">
+                <button type="button" class="btn btn-outline-secondary active" data-filter="all">
+                    All
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="ready">
+                    Ready
+                </button>
+                <button type="button" class="btn btn-outline-secondary" data-filter="close">
+                    Close
+                </button>
+            </div>
+        </div>
+
+        {% if exercises_progress %}
+        <div class="row" id="exercises-grid">
+            {% for exercise in exercises_progress %}
+            <div class="col-lg-6 mb-3 exercise-item"
+                 data-status="{% if exercise.ready_for_progression %}ready{% elif exercise.close_to_progression %}close{% else %}building{% endif %}">
+                <div class="card exercise-progression-card h-100"
+                     onclick="window.location.href='{{ url_for('gym.exercise_progression', exercise_id=exercise.id) }}'"
+                     role="button"
+                     tabindex="0"
+                     aria-label="View progression details for {{ exercise.name }}"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){this.click()}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                                <h3 class="card-title h6 mb-1">{{ exercise.name }}</h3>
+                                <p class="card-text small text-muted mb-0">{{ exercise.muscle_group }}</p>
+                            </div>
+                            <div class="text-end">
+                                {% if exercise.ready_for_progression %}
+                                    <span class="badge bg-success" aria-label="Ready for progression">
+                                        <i class="fas fa-check" aria-hidden="true"></i> Ready
+                                    </span>
+                                {% elif exercise.close_to_progression %}
+                                    <span class="badge bg-warning" aria-label="Close to progression">
+                                        <i class="fas fa-clock" aria-hidden="true"></i> Close
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary" aria-label="Building strength">
+                                        <i class="fas fa-hammer" aria-hidden="true"></i> Building
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="text-muted">Current Performance</small>
+                                <div class="fw-bold">{{ exercise.current_weight }}kg × {{ exercise.current_reps }}</div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <small class="text-muted">Volume Trend</small>
+                                <div class="fw-bold {% if exercise.volume_trend > 0 %}text-success{% elif exercise.volume_trend < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                    {% if exercise.volume_trend > 0 %}
+                                        <i class="fas fa-arrow-up" aria-hidden="true"></i> +{{ exercise.volume_trend }}%
+                                    {% elif exercise.volume_trend < 0 %}
+                                        <i class="fas fa-arrow-down" aria-hidden="true"></i> {{ exercise.volume_trend }}%
+                                    {% else %}
+                                        <i class="fas fa-minus" aria-hidden="true"></i> {{ exercise.volume_trend }}%
+                                    {% endif %}
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="progress mt-2" style="height: 5px;">
-                                <div class="progress-bar {% if exercise.progress_percent >= 80 %}bg-success{% elif exercise.progress_percent >= 50 %}bg-warning{% endif %}"
-                                     style="width: {{ exercise.progress_percent }}%"></div>
+                        <div class="mt-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="text-muted">Progress to Next Level</small>
+                                <small class="text-muted">{{ exercise.progress_percent|round }}%</small>
+                            </div>
+                            <div class="progress">
+                                <div class="progress-bar {% if exercise.progress_percent >= 80 %}bg-success{% elif exercise.progress_percent >= 50 %}bg-warning{% else %}bg-info{% endif %}"
+                                     style="width: {{ exercise.progress_percent }}%"
+                                     role="progressbar"
+                                     aria-valuenow="{{ exercise.progress_percent|round }}"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"
+                                     aria-label="Progress: {{ exercise.progress_percent|round }}%"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-dumbbell" aria-hidden="true"></i>
+            </div>
+            <h3 class="h5">No Exercise Data</h3>
+            <p>Start tracking your workouts to see progression insights here.</p>
+            <a href="{{ url_for('gym.choose_workout') }}" class="btn btn-primary">
+                <i class="fas fa-play" aria-hidden="true"></i> Start a Workout
+            </a>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<!-- Pattern Help Modal -->
+<div class="modal fade" id="patternsHelpModal" tabindex="-1" aria-labelledby="patternsHelpModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="patternsHelpModalLabel">Understanding Training Patterns</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="pattern-indicator ascending me-2"></span>
+                            <strong>Ascending (Pyramid Up)</strong>
+                        </div>
+                        <p class="small text-muted">Weight increases with each set. Example: 40kg → 50kg → 60kg. Good for building strength.</p>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="pattern-indicator descending me-2"></span>
+                            <strong>Descending (Pyramid Down)</strong>
+                        </div>
+                        <p class="small text-muted">Weight decreases with each set. Example: 60kg → 50kg → 40kg. Good for volume training.</p>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="pattern-indicator straight me-2"></span>
+                            <strong>Straight Sets</strong>
+                        </div>
+                        <p class="small text-muted">Same weight across all sets. Example: 50kg × 3 sets. Most common training style.</p>
+                    </div>
+                    <div class="col-12">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="pattern-indicator pyramid me-2"></span>
+                            <strong>Mixed/Variable</strong>
+                        </div>
+                        <p class="small text-muted">Variable weight pattern. May indicate experimentation or specific training goals.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// Volume Chart
+// Enhanced Chart with Better Accessibility and Interactions
 const ctx = document.getElementById('volumeChart').getContext('2d');
 const volumeData = {{ volume_chart_data|tojson }};
 
-new Chart(ctx, {
+const chart = new Chart(ctx, {
     type: 'line',
     data: {
         labels: volumeData.labels,
@@ -267,14 +746,16 @@ new Chart(ctx, {
             data: volumeData.volume,
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.1)',
-            tension: 0.1
+            tension: 0.1,
+            fill: true
         }, {
             label: 'Average Intensity (kg)',
             data: volumeData.intensity,
             borderColor: 'rgb(255, 99, 132)',
             backgroundColor: 'rgba(255, 99, 132, 0.1)',
             tension: 0.1,
-            yAxisID: 'y1'
+            yAxisID: 'y1',
+            fill: true
         }]
     },
     options: {
@@ -284,6 +765,22 @@ new Chart(ctx, {
             mode: 'index',
             intersect: false,
         },
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: {
+                    usePointStyle: true,
+                    padding: 20
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                titleColor: 'white',
+                bodyColor: 'white',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                borderWidth: 1
+            }
+        },
         scales: {
             y: {
                 type: 'linear',
@@ -291,7 +788,13 @@ new Chart(ctx, {
                 position: 'left',
                 title: {
                     display: true,
-                    text: 'Volume (kg)'
+                    text: 'Volume (kg)',
+                    font: {
+                        weight: 'bold'
+                    }
+                },
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)'
                 }
             },
             y1: {
@@ -300,14 +803,137 @@ new Chart(ctx, {
                 position: 'right',
                 title: {
                     display: true,
-                    text: 'Intensity (kg)'
+                    text: 'Intensity (kg)',
+                    font: {
+                        weight: 'bold'
+                    }
                 },
                 grid: {
                     drawOnChartArea: false,
                 }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Date',
+                    font: {
+                        weight: 'bold'
+                    }
+                },
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)'
+                }
+            }
+        },
+        elements: {
+            point: {
+                radius: 4,
+                hoverRadius: 6
             }
         }
     }
 });
+
+// Chart View Toggle
+document.querySelectorAll('[data-chart-view]').forEach(button => {
+    button.addEventListener('click', function() {
+        const view = this.dataset.chartView;
+
+        // Update active button
+        document.querySelectorAll('[data-chart-view]').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+
+        // Toggle dataset visibility
+        if (view === 'volume') {
+            chart.data.datasets[0].hidden = false;
+            chart.data.datasets[1].hidden = true;
+        } else {
+            chart.data.datasets[0].hidden = true;
+            chart.data.datasets[1].hidden = false;
+        }
+
+        chart.update();
+    });
+});
+
+// Exercise Filter Functionality
+document.querySelectorAll('[data-filter]').forEach(button => {
+    button.addEventListener('click', function() {
+        const filter = this.dataset.filter;
+
+        // Update active button
+        document.querySelectorAll('[data-filter]').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+
+        // Filter exercises
+        document.querySelectorAll('.exercise-item').forEach(item => {
+            if (filter === 'all' || item.dataset.status === filter) {
+                item.style.display = 'block';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+});
+
+// Keyboard Navigation for Cards
+document.querySelectorAll('.exercise-progression-card, .pattern-card').forEach(card => {
+    card.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+        }
+    });
+});
+
+// Metric Cards Click Handlers
+document.querySelectorAll('.progression-metric').forEach(metric => {
+    metric.addEventListener('click', function() {
+        // Could navigate to detailed views
+        console.log('Metric clicked:', this.querySelector('.metric-label').textContent);
+    });
+
+    metric.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+        }
+    });
+});
+
+// Loading State Management
+function showLoadingState() {
+    document.querySelectorAll('.progression-metric, .pattern-card, .exercise-progression-card').forEach(el => {
+        el.classList.add('loading-skeleton');
+    });
+}
+
+function hideLoadingState() {
+    document.querySelectorAll('.loading-skeleton').forEach(el => {
+        el.classList.remove('loading-skeleton');
+    });
+}
+
+// Announce changes for screen readers
+function announceChange(message) {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.className = 'visually-hidden';
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+
+    setTimeout(() => {
+        document.body.removeChild(announcement);
+    }, 1000);
+}
+
+// Initialize tooltips if Bootstrap is available
+if (typeof bootstrap !== 'undefined') {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+}
 </script>
 {% endblock %}
