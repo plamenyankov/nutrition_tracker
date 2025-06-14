@@ -44,7 +44,7 @@ def test_production_database():
     else:
         print("❌ Production database connection failed!")
         print("\nTroubleshooting tips:")
-        print("1. Ensure the MySQL server is running at 192.168.11.1:3306")
+        print("1. Ensure the MySQL server is running at 213.91.178.104:3306")
         print("2. Verify the database 'nutri_tracker_prod' exists")
         print("3. Check that user 'remote_user' has access to the production database")
         print("4. Ensure the user is configured with mysql_native_password authentication")

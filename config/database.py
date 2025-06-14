@@ -29,7 +29,7 @@ def get_database_config(environment: str = None) -> DatabaseConfig:
     env = environment or os.getenv('FLASK_ENV', 'development')
 
     # Remote database credentials
-    db_host = os.getenv('DB_HOST', '192.168.11.1')
+    db_host = os.getenv('DB_HOST', '213.91.178.104')
     db_port = int(os.getenv('DB_PORT', '3306'))
     db_user = os.getenv('DB_USER', 'remote_user')
     db_pass = os.getenv('DB_PASS', 'BuGr@d@N4@loB6!')
