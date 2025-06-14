@@ -28,8 +28,16 @@ def get_database_config(environment: str = None) -> DatabaseConfig:
     """Get database configuration based on environment"""
     env = environment or os.getenv('FLASK_ENV', 'development')
 
-    # Remote database credentials
-    db_host = os.getenv('DB_HOST', '213.91.178.104')
+    # Remote database credentials - different IPs for local vs production
+    # Local (with Wireguard): 192.168.11.1
+    # Production (direct): 213.91.178.104
+    if env == 'production':
+        # Production uses direct internet connection
+        db_host = os.getenv('DB_HOST', '213.91.178.104')
+    else:
+        # Development uses Wireguard VPN
+        db_host = os.getenv('DB_HOST_LOCAL', '192.168.11.1')
+
     db_port = int(os.getenv('DB_PORT', '3306'))
     db_user = os.getenv('DB_USER', 'remote_user')
     db_pass = os.getenv('DB_PASS', 'BuGr@d@N4@loB6!')
