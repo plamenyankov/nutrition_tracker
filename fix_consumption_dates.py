@@ -32,7 +32,7 @@ def fix_consumption_data():
     """Fix consumption data with date format conversion"""
 
     # Database connections
-    sqlite_path = 'database_old.db'
+    sqlite_path = 'database.db'
     mysql_config = {
         'host': os.getenv('DB_HOST', '192.168.11.1'),
         'port': int(os.getenv('DB_PORT', '3306')),
@@ -117,7 +117,7 @@ def fix_weight_data():
     """Fix body weight tracking data with date format conversion"""
 
     # Database connections
-    sqlite_path = 'database_old.db'
+    sqlite_path = 'database.db'
     mysql_config = {
         'host': os.getenv('DB_HOST', '192.168.11.1'),
         'port': int(os.getenv('DB_PORT', '3306')),

@@ -1,6 +1,6 @@
 {
   "migration_date": "2025-06-14T08:25:22.653853",
-  "source_database": "database_old.db",
+  "source_database": "database.db",
   "target_database": {
     "host": "192.168.11.1",
     "database": "nutri_tracker_dev"
