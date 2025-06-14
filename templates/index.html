@@ -28,7 +28,7 @@
                             <td>{{ avg_consumed.net_carb }}</td>
                             <td>{{ avg_consumed.protein }}</td>
                             <td>{{ average_weight }}</td>
-                            <td>{{ avg_consumed.protein/average_weight }}</td>
+                            <td>{{ (avg_consumed.protein/average_weight)|round(2) if average_weight > 0 and avg_consumed.protein > 0 else 0 }}</td>
                         </tr>
                     </tbody>
                 </table>
