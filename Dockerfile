@@ -50,7 +50,7 @@ if [ "$USE_MYSQL" = "true" ]; then\n\
     fi\n\
     \n\
     echo "Testing MySQL connection to $DB_HOST:$DB_PORT..."\n\
-    python test_mysql_connection.py || {\n\
+    python test_current_db.py || {\n\
         echo "MySQL connection failed! Check your environment variables."\n\
         echo "DB_HOST: $DB_HOST"\n\
         echo "DB_PORT: $DB_PORT"\n\
