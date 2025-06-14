@@ -129,8 +129,23 @@ def get_source_sqlite_path(args):
     if args.source_path:
         return args.source_path
     elif args.source == 'production':
+        # In Docker container, the volume is mounted at /app/data
+        if os.path.exists('/app/data/database.db'):
+            return '/app/data/database.db'
         return os.getenv('PROD_SQLITE_PATH', '/root/nutrition_tracker_data/database.db')
     else:
+        # Try multiple possible locations for local database
+        possible_paths = [
+            '/app/data/database.db',  # Docker volume mount
+            'database.db',            # Current directory
+            'database_old.db',        # Backup database
+            '/app/database.db'        # App directory
+        ]
+
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
+
         return os.getenv('LOCAL_SQLITE_PATH', 'database.db')
 
 def main():
