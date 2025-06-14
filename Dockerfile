@@ -63,7 +63,7 @@ if [ "$USE_MYSQL" = "true" ]; then\n\
     # Check if migration is needed\n\
     if [ "$RUN_MIGRATION" = "true" ]; then\n\
         echo "Running MySQL migration..."\n\
-        python migrate_to_mysql.py --full-migration || {\n\
+        python migrate_to_mysql.py --env production || {\n\
             echo "Migration failed!"\n\
             exit 1\n\
         }\n\
