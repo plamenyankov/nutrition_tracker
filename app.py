@@ -3,6 +3,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 import pandas as pd
 import numpy as np
 import os
+from dotenv import load_dotenv
 from models.food import FoodDatabase
 from models.foods.food_blueprint import food_blueprint
 # from models.nutrition_app.routes import nutrition_app  # Commented out - replaced by new blueprints
@@ -14,6 +15,9 @@ from models.blueprints.analytics_bp import analytics_bp
 from models.blueprints.gym_bp import gym_bp
 from models.calorie_weight import CalorieWeight
 from datetime import datetime
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -102,6 +106,18 @@ def home():
     weights = calorie_weight.fetch_weights()
     avg_consumed = food_db.get_avg_nutrition_consumed()
 
+    # Handle None values in avg_consumed
+    if avg_consumed is None:
+        avg_consumed = {
+            "kcal": 0, "fat": 0, "carb": 0, "fiber": 0,
+            "net_carb": 0, "protein": 0, "cnt": 0
+        }
+    else:
+        # Ensure all values are not None
+        for key in ["kcal", "fat", "carb", "fiber", "net_carb", "protein", "cnt"]:
+            if avg_consumed.get(key) is None:
+                avg_consumed[key] = 0
+
     # Initialize variables with defaults
     dates = []
     proteins = []
@@ -160,6 +176,7 @@ def home():
         date_calories = df_calories['date'].to_list()
         data_calories = df_calories['calories'].to_list()
 
+    if len(weights) > 0:
         df_weight = pd.DataFrame(weights).reset_index()
         # Handle multiple date formats for weights
         try:

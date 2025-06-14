@@ -664,20 +664,29 @@ def exercise_comprehensive_progression(exercise_id):
     pyramid_data = adv_service.detect_pyramid_pattern(user_id, exercise_id)
 
     # Get current workout sets if in progress
-    conn = sqlite3.connect(gym_service.db_path)
-    cursor = conn.cursor()
+    with gym_service.get_connection() as conn:
+        cursor = conn.cursor()
 
-    cursor.execute('''
-        SELECT wset.id, wset.set_number, wset.weight, wset.reps
-        FROM workout_sets wset
-        JOIN workout_sessions ws ON wset.session_id = ws.id
-        WHERE ws.user_id = ? AND wset.exercise_id = ?
-              AND ws.status = 'in_progress'
-        ORDER BY wset.set_number
-    ''', (user_id, exercise_id))
+        if gym_service.connection_manager.use_mysql:
+            cursor.execute('''
+                SELECT wset.id, wset.set_number, wset.weight, wset.reps
+                FROM workout_sets wset
+                JOIN workout_sessions ws ON wset.session_id = ws.id
+                WHERE ws.user_id = %s AND wset.exercise_id = %s
+                      AND ws.status = 'in_progress'
+                ORDER BY wset.set_number
+            ''', (user_id, exercise_id))
+        else:
+            cursor.execute('''
+                SELECT wset.id, wset.set_number, wset.weight, wset.reps
+                FROM workout_sets wset
+                JOIN workout_sessions ws ON wset.session_id = ws.id
+                WHERE ws.user_id = ? AND wset.exercise_id = ?
+                      AND ws.status = 'in_progress'
+                ORDER BY wset.set_number
+            ''', (user_id, exercise_id))
 
-    current_sets = cursor.fetchall()
-    conn.close()
+        current_sets = cursor.fetchall()
 
     # Analyze each set with detailed progression info
     sets_analysis = []
@@ -751,20 +760,29 @@ def exercise_set_progression_analysis(exercise_id):
     sets_data = []
 
     # Get the most recent sets for this exercise
-    conn = sqlite3.connect(gym_service.db_path)
-    cursor = conn.cursor()
+    with gym_service.get_connection() as conn:
+        cursor = conn.cursor()
 
-    cursor.execute('''
-        SELECT DISTINCT wset.id, wset.set_number, wset.weight, wset.reps
-        FROM workout_sets wset
-        JOIN workout_sessions ws ON wset.session_id = ws.id
-        WHERE ws.user_id = ? AND wset.exercise_id = ?
-              AND ws.status = 'in_progress'
-        ORDER BY wset.set_number
-    ''', (user_id, exercise_id))
+        if gym_service.connection_manager.use_mysql:
+            cursor.execute('''
+                SELECT DISTINCT wset.id, wset.set_number, wset.weight, wset.reps
+                FROM workout_sets wset
+                JOIN workout_sessions ws ON wset.session_id = ws.id
+                WHERE ws.user_id = %s AND wset.exercise_id = %s
+                      AND ws.status = 'in_progress'
+                ORDER BY wset.set_number
+            ''', (user_id, exercise_id))
+        else:
+            cursor.execute('''
+                SELECT DISTINCT wset.id, wset.set_number, wset.weight, wset.reps
+                FROM workout_sets wset
+                JOIN workout_sessions ws ON wset.session_id = ws.id
+                WHERE ws.user_id = ? AND wset.exercise_id = ?
+                      AND ws.status = 'in_progress'
+                ORDER BY wset.set_number
+            ''', (user_id, exercise_id))
 
-    current_sets = cursor.fetchall()
-    conn.close()
+        current_sets = cursor.fetchall()
 
     # Analyze each set
     for set_id, set_number, weight, reps in current_sets:
@@ -796,172 +814,250 @@ def exercise_set_progression_analysis(exercise_id):
 @login_required
 def progression_dashboard():
     """Main progression dashboard with analytics"""
-    from models.services.advanced_progression_service import AdvancedProgressionService
-    from models.services.progression_service import ProgressionService
-    from datetime import datetime, timedelta
+    try:
+        from models.services.advanced_progression_service import AdvancedProgressionService
+        from models.services.progression_service import ProgressionService
+        from datetime import datetime, timedelta
 
-    adv_progression_service = AdvancedProgressionService()
-    progression_service = ProgressionService()
+        adv_progression_service = AdvancedProgressionService()
+        progression_service = ProgressionService()
 
-    user_id = gym_service.user_id
+        user_id = gym_service.user_id
 
-    # Get metrics
-    conn = sqlite3.connect(gym_service.db_path)
-    cursor = conn.cursor()
+        # Initialize default values
+        total_progressions = 0
+        this_month = 0
+        pattern_analysis = []
+        recent_progressions = []
+        volume_data = {'labels': [], 'volume': [], 'intensity': []}
+        exercises_progress = []
 
-    # Total progressions
-    cursor.execute('''
-        SELECT COUNT(*) FROM progression_history WHERE user_id = ?
-    ''', (user_id,))
-    total_progressions = cursor.fetchone()[0]
+        # Get metrics
+        with gym_service.get_connection() as conn:
+            cursor = conn.cursor()
 
-    # This month progressions
-    start_of_month = datetime.now().replace(day=1).strftime('%Y-%m-%d')
-    cursor.execute('''
-        SELECT COUNT(*) FROM progression_history
-        WHERE user_id = ? AND progression_date >= ?
-    ''', (user_id, start_of_month))
-    this_month = cursor.fetchone()[0]
+            try:
+                # Total progressions
+                if gym_service.connection_manager.use_mysql:
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM progression_history WHERE user_id = %s
+                    ''', (user_id,))
+                    result = cursor.fetchone()
+                    total_progressions = result[0] if result else 0
 
-    # Get exercises with patterns
-    cursor.execute('''
-        SELECT e.id, e.name, e.muscle_group, epp.pattern_type,
-               epp.typical_sets, epp.confidence_score
-        FROM exercises e
-        LEFT JOIN exercise_progression_patterns epp
-            ON e.id = epp.exercise_id AND epp.user_id = ?
-        WHERE e.id IN (
-            SELECT DISTINCT exercise_id FROM workout_sets ws
-            JOIN workout_sessions wss ON ws.session_id = wss.id
-            WHERE wss.user_id = ?
-        )
-    ''', (user_id, user_id))
+                    # This month progressions
+                    start_of_month = datetime.now().replace(day=1).strftime('%Y-%m-%d')
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM progression_history
+                        WHERE user_id = %s AND progression_date >= %s
+                    ''', (user_id, start_of_month))
+                    result = cursor.fetchone()
+                    this_month = result[0] if result else 0
+                else:
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM progression_history WHERE user_id = ?
+                    ''', (user_id,))
+                    result = cursor.fetchone()
+                    total_progressions = result[0] if result else 0
 
-    pattern_analysis = []
-    exercises_with_patterns = cursor.fetchall()
+                    # This month progressions
+                    start_of_month = datetime.now().replace(day=1).strftime('%Y-%m-%d')
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM progression_history
+                        WHERE user_id = ? AND progression_date >= ?
+                    ''', (user_id, start_of_month))
+                    result = cursor.fetchone()
+                    this_month = result[0] if result else 0
 
-    for ex_id, name, muscle_group, pattern_type, typical_sets, confidence in exercises_with_patterns:
-        if pattern_type is None:
-            # Detect pattern
-            pattern_info = adv_progression_service.detect_pyramid_pattern(user_id, ex_id)
-            pattern_type = pattern_info['pattern']
-            confidence = pattern_info['confidence']
+                # Get exercises with patterns
+                if gym_service.connection_manager.use_mysql:
+                    cursor.execute('''
+                        SELECT e.id, e.name, e.muscle_group, epp.pattern_type,
+                               epp.typical_sets, epp.confidence_score
+                        FROM exercises e
+                        LEFT JOIN exercise_progression_patterns epp
+                            ON e.id = epp.exercise_id AND epp.user_id = %s
+                        WHERE e.id IN (
+                            SELECT DISTINCT exercise_id FROM workout_sets ws
+                            JOIN workout_sessions wss ON ws.session_id = wss.id
+                            WHERE wss.user_id = %s
+                        )
+                    ''', (user_id, user_id))
+                else:
+                    cursor.execute('''
+                        SELECT e.id, e.name, e.muscle_group, epp.pattern_type,
+                               epp.typical_sets, epp.confidence_score
+                        FROM exercises e
+                        LEFT JOIN exercise_progression_patterns epp
+                            ON e.id = epp.exercise_id AND epp.user_id = ?
+                        WHERE e.id IN (
+                            SELECT DISTINCT exercise_id FROM workout_sets ws
+                            JOIN workout_sessions wss ON ws.session_id = wss.id
+                            WHERE wss.user_id = ?
+                        )
+                    ''', (user_id, user_id))
 
-        pattern_analysis.append({
-            'id': ex_id,
-            'name': name,
-            'muscle_group': muscle_group,
-            'pattern': pattern_type or 'unknown',
-            'typical_sets': typical_sets or 3,
-            'confidence': confidence or 0
-        })
+                exercises_with_patterns = cursor.fetchall()
 
-    # Get recent progressions
-    cursor.execute('''
-        SELECT ph.progression_date, e.name, ph.progression_type,
-               ph.old_weight, ph.new_weight
-        FROM progression_history ph
-        JOIN exercises e ON ph.exercise_id = e.id
-        WHERE ph.user_id = ?
-        ORDER BY ph.progression_date DESC
-        LIMIT 10
-    ''', (user_id,))
+                for ex_id, name, muscle_group, pattern_type, typical_sets, confidence in exercises_with_patterns:
+                    if pattern_type is None:
+                        # Detect pattern
+                        pattern_info = adv_progression_service.detect_pyramid_pattern(user_id, ex_id)
+                        pattern_type = pattern_info['pattern']
+                        confidence = pattern_info['confidence']
 
-    recent_progressions = []
-    for row in cursor.fetchall():
-        event = {
-            'date': row[0],
-            'exercise': row[1],
-            'type': row[2]
+                    pattern_analysis.append({
+                        'id': ex_id,
+                        'name': name,
+                        'muscle_group': muscle_group,
+                        'pattern': pattern_type or 'unknown',
+                        'typical_sets': typical_sets or 3,
+                        'confidence': confidence or 0
+                    })
+
+                # Get recent progressions
+                if gym_service.connection_manager.use_mysql:
+                    cursor.execute('''
+                        SELECT ph.progression_date, e.name, ph.progression_type,
+                               ph.old_weight, ph.new_weight
+                        FROM progression_history ph
+                        JOIN exercises e ON ph.exercise_id = e.id
+                        WHERE ph.user_id = %s
+                        ORDER BY ph.progression_date DESC
+                        LIMIT 10
+                    ''', (user_id,))
+                else:
+                    cursor.execute('''
+                        SELECT ph.progression_date, e.name, ph.progression_type,
+                               ph.old_weight, ph.new_weight
+                        FROM progression_history ph
+                        JOIN exercises e ON ph.exercise_id = e.id
+                        WHERE ph.user_id = ?
+                        ORDER BY ph.progression_date DESC
+                        LIMIT 10
+                    ''', (user_id,))
+
+                for row in cursor.fetchall():
+                    event = {
+                        'date': row[0],
+                        'exercise': row[1],
+                        'type': row[2]
+                    }
+
+                    if row[2] == 'weight' or row[2] == 'weight_increase':
+                        event['old_value'] = row[3]
+                        event['new_value'] = row[4]
+
+                    recent_progressions.append(event)
+
+                # Get volume data for chart
+                thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+                if gym_service.connection_manager.use_mysql:
+                    cursor.execute('''
+                        SELECT ws.date, SUM(vt.total_volume), AVG(vt.avg_intensity)
+                        FROM workout_sessions ws
+                        JOIN workout_volume_tracking vt ON ws.id = vt.workout_id
+                        WHERE ws.user_id = %s AND ws.date >= %s
+                        GROUP BY ws.date
+                        ORDER BY ws.date
+                    ''', (user_id, thirty_days_ago))
+                else:
+                    cursor.execute('''
+                        SELECT ws.date, SUM(vt.total_volume), AVG(vt.avg_intensity)
+                        FROM workout_sessions ws
+                        JOIN workout_volume_tracking vt ON ws.id = vt.workout_id
+                        WHERE ws.user_id = ? AND ws.date >= ?
+                        GROUP BY ws.date
+                        ORDER BY ws.date
+                    ''', (user_id, thirty_days_ago))
+
+                for date, volume, intensity in cursor.fetchall():
+                    volume_data['labels'].append(date)
+                    volume_data['volume'].append(round(volume or 0, 1))
+                    volume_data['intensity'].append(round(intensity or 0, 1))
+
+                # Get unique exercises for progress tracking
+                if gym_service.connection_manager.use_mysql:
+                    cursor.execute('''
+                        SELECT DISTINCT e.id, e.name, e.muscle_group
+                        FROM exercises e
+                        JOIN workout_sets ws ON e.id = ws.exercise_id
+                        JOIN workout_sessions wss ON ws.session_id = wss.id
+                        WHERE wss.user_id = %s
+                    ''', (user_id,))
+                else:
+                    cursor.execute('''
+                        SELECT DISTINCT e.id, e.name, e.muscle_group
+                        FROM exercises e
+                        JOIN workout_sets ws ON e.id = ws.exercise_id
+                        JOIN workout_sessions wss ON ws.session_id = wss.id
+                        WHERE wss.user_id = ?
+                    ''', (user_id,))
+
+                exercises = cursor.fetchall()
+
+            except Exception as e:
+                # Tables might not exist or be empty
+                print(f"Warning: Could not fetch progression data: {e}")
+                exercises = []
+
+        # Calculate volume increase
+        volume_increase = 0
+        if len(volume_data['volume']) >= 2:
+            first_volume = volume_data['volume'][0] or 1
+            last_volume = volume_data['volume'][-1] or 1
+            volume_increase = round(((last_volume - first_volume) / first_volume) * 100, 1)
+
+        # Get exercises progress
+        exercises_progressed = 0
+
+        for ex_id, name, muscle_group in exercises:
+            try:
+                # Get progression readiness
+                readiness = progression_service.check_progression_readiness(user_id, ex_id)
+
+                # Get current performance
+                last_perf = gym_service.get_last_exercise_performance(ex_id)
+
+                # Get volume trend
+                volume_trend = adv_progression_service.get_volume_trend(user_id, ex_id, days=30)
+
+                if readiness.get('ready'):
+                    exercises_progressed += 1
+
+                exercises_progress.append({
+                    'id': ex_id,
+                    'name': name,
+                    'muscle_group': muscle_group,
+                    'ready_for_progression': readiness.get('ready', False),
+                    'close_to_progression': readiness.get('suggestion') == 'increase_reps',
+                    'current_weight': last_perf['max_weight'] if last_perf else 0,
+                    'current_reps': last_perf['max_reps'] if last_perf else 0,
+                    'volume_trend': volume_trend.get('volume_change_percent', 0),
+                    'progress_percent': min(100, (readiness.get('current_avg_reps', 0) /
+                                                 readiness.get('target_reps', 15)) * 100) if readiness else 0
+                })
+            except Exception as e:
+                # Skip exercises that cause errors
+                print(f"Warning: Could not process exercise {name}: {e}")
+                continue
+
+        metrics = {
+            'total_progressions': total_progressions,
+            'this_month': this_month,
+            'volume_increase': volume_increase,
+            'exercises_progressed': exercises_progressed,
+            'total_exercises': len(exercises)
         }
 
-        if row[2] == 'weight' or row[2] == 'weight_increase':
-            event['old_value'] = row[3]
-            event['new_value'] = row[4]
+        return render_template('gym/progression/dashboard.html',
+                             metrics=metrics,
+                             pattern_analysis=pattern_analysis[:6],  # Show top 6
+                             recent_progressions=recent_progressions,
+                             volume_chart_data=volume_data,
+                             exercises_progress=exercises_progress)
 
-        recent_progressions.append(event)
-
-    # Get volume data for chart
-    volume_data = {'labels': [], 'volume': [], 'intensity': []}
-
-    # Get last 30 days of volume data
-    thirty_days_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
-    cursor.execute('''
-        SELECT ws.date, SUM(vt.total_volume), AVG(vt.avg_intensity)
-        FROM workout_sessions ws
-        JOIN workout_volume_tracking vt ON ws.id = vt.workout_id
-        WHERE ws.user_id = ? AND ws.date >= ?
-        GROUP BY ws.date
-        ORDER BY ws.date
-    ''', (user_id, thirty_days_ago))
-
-    for date, volume, intensity in cursor.fetchall():
-        volume_data['labels'].append(date)
-        volume_data['volume'].append(round(volume or 0, 1))
-        volume_data['intensity'].append(round(intensity or 0, 1))
-
-    # Calculate volume increase
-    if len(volume_data['volume']) >= 2:
-        first_volume = volume_data['volume'][0] or 1
-        last_volume = volume_data['volume'][-1] or 1
-        volume_increase = round(((last_volume - first_volume) / first_volume) * 100, 1)
-    else:
-        volume_increase = 0
-
-    # Get exercises progress
-    exercises_progress = []
-
-    # Get unique exercises
-    cursor.execute('''
-        SELECT DISTINCT e.id, e.name, e.muscle_group
-        FROM exercises e
-        JOIN workout_sets ws ON e.id = ws.exercise_id
-        JOIN workout_sessions wss ON ws.session_id = wss.id
-        WHERE wss.user_id = ?
-    ''', (user_id,))
-
-    exercises = cursor.fetchall()
-    conn.close()
-
-    exercises_progressed = 0
-
-    for ex_id, name, muscle_group in exercises:
-        # Get progression readiness
-        readiness = progression_service.check_progression_readiness(user_id, ex_id)
-
-        # Get current performance
-        last_perf = gym_service.get_last_exercise_performance(ex_id)
-
-        # Get volume trend
-        volume_trend = adv_progression_service.get_volume_trend(user_id, ex_id, days=30)
-
-        if readiness.get('ready'):
-            exercises_progressed += 1
-
-        exercises_progress.append({
-            'id': ex_id,
-            'name': name,
-            'muscle_group': muscle_group,
-            'ready_for_progression': readiness.get('ready', False),
-            'close_to_progression': readiness.get('suggestion') == 'increase_reps',
-            'current_weight': last_perf['max_weight'] if last_perf else 0,
-            'current_reps': last_perf['max_reps'] if last_perf else 0,
-            'volume_trend': volume_trend.get('volume_change_percent', 0),
-            'progress_percent': min(100, (readiness.get('current_avg_reps', 0) /
-                                         readiness.get('target_reps', 15)) * 100) if readiness else 0
-        })
-
-    metrics = {
-        'total_progressions': total_progressions,
-        'this_month': this_month,
-        'volume_increase': volume_increase,
-        'exercises_progressed': exercises_progressed,
-        'total_exercises': len(exercises)
-    }
-
-    return render_template('gym/progression/dashboard.html',
-                         metrics=metrics,
-                         pattern_analysis=pattern_analysis[:6],  # Show top 6
-                         recent_progressions=recent_progressions,
-                         volume_chart_data=volume_data,
-                         exercises_progress=exercises_progress)
+    except Exception as e:
+        # If there's any error, return a simple message
+        flash(f'Progression dashboard temporarily unavailable: {str(e)}', 'warning')
+        return redirect(url_for('gym.dashboard'))
