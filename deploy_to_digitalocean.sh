@@ -79,10 +79,10 @@ echo -e "${GREEN}✅ Image pushed to Docker Hub successfully!${NC}"
 # Step 5: Ask user about database choice
 echo -e "${YELLOW}Choose database option:${NC}"
 echo "1) SQLite (default, data stored in volume)"
-echo "2) MySQL (remote database at ${MYSQL_HOST})"
-echo "3) MySQL with migration (migrate from SQLite to MySQL)"
-read -p "Enter choice (1-3) [1]: " db_choice
-db_choice=${db_choice:-1}
+echo "2) MySQL Production (remote database at ${MYSQL_HOST})"
+echo "3) MySQL Production with migration (migrate from SQLite to MySQL)"
+read -p "Enter choice (1-3) [2]: " db_choice
+db_choice=${db_choice:-2}
 
 # Step 6: Deploy to DigitalOcean
 echo -e "${GREEN}Deploying to DigitalOcean droplet...${NC}"
@@ -115,12 +115,13 @@ if [ "$db_choice" = "3" ]; then
     echo "Migration will be performed on startup..."
 fi
 
-# Run new container with MySQL configuration
-echo "Starting new container with MySQL..."
+# Run new container with MySQL Production configuration
+echo "Starting new container with MySQL Production..."
 docker run -d \\
     --name ${CONTAINER_NAME} \\
     -p 80:5000 \\
     -v /root/nutrition_tracker_data:/app/data \\
+    --network host \\
     -e SECRET_KEY="\$(openssl rand -hex 32)" \\
     -e OPENAI_API_KEY="\$OPENAI_API_KEY" \\
     -e USE_MYSQL=true \\
@@ -137,11 +138,11 @@ docker run -d \\
     ${DOCKER_FULL_NAME}
 
 # Check if container is running
-sleep 5
+sleep 10
 if docker ps | grep -q ${CONTAINER_NAME}; then
-    echo "✅ Deployment successful! Container is running with MySQL."
+    echo "✅ Deployment successful! Container is running with MySQL Production."
     echo "Container logs:"
-    docker logs --tail 30 ${CONTAINER_NAME}
+    docker logs --tail 50 ${CONTAINER_NAME}
 else
     echo "❌ Deployment failed! Container is not running."
     echo "Container logs:"
@@ -149,7 +150,7 @@ else
     exit 1
 fi
 
-echo "MySQL deployment completed successfully!"
+echo "MySQL Production deployment completed successfully!"
 EOF
 )
 else
@@ -209,7 +210,8 @@ if [ $? -eq 0 ]; then
     echo -e "${GREEN}Your app should be available at: http://${DROPLET_IP}${NC}"
 
     if [ "$db_choice" = "2" ] || [ "$db_choice" = "3" ]; then
-        echo -e "${GREEN}Database: MySQL at ${MYSQL_HOST}:${MYSQL_PORT}${NC}"
+        echo -e "${GREEN}Database: MySQL Production at ${MYSQL_HOST}:${MYSQL_PORT}${NC}"
+        echo -e "${GREEN}Database Name: ${MYSQL_DB_PROD}${NC}"
         echo -e "${YELLOW}You can verify the database connection by checking container logs:${NC}"
         echo -e "${YELLOW}ssh ${DROPLET_USER}@${DROPLET_IP} 'docker logs ${CONTAINER_NAME}'${NC}"
     else
