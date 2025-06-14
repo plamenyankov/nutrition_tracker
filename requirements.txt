@@ -5,5 +5,5 @@ plotly
 openai>=1.0.0
 python-dotenv
 flask-login
-mysql-connector-python>=8.0.0
-PyMySQL>=1.0.0
+mysql-connector-python==8.2.0
+PyMySQL==1.1.0
