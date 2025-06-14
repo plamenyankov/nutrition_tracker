@@ -14,6 +14,14 @@ DOCKER_IMAGE_NAME="nutrition-tracker"
 DOCKER_TAG="latest"
 DOCKER_FULL_NAME="${DOCKER_USERNAME}/${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
 
+# MySQL Configuration
+MYSQL_HOST="192.168.11.1"
+MYSQL_PORT="3306"
+MYSQL_USER="remote_user"
+MYSQL_PASS="BuGr@d@N4@loB6!"
+MYSQL_DB_PROD="nutri_tracker_prod"
+MYSQL_DB_DEV="nutri_tracker_dev"
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -68,11 +76,21 @@ fi
 
 echo -e "${GREEN}✅ Image pushed to Docker Hub successfully!${NC}"
 
-# Step 5: Deploy to DigitalOcean
+# Step 5: Ask user about database choice
+echo -e "${YELLOW}Choose database option:${NC}"
+echo "1) SQLite (default, data stored in volume)"
+echo "2) MySQL (remote database at ${MYSQL_HOST})"
+echo "3) MySQL with migration (migrate from SQLite to MySQL)"
+read -p "Enter choice (1-3) [1]: " db_choice
+db_choice=${db_choice:-1}
+
+# Step 6: Deploy to DigitalOcean
 echo -e "${GREEN}Deploying to DigitalOcean droplet...${NC}"
 
-# Create deployment commands
-DEPLOY_COMMANDS=$(cat <<EOF
+# Create deployment commands based on database choice
+if [ "$db_choice" = "2" ] || [ "$db_choice" = "3" ]; then
+    # MySQL deployment
+    DEPLOY_COMMANDS=$(cat <<EOF
 # Stop and remove existing container
 echo "Stopping existing container..."
 docker stop ${CONTAINER_NAME} 2>/dev/null || true
@@ -84,17 +102,77 @@ docker pull ${DOCKER_FULL_NAME}
 
 # Get OPENAI_API_KEY from environment or .env file
 if [ -z "\$OPENAI_API_KEY" ]; then
-    # Try to get from existing container
-    OPENAI_API_KEY=\$(docker inspect ${CONTAINER_NAME} 2>/dev/null | grep OPENAI_API_KEY | head -1 | cut -d'"' -f4)
-
-    # If still empty, try from .env file
-    if [ -z "\$OPENAI_API_KEY" ] && [ -f /root/nutrition_tracker/.env ]; then
+    # Try to get from existing .env file
+    if [ -f /root/nutrition_tracker/.env ]; then
         export OPENAI_API_KEY=\$(grep OPENAI_API_KEY /root/nutrition_tracker/.env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
     fi
 fi
 
-# Run new container with environment variables
-echo "Starting new container..."
+# Set migration flag
+RUN_MIGRATION="false"
+if [ "$db_choice" = "3" ]; then
+    RUN_MIGRATION="true"
+    echo "Migration will be performed on startup..."
+fi
+
+# Run new container with MySQL configuration
+echo "Starting new container with MySQL..."
+docker run -d \\
+    --name ${CONTAINER_NAME} \\
+    -p 80:5000 \\
+    -v /root/nutrition_tracker_data:/app/data \\
+    -e SECRET_KEY="\$(openssl rand -hex 32)" \\
+    -e OPENAI_API_KEY="\$OPENAI_API_KEY" \\
+    -e USE_MYSQL=true \\
+    -e FLASK_ENV=production \\
+    -e DEBUG=false \\
+    -e DB_HOST=${MYSQL_HOST} \\
+    -e DB_PORT=${MYSQL_PORT} \\
+    -e DB_USER=${MYSQL_USER} \\
+    -e DB_PASS=${MYSQL_PASS} \\
+    -e DB_NAME_DEV=${MYSQL_DB_DEV} \\
+    -e DB_NAME_PROD=${MYSQL_DB_PROD} \\
+    -e RUN_MIGRATION=\$RUN_MIGRATION \\
+    --restart unless-stopped \\
+    ${DOCKER_FULL_NAME}
+
+# Check if container is running
+sleep 5
+if docker ps | grep -q ${CONTAINER_NAME}; then
+    echo "✅ Deployment successful! Container is running with MySQL."
+    echo "Container logs:"
+    docker logs --tail 30 ${CONTAINER_NAME}
+else
+    echo "❌ Deployment failed! Container is not running."
+    echo "Container logs:"
+    docker logs ${CONTAINER_NAME}
+    exit 1
+fi
+
+echo "MySQL deployment completed successfully!"
+EOF
+)
+else
+    # SQLite deployment (original)
+    DEPLOY_COMMANDS=$(cat <<EOF
+# Stop and remove existing container
+echo "Stopping existing container..."
+docker stop ${CONTAINER_NAME} 2>/dev/null || true
+docker rm ${CONTAINER_NAME} 2>/dev/null || true
+
+# Pull the latest image from Docker Hub
+echo "Pulling latest image from Docker Hub..."
+docker pull ${DOCKER_FULL_NAME}
+
+# Get OPENAI_API_KEY from environment or .env file
+if [ -z "\$OPENAI_API_KEY" ]; then
+    if [ -f /root/nutrition_tracker/.env ]; then
+        export OPENAI_API_KEY=\$(grep OPENAI_API_KEY /root/nutrition_tracker/.env | cut -d '=' -f2 | tr -d '"' | tr -d "'")
+    fi
+fi
+
+# Run new container with SQLite configuration
+echo "Starting new container with SQLite..."
 docker run -d \\
     --name ${CONTAINER_NAME} \\
     -p 80:5000 \\
@@ -102,14 +180,15 @@ docker run -d \\
     -e SECRET_KEY="\$(openssl rand -hex 32)" \\
     -e OPENAI_API_KEY="\$OPENAI_API_KEY" \\
     -e DATABASE_PATH="/app/data/database.db" \\
-    -e DEBUG=False \\
+    -e USE_MYSQL=false \\
+    -e DEBUG=false \\
     --restart unless-stopped \\
     ${DOCKER_FULL_NAME}
 
 # Check if container is running
 sleep 3
 if docker ps | grep -q ${CONTAINER_NAME}; then
-    echo "✅ Deployment successful! Container is running."
+    echo "✅ Deployment successful! Container is running with SQLite."
     docker logs --tail 20 ${CONTAINER_NAME}
 else
     echo "❌ Deployment failed! Container is not running."
@@ -117,9 +196,10 @@ else
     exit 1
 fi
 
-echo "Deployment completed successfully!"
+echo "SQLite deployment completed successfully!"
 EOF
 )
+fi
 
 # Execute deployment via SSH
 ssh -o StrictHostKeyChecking=no ${DROPLET_USER}@${DROPLET_IP} "$DEPLOY_COMMANDS"
@@ -127,6 +207,14 @@ ssh -o StrictHostKeyChecking=no ${DROPLET_USER}@${DROPLET_IP} "$DEPLOY_COMMANDS"
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
     echo -e "${GREEN}Your app should be available at: http://${DROPLET_IP}${NC}"
+
+    if [ "$db_choice" = "2" ] || [ "$db_choice" = "3" ]; then
+        echo -e "${GREEN}Database: MySQL at ${MYSQL_HOST}:${MYSQL_PORT}${NC}"
+        echo -e "${YELLOW}You can verify the database connection by checking container logs:${NC}"
+        echo -e "${YELLOW}ssh ${DROPLET_USER}@${DROPLET_IP} 'docker logs ${CONTAINER_NAME}'${NC}"
+    else
+        echo -e "${GREEN}Database: SQLite (persistent volume)${NC}"
+    fi
 else
     echo -e "${RED}❌ Deployment failed!${NC}"
     exit 1
