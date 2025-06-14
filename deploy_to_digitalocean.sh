@@ -121,7 +121,6 @@ docker run -d \\
     --name ${CONTAINER_NAME} \\
     -p 80:5000 \\
     -v /root/nutrition_tracker_data:/app/data \\
-    --network host \\
     -e SECRET_KEY="\$(openssl rand -hex 32)" \\
     -e OPENAI_API_KEY="\$OPENAI_API_KEY" \\
     -e USE_MYSQL=true \\
