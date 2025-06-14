@@ -131,7 +131,7 @@ def get_source_sqlite_path(args):
     elif args.source == 'production':
         return os.getenv('PROD_SQLITE_PATH', '/root/nutrition_tracker_data/database.db')
     else:
-        return os.getenv('LOCAL_SQLITE_PATH', 'database_old.db')
+        return os.getenv('LOCAL_SQLITE_PATH', 'database.db')
 
 def main():
     """Execute complete migration process"""
