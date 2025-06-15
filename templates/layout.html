@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Nutrition Tracker{% endblock %}</title>
+    <title>{% block title %}VitalSync{% endblock %}</title>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -36,6 +36,98 @@
             padding-bottom: 80px;
         }
     }
+
+    /* Enhanced Navigation Styling */
+    .navbar-brand {
+        font-weight: 700;
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        transition: all 0.3s ease;
+    }
+
+    .navbar-brand:hover {
+        transform: scale(1.05);
+        -webkit-text-fill-color: transparent;
+    }
+
+    .navbar-brand i {
+        color: #28a745;
+        margin-right: 0.5rem;
+    }
+
+    .nav-link {
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .nav-link:hover {
+        transform: translateY(-1px);
+    }
+
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        border-radius: 8px;
+        padding: 0.5rem 0;
+        margin-top: 0.5rem;
+    }
+
+    .dropdown-item {
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-radius: 0;
+    }
+
+    .dropdown-item:hover {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        transform: translateX(5px);
+    }
+
+    .dropdown-item i {
+        width: 20px;
+        margin-right: 0.5rem;
+    }
+
+    .dropdown-divider {
+        margin: 0.5rem 0;
+        opacity: 0.3;
+    }
+
+    .dropdown-header {
+        color: #6c757d;
+        font-weight: 600;
+        font-size: 0.875rem;
+        padding: 0.5rem 1.5rem;
+    }
+
+    /* User dropdown specific styling */
+    .navbar-nav .dropdown-menu-end {
+        min-width: 200px;
+    }
+
+    /* Mobile dropdown improvements */
+    @media (max-width: 991px) {
+        .dropdown-menu {
+            border: 1px solid #dee2e6;
+            box-shadow: none;
+            margin-top: 0;
+        }
+
+        .dropdown-item:hover {
+            transform: none;
+        }
+
+        .navbar-brand {
+            -webkit-text-fill-color: initial;
+            background: none;
+            color: #28a745;
+        }
+    }
     </style>
 
     {% block head %}{% endblock %}
@@ -45,43 +137,100 @@
 {% if current_user.is_authenticated %}
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
-    <a class="navbar-brand" href="/">Nutrition Tracker</a>
+    <a class="navbar-brand" href="/">
+      <i class="fas fa-leaf"></i> VitalSync
+    </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link" href="/">Dashboard</a>
+          <a class="nav-link" href="/">
+            <i class="fas fa-home"></i> Dashboard
+          </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/foods">Food Database</a>
+
+        <!-- Nutrition Dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-apple-alt"></i> Nutrition
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/meals">
+              <i class="fas fa-utensils"></i> Meal Tracking
+            </a></li>
+            <li><a class="dropdown-item" href="/foods">
+              <i class="fas fa-database"></i> Food Database
+            </a></li>
+            <li><a class="dropdown-item" href="/recipes">
+              <i class="fas fa-book"></i> Recipes
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/analytics">
+              <i class="fas fa-chart-line"></i> Analytics
+            </a></li>
+            <li><a class="dropdown-item" href="/add_data">
+              <i class="fas fa-weight"></i> Body Metrics
+            </a></li>
+          </ul>
         </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/ai/assistant">AI Assistant</a>
+
+        <!-- Gym Dropdown -->
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-dumbbell"></i> Gym
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/gym">
+              <i class="fas fa-tachometer-alt"></i> Dashboard
+            </a></li>
+            <li><a class="dropdown-item" href="/gym/workout/choose">
+              <i class="fas fa-play"></i> Start Workout
+            </a></li>
+            <li><a class="dropdown-item" href="/gym/history">
+              <i class="fas fa-history"></i> Workout History
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/gym/exercises">
+              <i class="fas fa-list"></i> Exercise Library
+            </a></li>
+            <li><a class="dropdown-item" href="/gym/templates">
+              <i class="fas fa-clipboard-list"></i> Workout Templates
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/gym/progression/dashboard">
+              <i class="fas fa-chart-line"></i> Progression Tracking
+            </a></li>
+            <li><a class="dropdown-item" href="/gym/progression/suggestions">
+              <i class="fas fa-lightbulb"></i> Progression Tips
+            </a></li>
+          </ul>
         </li>
+
         <li class="nav-item">
-          <a class="nav-link" href="/meals">Meal Tracking</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/recipes">Recipes</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/analytics">Analytics</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/add_data">Body Metrics</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="/gym">Gym Tracker</a>
+          <a class="nav-link" href="/ai/assistant">
+            <i class="fas fa-robot"></i> AI Assistant
+          </a>
         </li>
       </ul>
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item">
-          <span class="navbar-text me-3">Welcome, {{ current_user.id }}</span>
-        </li>
-          <li class="nav-item">
-          <a class="nav-link" href="/logout">Logout</a>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-user-circle"></i> {{ current_user.id }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><h6 class="dropdown-header">
+              <i class="fas fa-user"></i> Account
+            </h6></li>
+            <li><a class="dropdown-item" href="/profile">
+              <i class="fas fa-cog"></i> Settings
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="/logout">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </a></li>
+          </ul>
         </li>
       </ul>
     </div>
@@ -98,18 +247,18 @@
     <div class="container-fluid py-3">
         <div class="row">
             <div class="col-md-6">
-                <p class="text-muted mb-0">&copy; 2024 Nutrition Tracker. All rights reserved.</p>
+                <p class="text-muted mb-0">&copy; 2024 VitalSync. All rights reserved.</p>
             </div>
             <div class="col-md-6 text-md-end">
                 <p class="text-muted mb-0">
-                    <a href="/gym" class="text-decoration-none text-muted me-3">
-                        <i class="fas fa-dumbbell"></i> Gym Tracker
+                    <a href="/meals" class="text-decoration-none text-muted me-3">
+                        <i class="fas fa-utensils"></i> Meal Tracking
                     </a>
-                    <a href="/analytics" class="text-decoration-none text-muted me-3">
-                        <i class="fas fa-chart-line"></i> Analytics
+                    <a href="/gym/workout/choose" class="text-decoration-none text-muted me-3">
+                        <i class="fas fa-play"></i> Start Workout
                     </a>
-                    <a href="/recipes" class="text-decoration-none text-muted">
-                        <i class="fas fa-utensils"></i> Recipes
+                    <a href="/ai/assistant" class="text-decoration-none text-muted">
+                        <i class="fas fa-robot"></i> AI Assistant
                     </a>
                 </p>
             </div>
