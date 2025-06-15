@@ -1,147 +1,595 @@
 {% extends 'layout.html' %}
 
+{% block title %}Dashboard - VitaSync{% endblock %}
+
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+/* Modern Dashboard Design */
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-radius: 16px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.dashboard-container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Hero Section */
+.hero-section {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 2rem 1rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--dark-color);
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 2rem;
+}
+
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hero-stat {
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.hero-stat:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+}
+
+/* Quick Actions */
+.quick-actions {
+    padding: 2rem 1rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.action-card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+}
+
+.action-card.nutrition::before {
+    background: linear-gradient(90deg, #28a745, #20c997);
+}
+
+.action-card.gym::before {
+    background: linear-gradient(90deg, #dc3545, #fd7e14);
+}
+
+.action-card.ai::before {
+    background: linear-gradient(90deg, #6f42c1, #e83e8c);
+}
+
+.action-card.analytics::before {
+    background: linear-gradient(90deg, #007bff, #6610f2);
+}
+
+.action-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    color: inherit;
+    text-decoration: none;
+}
+
+.action-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    color: white;
+    margin: 0 auto 1rem auto;
+}
+
+.action-icon.nutrition {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.action-icon.gym {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+}
+
+.action-icon.ai {
+    background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+}
+
+.action-icon.analytics {
+    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+}
+
+.action-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 0.75rem 0;
+    text-align: center;
+}
+
+.action-description {
+    font-size: 0.95rem;
+    color: #6c757d;
+    line-height: 1.5;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.action-features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.action-features li {
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.action-features li i {
+    color: var(--success-color);
+    width: 16px;
+}
+
+/* Recent Activity */
+.recent-activity {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.activity-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1.5rem;
+    border-bottom: 1px solid #dee2e6;
+    text-align: center;
+}
+
+.activity-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+}
+
+.activity-body {
+    padding: 1.5rem;
+}
+
+.activity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.activity-item {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+    background: rgba(0,123,255,0.05);
+    transform: translateY(-2px);
+}
+
+.activity-item-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    margin: 0 auto 1rem auto;
+}
+
+.activity-item-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.activity-item-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0 0 0.25rem 0;
+}
+
+.activity-item-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+}
+
+.empty-text {
+    margin-bottom: 1.5rem;
+}
+
+.empty-action {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.empty-action:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+    text-decoration: none;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .hero-stats {
+        grid-template-columns: repeat(4, 1fr);
+    }
+
+    .actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .actions-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .activity-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-  <div class="row justify-content-md-center">
-        <div class="col col-md-8 center-block mb-5">
-            <h2 class="text-center mt-5">AVG Nutrition Consumed</h2>
-                <table class="table table-bordered border-light mt-2 mb-2">
-                    <thead>
-                    <tr>
-                        <th scope="col">Days</th>
-                        <th scope="col">Kcal</th>
-                        <th scope="col">Fat</th>
-                        <th scope="col">Carb</th>
-                        <th scope="col">Fiber</th>
-                        <th scope="col">Net Carb</th>
-                        <th scope="col">Protein</th>
-                        <th scope="col">AVG Weight</th>
-                        <th scope="col">P/W ratio</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>{{ avg_consumed.cnt }}</td>
-                            <td>{{ avg_consumed.kcal }}</td>
-                            <td>{{ avg_consumed.fat }}</td>
-                            <td>{{ avg_consumed.carb }}</td>
-                            <td>{{ avg_consumed.fiber }}</td>
-                            <td>{{ avg_consumed.net_carb }}</td>
-                            <td>{{ avg_consumed.protein }}</td>
-                            <td>{{ average_weight }}</td>
-                            <td>{{ (avg_consumed.protein/average_weight)|round(2) if average_weight > 0 and avg_consumed.protein > 0 else 0 }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+<div class="dashboard-container">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1 class="hero-title">Welcome to VitaSync</h1>
+        <p class="hero-subtitle">Your complete health and fitness companion</p>
+
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <span class="stat-number">{{ avg_consumed.cnt or 0 }}</span>
+                <span class="stat-label">Days Tracked</span>
+            </div>
+            <div class="hero-stat">
+                <span class="stat-number">{{ (avg_consumed.kcal or 0)|round }}</span>
+                <span class="stat-label">Avg Calories</span>
+            </div>
+            <div class="hero-stat">
+                <span class="stat-number">{{ (avg_consumed.protein or 0)|round }}g</span>
+                <span class="stat-label">Avg Protein</span>
+            </div>
+            <div class="hero-stat">
+                <span class="stat-number">{{ average_weight or 0 }}kg</span>
+                <span class="stat-label">Current Weight</span>
+            </div>
         </div>
     </div>
 
-<div class="row justify-content-md-center">
-    <h1 class="text-center mt-5">Nutrition Tracker</h1>
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <h2 class="section-title">🚀 Quick Actions</h2>
 
-        <canvas id="myChart"></canvas>
-        <canvas id="weightChart"></canvas>
+        <div class="actions-grid">
+            <!-- Nutrition Card -->
+            <a href="/meals" class="action-card nutrition">
+                <div class="action-icon nutrition">
+                    <i class="fas fa-apple-alt"></i>
+                </div>
+                <h3 class="action-title">Nutrition Tracking</h3>
+                <p class="action-description">Track your daily meals, calories, and macronutrients for optimal health.</p>
+                <ul class="action-features">
+                    <li><i class="fas fa-check"></i> Log meals and snacks</li>
+                    <li><i class="fas fa-check"></i> Track macronutrients</li>
+                    <li><i class="fas fa-check"></i> Food database search</li>
+                    <li><i class="fas fa-check"></i> Recipe management</li>
+                </ul>
+            </a>
 
-        <canvas id="calorieChart"></canvas>
+            <!-- Gym Card -->
+            <a href="/gym/workout/choose" class="action-card gym">
+                <div class="action-icon gym">
+                    <i class="fas fa-dumbbell"></i>
+                </div>
+                <h3 class="action-title">Workout Tracking</h3>
+                <p class="action-description">Log workouts, track progress, and achieve your fitness goals.</p>
+                <ul class="action-features">
+                    <li><i class="fas fa-check"></i> Start workout sessions</li>
+                    <li><i class="fas fa-check"></i> Track sets and reps</li>
+                    <li><i class="fas fa-check"></i> Progression analysis</li>
+                    <li><i class="fas fa-check"></i> Workout templates</li>
+                </ul>
+            </a>
 
+            <!-- AI Assistant Card -->
+            <a href="/ai/assistant" class="action-card ai">
+                <div class="action-icon ai">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <h3 class="action-title">AI Assistant</h3>
+                <p class="action-description">Get personalized nutrition and fitness advice from our AI.</p>
+                <ul class="action-features">
+                    <li><i class="fas fa-check"></i> Nutrition guidance</li>
+                    <li><i class="fas fa-check"></i> Workout suggestions</li>
+                    <li><i class="fas fa-check"></i> Health insights</li>
+                    <li><i class="fas fa-check"></i> Goal planning</li>
+                </ul>
+            </a>
 
-        <script type="text/javascript">
-    var ctx = document.getElementById('myChart').getContext('2d');
-    var myChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ dates|tojson }},
-            datasets: [
-                    {
-                    label: 'Fats',
-                    data: {{ fats|tojson }},
-                    backgroundColor: 'rgba(135, 206, 235, 0.2)',
-                    borderColor: 'rgba(135, 206, 235, 1)',
-                    borderWidth: 1
-                },
-                 {
-                    label: 'Carbs',
-                    data: {{ carbs|tojson }},
-                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
-                    borderColor: 'rgba(153, 102, 255, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Protein',
-                    data: {{ proteins|tojson }},
-                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    stacked: true
-                },
-                x: {
-                    stacked: true
-                }
-            }
-        }
-    });
-    var ctx2 = document.getElementById('calorieChart').getContext('2d');
-    new Chart(ctx2, {
-        type: 'bar',
-        data: {
-            labels: {{ date_calories|tojson }},
-            datasets: [
-                    {
-                    label: 'Calories',
-                    data: {{ data_calories|tojson }},
-                    backgroundColor: 'rgba(135, 206, 235, 0.2)',
-                    borderColor: 'rgba(135, 206, 235, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: false
+            <!-- Analytics Card -->
+            <a href="/analytics" class="action-card analytics">
+                <div class="action-icon analytics">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="action-title">Analytics & Reports</h3>
+                <p class="action-description">Analyze your progress with detailed charts and insights.</p>
+                <ul class="action-features">
+                    <li><i class="fas fa-check"></i> Progress charts</li>
+                    <li><i class="fas fa-check"></i> Trend analysis</li>
+                    <li><i class="fas fa-check"></i> Goal tracking</li>
+                    <li><i class="fas fa-check"></i> Health reports</li>
+                </ul>
+            </a>
+        </div>
+    </div>
 
-                },
-                x: {
+    <!-- Recent Activity Overview -->
+    <div class="recent-activity">
+        <div class="activity-header">
+            <h2 class="activity-title">📊 Your Health Overview</h2>
+        </div>
+        <div class="activity-body">
+            {% if avg_consumed.cnt and avg_consumed.cnt > 0 %}
+            <div class="activity-grid">
+                <div class="activity-item">
+                    <div class="activity-item-icon">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <div class="activity-item-title">Daily Calories</div>
+                    <div class="activity-item-value">{{ (avg_consumed.kcal or 0)|round }}</div>
+                    <div class="activity-item-label">Average</div>
+                </div>
 
-                }
-            }
-        }
-    });
-    var ctx3 = document.getElementById('weightChart').getContext('2d');
-    new Chart(ctx3, {
-        type: 'line',
-        data: {
-            labels: {{ date_weight|tojson }},
-            datasets: [
-                    {
-                    label: 'Weight',
-                    data: {{ data_weight|tojson }},
-                    backgroundColor: 'rgba(135, 206, 235, 0.2)',
-                    borderColor: 'rgba(135, 206, 235, 1)',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: false
-                },
-                x: {
+                <div class="activity-item">
+                    <div class="activity-item-icon">
+                        <i class="fas fa-drumstick-bite"></i>
+                    </div>
+                    <div class="activity-item-title">Protein Intake</div>
+                    <div class="activity-item-value">{{ (avg_consumed.protein or 0)|round }}g</div>
+                    <div class="activity-item-label">Average</div>
+                </div>
 
-                }
-            }
-        }
-    });
-        </script>
+                <div class="activity-item">
+                    <div class="activity-item-icon">
+                        <i class="fas fa-weight"></i>
+                    </div>
+                    <div class="activity-item-title">Body Weight</div>
+                    <div class="activity-item-value">{{ average_weight or 0 }}kg</div>
+                    <div class="activity-item-label">Current</div>
+                </div>
 
+                <div class="activity-item">
+                    <div class="activity-item-icon">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <div class="activity-item-title">Protein/Weight</div>
+                    <div class="activity-item-value">{{ ((avg_consumed.protein or 0)/(average_weight or 1))|round(1) }}</div>
+                    <div class="activity-item-label">Ratio</div>
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3 class="empty-title">Start Your Health Journey</h3>
+                <p class="empty-text">Begin tracking your nutrition and workouts to see your progress here.</p>
+                <a href="/meals" class="empty-action">
+                    <i class="fas fa-utensils"></i> Log Your First Meal
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
+<script>
+// Add smooth animations on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Animate hero stats
+    const heroStats = document.querySelectorAll('.hero-stat');
+    heroStats.forEach((stat, index) => {
+        stat.style.opacity = '0';
+        stat.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            stat.style.transition = 'all 0.6s ease';
+            stat.style.opacity = '1';
+            stat.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
 
+    // Animate action cards
+    const actionCards = document.querySelectorAll('.action-card');
+    actionCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            card.style.transition = 'all 0.6s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 200 + (index * 150));
+    });
+
+    // Animate activity items
+    const activityItems = document.querySelectorAll('.activity-item');
+    activityItems.forEach((item, index) => {
+        item.style.opacity = '0';
+        item.style.transform = 'scale(0.9)';
+        setTimeout(() => {
+            item.style.transition = 'all 0.5s ease';
+            item.style.opacity = '1';
+            item.style.transform = 'scale(1)';
+        }, 800 + (index * 100));
+    });
+});
+
+// Add click tracking for analytics
+document.querySelectorAll('.action-card').forEach(card => {
+    card.addEventListener('click', function() {
+        const cardType = this.classList.contains('nutrition') ? 'nutrition' :
+                        this.classList.contains('gym') ? 'gym' :
+                        this.classList.contains('ai') ? 'ai' : 'analytics';
+
+        // Could send analytics data here
+        console.log(`Dashboard action clicked: ${cardType}`);
+    });
+});
+</script>
 {% endblock %}
