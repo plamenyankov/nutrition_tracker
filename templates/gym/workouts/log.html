@@ -591,15 +591,13 @@ body {
             <div class="form-floating">
                 <select id="muscle-group-filter" class="form-select">
                     <option value="">All Muscle Groups</option>
-                    <option value="chest">💪 Chest</option>
-                    <option value="back">🏋️ Back</option>
-                    <option value="shoulders">🤲 Shoulders</option>
-                    <option value="biceps">💪 Biceps</option>
-                    <option value="triceps">💪 Triceps</option>
-                    <option value="legs">🦵 Legs</option>
-                    <option value="abs">🔥 Abs</option>
-                    <option value="glutes">🍑 Glutes</option>
-                    <option value="cardio">❤️ Cardio</option>
+                    <option value="Back">🏋️ Back</option>
+                    <option value="Biceps">💪 Biceps</option>
+                    <option value="Chest">💪 Chest</option>
+                    <option value="Core">🔥 Core</option>
+                    <option value="Legs">🦵 Legs</option>
+                    <option value="Shoulders">🤲 Shoulders</option>
+                    <option value="Triceps">💪 Triceps</option>
                 </select>
                 <label for="muscle-group-filter">Filter by Muscle Group</label>
             </div>
@@ -665,12 +663,13 @@ document.getElementById('workout-date').textContent = new Date().toLocaleDateStr
 
 // Muscle group filter
 document.getElementById('muscle-group-filter').addEventListener('change', function() {
-    const selectedGroup = this.value;
+    const selectedGroup = this.value.toLowerCase();
     const exerciseSelect = document.getElementById('exercise-select');
     const options = exerciseSelect.querySelectorAll('option[data-muscle-group]');
 
     options.forEach(option => {
-        if (selectedGroup === '' || option.dataset.muscleGroup === selectedGroup) {
+        const optionGroup = (option.dataset.muscleGroup || '').toLowerCase();
+        if (selectedGroup === '' || optionGroup === selectedGroup) {
             option.style.display = '';
         } else {
             option.style.display = 'none';
