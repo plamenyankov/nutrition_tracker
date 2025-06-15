@@ -71,7 +71,20 @@
                 <div class="card-body">
                     <p class="mb-2">Date: <strong id="workout-date"></strong></p>
                     <p class="mb-2">Exercises: <strong id="exercise-count">0</strong></p>
-                    <p class="mb-0">Total Sets: <strong id="total-sets">0</strong></p>
+                    <p class="mb-2">Total Sets: <strong id="total-sets">0</strong></p>
+                    <div class="workout-timer-section">
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Workout Timer:</span>
+                            <button id="timer-toggle" class="btn btn-sm btn-success">
+                                <i class="fas fa-play"></i> Start
+                            </button>
+                        </div>
+                        <div class="text-center">
+                            <h4 id="workout-timer" class="mb-0 text-primary">00:00:00</h4>
+                            <small class="text-muted" id="timer-status">Not started</small>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -111,6 +124,11 @@
 let sessionId = null;
 let exerciseData = {};
 let totalSets = 0;
+
+// Timer variables
+let workoutStartTime = null;
+let timerInterval = null;
+let isTimerRunning = false;
 
 // Set today's date
 document.getElementById('workout-date').textContent = new Date().toISOString().split('T')[0];
@@ -472,8 +490,106 @@ function updateSummary() {
     document.getElementById('total-sets').textContent = totalSets;
 }
 
+// Timer functions
+function startWorkoutTimer() {
+    if (!sessionId) {
+        alert('Please log at least one set before starting the timer');
+        return;
+    }
+
+    fetch('/api/timer/workout/start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            session_id: sessionId,
+            notes: 'Timer started from workout log'
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.started_at) {
+            workoutStartTime = new Date(data.started_at);
+            isTimerRunning = true;
+
+            // Update UI
+            const toggleBtn = document.getElementById('timer-toggle');
+            toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            toggleBtn.className = 'btn btn-sm btn-warning';
+            document.getElementById('timer-status').textContent = 'Running';
+
+            // Start timer display
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+            updateTimerDisplay();
+        }
+    })
+    .catch(error => {
+        console.error('Error starting timer:', error);
+        alert('Error starting timer');
+    });
+}
+
+function stopWorkoutTimer() {
+    if (!sessionId) return;
+
+    fetch('/api/timer/workout/complete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            session_id: sessionId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.completed_at) {
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+
+            // Update UI
+            const toggleBtn = document.getElementById('timer-toggle');
+            toggleBtn.innerHTML = '<i class="fas fa-check"></i> Completed';
+            toggleBtn.className = 'btn btn-sm btn-success';
+            toggleBtn.disabled = true;
+            document.getElementById('timer-status').textContent = `Completed (${data.duration_formatted})`;
+        }
+    })
+    .catch(error => {
+        console.error('Error stopping timer:', error);
+    });
+}
+
+function updateTimerDisplay() {
+    if (!workoutStartTime) return;
+
+    const now = new Date();
+    const elapsed = Math.floor((now - workoutStartTime) / 1000);
+
+    const hours = Math.floor(elapsed / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+
+    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    document.getElementById('workout-timer').textContent = timeString;
+}
+
+// Timer toggle event listener
+document.getElementById('timer-toggle').addEventListener('click', function() {
+    if (!isTimerRunning) {
+        startWorkoutTimer();
+    } else {
+        // For now, just pause (we could add pause/resume functionality later)
+        if (confirm('Stop the workout timer? This will mark the workout as completed.')) {
+            stopWorkoutTimer();
+        }
+    }
+});
+
 document.getElementById('finish-workout').addEventListener('click', function() {
     if (confirm('Are you sure you want to finish this workout?')) {
+        // Stop timer if running
+        if (isTimerRunning) {
+            stopWorkoutTimer();
+        }
+
         // Get notes
         const notes = document.getElementById('workout-notes').value.trim();
 

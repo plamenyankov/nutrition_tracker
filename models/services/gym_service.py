@@ -52,20 +52,27 @@ class GymService:
             session_id = cursor.lastrowid
             return session_id
 
-    def log_set(self, session_id, exercise_id, set_number, weight, reps):
-        """Log a single set"""
+    def log_set(self, session_id, exercise_id, set_number, weight, reps, start_timer=True):
+        """Log a single set with optional timing"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+
+            # Insert the set
             if self.connection_manager.use_mysql:
                 cursor.execute(
-                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps) VALUES (%s, %s, %s, %s, %s)',
-                    (session_id, exercise_id, set_number, weight, reps)
+                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at) VALUES (%s, %s, %s, %s, %s, %s)',
+                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None)
                 )
             else:
                 cursor.execute(
-                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps) VALUES (?, ?, ?, ?, ?)',
-                    (session_id, exercise_id, set_number, weight, reps)
+                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at) VALUES (?, ?, ?, ?, ?, ?)',
+                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None)
                 )
+
+            set_id = cursor.lastrowid
+            conn.commit()
+
+            return set_id
 
     def update_set(self, set_id, weight, reps):
         """Update an existing set"""
