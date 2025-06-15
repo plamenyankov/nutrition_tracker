@@ -46,11 +46,14 @@
     .navbar-brand {
         font-weight: 700;
         font-size: 1.5rem;
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
         transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
     .navbar-brand:hover {
@@ -59,8 +62,15 @@
     }
 
     .navbar-brand i {
-        color: #28a745;
-        margin-right: 0.5rem;
+        color: #e74c3c;
+        margin-right: 0;
+        font-size: 1.3rem;
+        animation: heartbeat 2s ease-in-out infinite;
+    }
+
+    @keyframes heartbeat {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
     }
 
     .nav-link {
@@ -131,7 +141,11 @@
         .navbar-brand {
             -webkit-text-fill-color: initial;
             background: none;
-            color: #28a745;
+            color: #667eea;
+        }
+
+        .navbar-brand i {
+            color: #e74c3c;
         }
     }
     </style>
@@ -144,7 +158,7 @@
 <nav class="navbar navbar-expand-lg bg-body-tertiary">
   <div class="container-fluid">
     <a class="navbar-brand" href="/">
-      <i class="fas fa-leaf"></i> VitaSync
+      <i class="fas fa-heartbeat"></i> VitaSync
     </a>
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
@@ -253,7 +267,10 @@
     <div class="container-fluid py-3">
         <div class="row">
             <div class="col-md-6">
-                <p class="text-muted mb-0">&copy; 2024 VitaSync. All rights reserved.</p>
+                <p class="text-muted mb-0">
+                    <i class="fas fa-heartbeat text-danger me-1"></i>
+                    &copy; 2024 VitaSync. All rights reserved.
+                </p>
             </div>
             <div class="col-md-6 text-md-end">
                 <p class="text-muted mb-0">
