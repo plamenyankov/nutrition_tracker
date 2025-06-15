@@ -1,0 +1,435 @@
+{
+  "migration_date": "2025-06-14T11:36:34.299862",
+  "source_database": "database.db",
+  "target_database": {
+    "host": "192.168.11.1",
+    "database": "nutri_tracker_dev"
+  },
+  "migration_result": {
+    "start_time": "2025-06-14 11:36:29.535358",
+    "tables": {
+      "Unit": {
+        "table": "Unit",
+        "rows_migrated": 8,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:29.763698",
+        "end_time": "2025-06-14 11:36:30.148649",
+        "duration": 0.384951
+      },
+      "Ingredient": {
+        "table": "Ingredient",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:30.149400",
+        "end_time": "2025-06-14 11:36:30.151607"
+      },
+      "exercises": {
+        "table": "exercises",
+        "rows_migrated": 62,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:30.152159",
+        "end_time": "2025-06-14 11:36:31.766023",
+        "duration": 1.613864
+      },
+      "users": {
+        "table": "users",
+        "rows_migrated": 2,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:31.766972",
+        "end_time": "2025-06-14 11:36:32.013505",
+        "duration": 0.246533
+      },
+      "Nutrition": {
+        "table": "Nutrition",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.014423",
+        "end_time": "2025-06-14 11:36:32.016452"
+      },
+      "Ingredient_Quantity": {
+        "table": "Ingredient_Quantity",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.017079",
+        "end_time": "2025-06-14 11:36:32.019275"
+      },
+      "Recipe": {
+        "table": "Recipe",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.020584",
+        "end_time": "2025-06-14 11:36:32.023171"
+      },
+      "workout_sessions": {
+        "table": "workout_sessions",
+        "rows_migrated": 0,
+        "success": false,
+        "error": "1054 (42S22): Unknown column 'started_at' in 'field list'",
+        "start_time": "2025-06-14 11:36:32.024240",
+        "end_time": "2025-06-14 11:36:32.250160",
+        "duration": 0.22592
+      },
+      "Favorites": {
+        "table": "Favorites",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.251431",
+        "end_time": "2025-06-14 11:36:32.253783"
+      },
+      "Recipe_Ingredients": {
+        "table": "Recipe_Ingredients",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.254732",
+        "end_time": "2025-06-14 11:36:32.257650"
+      },
+      "Consumption": {
+        "table": "Consumption",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.258271",
+        "end_time": "2025-06-14 11:36:32.260100"
+      },
+      "recipe_consumption": {
+        "table": "recipe_consumption",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.260768",
+        "end_time": "2025-06-14 11:36:32.262343"
+      },
+      "workout_sets": {
+        "table": "workout_sets",
+        "rows_migrated": 0,
+        "success": false,
+        "error": "1054 (42S22): Unknown column 'started_at' in 'field list'",
+        "start_time": "2025-06-14 11:36:32.262953",
+        "end_time": "2025-06-14 11:36:32.484318",
+        "duration": 0.221365
+      },
+      "progression_history": {
+        "table": "progression_history",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.485083",
+        "end_time": "2025-06-14 11:36:32.487030"
+      },
+      "Exercise": {
+        "table": "Exercise",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.487852",
+        "end_time": "2025-06-14 11:36:32.489752"
+      },
+      "MuscleGroup": {
+        "table": "MuscleGroup",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.490506",
+        "end_time": "2025-06-14 11:36:32.492073"
+      },
+      "Sets": {
+        "table": "Sets",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.492488",
+        "end_time": "2025-06-14 11:36:32.493868"
+      },
+      "Workout": {
+        "table": "Workout",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.494328",
+        "end_time": "2025-06-14 11:36:32.495848"
+      },
+      "body_weight_tracking": {
+        "table": "body_weight_tracking",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.496425",
+        "end_time": "2025-06-14 11:36:32.497810"
+      },
+      "calorie_tracking": {
+        "table": "calorie_tracking",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.498192",
+        "end_time": "2025-06-14 11:36:32.499487"
+      },
+      "exercise_progression_patterns": {
+        "table": "exercise_progression_patterns",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.499930",
+        "end_time": "2025-06-14 11:36:32.501469"
+      },
+      "exercise_progression_rules": {
+        "table": "exercise_progression_rules",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.501988",
+        "end_time": "2025-06-14 11:36:32.503457"
+      },
+      "set_pattern_ratios": {
+        "table": "set_pattern_ratios",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.503995",
+        "end_time": "2025-06-14 11:36:32.505605"
+      },
+      "set_progression_history": {
+        "table": "set_progression_history",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.506292",
+        "end_time": "2025-06-14 11:36:32.507625"
+      },
+      "user_gym_preferences": {
+        "table": "user_gym_preferences",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.507964",
+        "end_time": "2025-06-14 11:36:32.508999"
+      },
+      "workout_highlights": {
+        "table": "workout_highlights",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.509273",
+        "end_time": "2025-06-14 11:36:32.510302"
+      },
+      "workout_template_exercises": {
+        "table": "workout_template_exercises",
+        "rows_migrated": 4,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.510675",
+        "end_time": "2025-06-14 11:36:32.736732",
+        "duration": 0.226057
+      },
+      "workout_templates": {
+        "table": "workout_templates",
+        "rows_migrated": 1,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.737835",
+        "end_time": "2025-06-14 11:36:32.964194",
+        "duration": 0.226359
+      },
+      "workout_volume_tracking": {
+        "table": "workout_volume_tracking",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.965529",
+        "end_time": "2025-06-14 11:36:32.968689"
+      },
+      "workout_timing_sessions": {
+        "table": "workout_timing_sessions",
+        "rows_migrated": 0,
+        "success": true,
+        "error": null,
+        "start_time": "2025-06-14 11:36:32.969817",
+        "end_time": "2025-06-14 11:36:32.973892"
+      }
+    },
+    "total_rows": 77,
+    "success": false,
+    "end_time": "2025-06-14 11:36:33.196990",
+    "duration": 3.661632
+  },
+  "verification_result": {
+    "success": false,
+    "tables": {
+      "Consumption": {
+        "sqlite_count": 0,
+        "mysql_count": 279,
+        "match": false
+      },
+      "Exercise": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "Favorites": {
+        "sqlite_count": 0,
+        "mysql_count": 1,
+        "match": false
+      },
+      "Ingredient": {
+        "sqlite_count": 0,
+        "mysql_count": 80,
+        "match": false
+      },
+      "Ingredient_Quantity": {
+        "sqlite_count": 0,
+        "mysql_count": 149,
+        "match": false
+      },
+      "MuscleGroup": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "Nutrition": {
+        "sqlite_count": 0,
+        "mysql_count": 77,
+        "match": false
+      },
+      "Recipe": {
+        "sqlite_count": 0,
+        "mysql_count": 5,
+        "match": false
+      },
+      "Recipe_Ingredients": {
+        "sqlite_count": 0,
+        "mysql_count": 25,
+        "match": false
+      },
+      "Sets": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "Unit": {
+        "sqlite_count": 8,
+        "mysql_count": 8,
+        "match": true
+      },
+      "Workout": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "body_weight_tracking": {
+        "sqlite_count": 0,
+        "mysql_count": 19,
+        "match": false
+      },
+      "calorie_tracking": {
+        "sqlite_count": 0,
+        "mysql_count": 17,
+        "match": false
+      },
+      "exercise_progression_patterns": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "exercise_progression_rules": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "exercises": {
+        "sqlite_count": 62,
+        "mysql_count": 65,
+        "match": false
+      },
+      "progression_history": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "recipe_consumption": {
+        "sqlite_count": 0,
+        "mysql_count": 3,
+        "match": false
+      },
+      "set_pattern_ratios": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "set_progression_history": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "user_gym_preferences": {
+        "sqlite_count": 0,
+        "mysql_count": 1,
+        "match": false
+      },
+      "users": {
+        "sqlite_count": 2,
+        "mysql_count": 2,
+        "match": true
+      },
+      "workout_highlights": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "workout_sessions": {
+        "sqlite_count": 4,
+        "mysql_count": 0,
+        "match": false
+      },
+      "workout_sets": {
+        "sqlite_count": 57,
+        "mysql_count": 0,
+        "match": false
+      },
+      "workout_template_exercises": {
+        "sqlite_count": 4,
+        "mysql_count": 4,
+        "match": true
+      },
+      "workout_templates": {
+        "sqlite_count": 1,
+        "mysql_count": 1,
+        "match": true
+      },
+      "workout_volume_tracking": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      },
+      "workout_timing_sessions": {
+        "sqlite_count": 0,
+        "mysql_count": 0,
+        "match": true
+      }
+    },
+    "discrepancies": [
+      "Consumption: SQLite=0, MySQL=279",
+      "Favorites: SQLite=0, MySQL=1",
+      "Ingredient: SQLite=0, MySQL=80",
+      "Ingredient_Quantity: SQLite=0, MySQL=149",
+      "Nutrition: SQLite=0, MySQL=77",
+      "Recipe: SQLite=0, MySQL=5",
+      "Recipe_Ingredients: SQLite=0, MySQL=25",
+      "body_weight_tracking: SQLite=0, MySQL=19",
+      "calorie_tracking: SQLite=0, MySQL=17",
+      "exercises: SQLite=62, MySQL=65",
+      "recipe_consumption: SQLite=0, MySQL=3",
+      "user_gym_preferences: SQLite=0, MySQL=1",
+      "workout_sessions: SQLite=4, MySQL=0",
+      "workout_sets: SQLite=57, MySQL=0"
+    ]
+  }
+}
