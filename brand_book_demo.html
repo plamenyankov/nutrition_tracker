@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VitaSync Brand Book Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Brand Book Styles */
+        :root {
+            --primary-color: #007bff;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --dark-color: #343a40;
+            --light-color: #f8f9fa;
+            --muted-color: #6c757d;
+            --border-radius: 16px;
+            --border-radius-sm: 12px;
+            --border-radius-lg: 20px;
+            --border-radius-pill: 25px;
+            --shadow: 0 4px 20px rgba(0,0,0,0.1);
+            --shadow-sm: 0 2px 10px rgba(0,0,0,0.1);
+            --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        /* Transitions */
+        .card, .btn, .form-control {
+            transition: all 0.3s ease;
+        }
+
+        /* Card Hover */
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Button Hover */
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Form Focus */
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        /* Demo Section */
+        .demo-section {
+            margin-bottom: 3rem;
+        }
+
+        .demo-title {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .color-box {
+            height: 80px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .gradient-box {
+            height: 100px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Container -->
+    <div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+
+        <!-- Sticky Header -->
+        <div class="sticky-top" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(0,0,0,0.1);">
+            <div class="container py-3">
+                <h1 class="text-center fw-bold mb-0">VitaSync Brand Book Demo</h1>
+                <p class="text-center text-muted mb-0">Interactive Design System Reference</p>
+            </div>
+        </div>
+
+        <!-- Content Container -->
+        <div class="container py-4" style="max-width: 1200px;">
+
+            <!-- Colors Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">🎨 Color Palette</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-6 col-md-3">
+                                <div class="color-box" style="background: var(--primary-color);">Primary</div>
+                                <small class="text-muted">#007bff</small>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="color-box" style="background: var(--success-color);">Success</div>
+                                <small class="text-muted">#28a745</small>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="color-box" style="background: var(--danger-color);">Danger</div>
+                                <small class="text-muted">#dc3545</small>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="color-box" style="background: var(--warning-color);">Warning</div>
+                                <small class="text-muted">#ffc107</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gradients Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">🌈 Gradient Combinations</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="gradient-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    Primary Gradient
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="gradient-box" style="background: linear-gradient(135deg, #4ecdc4, #44a08d);">
+                                    Nutrition/Success
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="gradient-box" style="background: linear-gradient(135deg, #ff6b6b, #ee5a52);">
+                                    Energy/Calories
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="gradient-box" style="background: linear-gradient(135deg, #ffeaa7, #fdcb6e);">
+                                    Carbs/Warning
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Typography Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">🔤 Typography</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-4">
+                        <h1 style="font-size: 2.5rem; font-weight: 800;">Hero Title (2.5rem)</h1>
+                        <h2 style="font-size: 1.75rem; font-weight: 700;">Page Title (1.75rem)</h2>
+                        <h3 style="font-size: 1.3rem; font-weight: 700;">Section Title (1.3rem)</h3>
+                        <p style="font-size: 1rem;">Body text with regular weight (1rem)</p>
+                        <small style="font-size: 0.85rem; color: var(--muted-color);">Small text and labels (0.85rem)</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">🎯 Buttons</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-4">
+                        <div class="d-flex flex-wrap gap-3">
+                            <button class="btn" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-pill); font-weight: 600;">
+                                Primary Button
+                            </button>
+                            <button class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-pill); font-weight: 600;">
+                                Success Button
+                            </button>
+                            <button class="btn" style="background: linear-gradient(135deg, #dc3545, #fd7e14); color: white; border: none; padding: 0.75rem 1.5rem; border-radius: var(--border-radius-pill); font-weight: 600;">
+                                Danger Button
+                            </button>
+                            <button class="btn" style="background: white; color: var(--primary-color); border: 2px solid var(--primary-color); padding: 0.75rem 1.5rem; border-radius: var(--border-radius-pill); font-weight: 600;">
+                                Outline Button
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Elements Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">📝 Form Elements</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Text Input</label>
+                                <input type="text" class="form-control" placeholder="Enter text..." style="border-radius: var(--border-radius-sm); border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Select Input</label>
+                                <select class="form-select" style="border-radius: var(--border-radius-sm); border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                                    <option>Choose option...</option>
+                                    <option>Option 1</option>
+                                    <option>Option 2</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Search Bar</label>
+                                <div class="input-group" style="border-radius: var(--border-radius-sm); overflow: hidden; box-shadow: var(--shadow-sm);">
+                                    <span class="input-group-text" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none;">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" placeholder="Search..." style="border: none; padding: 0.75rem 1rem;">
+                                    <button class="btn" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.75rem 1.5rem;">
+                                        Search
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stat Cards Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">📊 Stat Cards</h2>
+                <div class="row g-3">
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); border-radius: var(--border-radius);">
+                            <div class="card-body text-center text-white">
+                                <i class="bi bi-fire" style="font-size: 1.5rem;"></i>
+                                <h3 class="fw-bold mb-1">2,450</h3>
+                                <small style="opacity: 0.8;">Calories</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #4ecdc4, #44a08d); border-radius: var(--border-radius);">
+                            <div class="card-body text-center text-white">
+                                <i class="bi bi-lightning-charge" style="font-size: 1.5rem;"></i>
+                                <h3 class="fw-bold mb-1">120g</h3>
+                                <small style="opacity: 0.8;">Protein</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #ffeaa7, #fdcb6e); border-radius: var(--border-radius);">
+                            <div class="card-body text-center text-white">
+                                <i class="bi bi-battery-charging" style="font-size: 1.5rem;"></i>
+                                <h3 class="fw-bold mb-1">250g</h3>
+                                <small style="opacity: 0.8;">Carbs</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="card border-0 shadow-sm" style="background: linear-gradient(135deg, #a29bfe, #6c5ce7); border-radius: var(--border-radius);">
+                            <div class="card-body text-center text-white">
+                                <i class="bi bi-droplet" style="font-size: 1.5rem;"></i>
+                                <h3 class="fw-bold mb-1">80g</h3>
+                                <small style="opacity: 0.8;">Fat</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Cards Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">📋 Content Cards</h2>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius); overflow: hidden;">
+                            <div class="card-header border-0" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 1.5rem;">
+                                <h5 class="mb-0 fw-bold">Card with Header</h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <p class="mb-0">This is a card with a gradient header. Perfect for section titles and important content areas.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                            <div class="card-body p-4">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="me-3">
+                                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #4ecdc4, #44a08d); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                            <i class="fas fa-apple-alt"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0 fw-semibold">Food Item Card</h6>
+                                        <small class="text-muted">With icon and details</small>
+                                    </div>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded" style="background: rgba(78, 205, 196, 0.1);">
+                                            <small class="text-muted d-block">Protein</small>
+                                            <strong class="text-success">25g</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded" style="background: rgba(255, 234, 167, 0.3);">
+                                            <small class="text-muted d-block">Carbs</small>
+                                            <strong class="text-warning">30g</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="text-center p-2 rounded" style="background: rgba(162, 155, 254, 0.2);">
+                                            <small class="text-muted d-block">Fat</small>
+                                            <strong class="text-info">10g</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">🎭 Empty States</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-5 text-center">
+                        <i class="bi bi-inbox" style="font-size: 4rem; color: var(--muted-color); opacity: 0.5;"></i>
+                        <h4 class="mt-3 mb-2">No Data Found</h4>
+                        <p class="text-muted mb-4">Start by adding your first item to see it here.</p>
+                        <button class="btn" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 0.75rem 2rem; border-radius: var(--border-radius-pill); font-weight: 600;">
+                            <i class="fas fa-plus me-2"></i>Add First Item
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading State Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">⏳ Loading States</h2>
+                <div class="card border-0 shadow-sm" style="border-radius: var(--border-radius);">
+                    <div class="card-body p-5 text-center">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mb-0">Loading your data...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
