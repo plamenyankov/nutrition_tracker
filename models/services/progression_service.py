@@ -328,7 +328,7 @@ class ProgressionService:
             is_upper_body = self._is_upper_body_exercise(exercise_info)
 
             if prefs['progression_strategy'] == 'reps_first':
-                return self._check_reps_first_progression(history, prefs, is_upper_body)
+                return self._check_reps_first_progression(history, prefs, is_upper_body, exercise_info)
             elif prefs['progression_strategy'] == 'weight_first':
                 return self._check_weight_first_progression(history, prefs, is_upper_body)
             else:
@@ -346,8 +346,8 @@ class ProgressionService:
             }
 
     def _check_reps_first_progression(self, history: List[Dict], prefs: Dict,
-                                    is_upper_body: bool) -> Dict:
-        """Check progression for reps-first strategy"""
+                                    is_upper_body: bool, exercise_info: Dict = None) -> Dict:
+        """Check progression for reps-first strategy with smart weight increments"""
         max_reps_target = prefs['max_reps_target']
         min_reps_target = prefs['min_reps_target']
 
@@ -360,36 +360,46 @@ class ProgressionService:
             if not workout['sets']:
                 continue
 
-            # Get average reps and weight for this workout
-            weights = [s['weight'] for s in workout['sets']]
-            reps = [s['reps'] for s in workout['sets']]
+            # Get deterministic weight (most common weight used in the workout)
+            weights = [s['weight'] for s in workout['sets'] if s['weight'] > 0]
+            reps = [s['reps'] for s in workout['sets'] if s['reps'] > 0]
 
             if not weights or not reps:
                 continue
 
-            avg_weight = statistics.mean(weights)
+            # Use most common weight (mode) or heaviest weight if all weights are different
+            workout_weight = self._get_deterministic_weight(weights)
             avg_reps = statistics.mean(reps)
             avg_reps_list.append(avg_reps)
 
             if current_weight is None:
-                current_weight = avg_weight
+                current_weight = workout_weight
 
             # Check if all sets hit max reps target
             if all(s['reps'] >= max_reps_target for s in workout['sets']):
                 ready_count += 1
 
         if ready_count >= 2:
-            # Ready to increase weight
-            weight_increment = (prefs['weight_increment_upper'] if is_upper_body
-                              else prefs['weight_increment_lower'])
+            # Ready to increase weight - use smart increment calculation
+            if exercise_info:
+                weight_increment = self._get_smart_weight_increment(exercise_info, current_weight, is_upper_body)
+                new_weight = self._round_to_practical_weight(current_weight + weight_increment, exercise_info)
+            else:
+                # Fallback to user preferences
+                weight_increment = (prefs['weight_increment_upper'] if is_upper_body
+                                  else prefs['weight_increment_lower'])
+                new_weight = current_weight + weight_increment
 
             return {
                 'ready': True,
                 'suggestion': 'increase_weight',
                 'current_weight': current_weight,
-                'new_weight': current_weight + weight_increment,
+                'new_weight': new_weight,
+                'weight_increment': new_weight - current_weight,
                 'new_reps_target': min_reps_target,
-                'reason': f'Consistently hit {max_reps_target} reps for 2 workouts'
+                'reason': f'Consistently hit {max_reps_target} reps for 2 workouts',
+                'confidence': 0.9,
+                'equipment_type': self._get_equipment_type(exercise_info) if exercise_info else 'unknown'
             }
         else:
             # Calculate how close they are
@@ -403,14 +413,34 @@ class ProgressionService:
                     'current_avg_reps': round(current_avg_reps, 1),
                     'target_reps': max_reps_target,
                     'reps_to_go': round(reps_to_go, 1),
-                    'reason': f'Average {current_avg_reps:.1f} reps, need {max_reps_target}'
+                    'reason': f'Average {current_avg_reps:.1f} reps, need {max_reps_target}',
+                    'confidence': min(current_avg_reps / max_reps_target, 0.8)
                 }
             else:
                 return {
                     'ready': False,
                     'reason': 'Insufficient data',
-                    'suggestion': 'Continue current program'
+                    'suggestion': 'Continue current program',
+                    'confidence': 0.0
                 }
+
+    def _get_deterministic_weight(self, weights: List[float]) -> float:
+        """Get deterministic weight from a list of weights (most common or heaviest)"""
+        if not weights:
+            return 0.0
+
+        # Remove duplicates and count occurrences
+        from collections import Counter
+        weight_counts = Counter(weights)
+
+        # If there's a clear most common weight, use it
+        most_common = weight_counts.most_common(1)[0]
+        if most_common[1] > 1:  # Used more than once
+            return most_common[0]
+
+        # If all weights are used equally, prefer the heaviest weight
+        # This represents the user's working weight for that session
+        return max(weights)
 
     def _is_upper_body_exercise(self, exercise_info: Dict) -> bool:
         """Determine if exercise is upper body based on muscle groups"""
@@ -666,3 +696,111 @@ class ProgressionService:
         # Implementation for hybrid strategy
         # This would alternate between weight and rep increases
         pass
+
+    def _get_smart_weight_increment(self, exercise_info: Dict, current_weight: float, is_upper_body: bool) -> float:
+        """Calculate smart weight increment based on exercise type and current weight"""
+        exercise_name = exercise_info.get('name', '').lower()
+        muscle_group = exercise_info.get('muscle_group', '').lower()
+
+        # Machine exercises typically have 5kg plates
+        machine_keywords = ['machine', 'cable', 'lat pulldown', 'leg press', 'leg extension',
+                           'leg curl', 'chest press', 'shoulder press', 'seated']
+
+        # Free weight exercises can use smaller increments (0.5kg, 1kg, 2.5kg)
+        free_weight_keywords = ['dumbbell', 'barbell', 'bench press', 'squat', 'deadlift',
+                               'overhead press', 'row', 'curl']
+
+        # Bodyweight exercises progress differently
+        bodyweight_keywords = ['push up', 'pull up', 'chin up', 'dip', 'bodyweight']
+
+        # Check exercise type
+        is_machine = any(keyword in exercise_name for keyword in machine_keywords)
+        is_free_weight = any(keyword in exercise_name for keyword in free_weight_keywords)
+        is_bodyweight = any(keyword in exercise_name for keyword in bodyweight_keywords)
+
+        # Base increments from user preferences
+        base_increment = 2.5 if is_upper_body else 5.0
+
+        if is_bodyweight:
+            # For bodyweight exercises, suggest adding weight or progressing to harder variation
+            if current_weight == 0:
+                return 2.5  # Start with 2.5kg added weight
+            else:
+                return 2.5  # Continue with 2.5kg increments
+
+        elif is_machine:
+            # Machine exercises typically use 5kg increments due to plate limitations
+            if current_weight < 20:
+                return 2.5  # Smaller increment for lighter weights
+            else:
+                return 5.0  # Standard machine increment
+
+        elif is_free_weight:
+            # Free weights allow more precise increments
+            if current_weight < 10:
+                return 0.5  # Very small increment for light weights
+            elif current_weight < 30:
+                return 1.0  # Small increment for moderate weights
+            elif current_weight < 60:
+                return 2.5  # Standard increment
+            else:
+                return 5.0 if not is_upper_body else 2.5  # Larger increment for heavy weights
+
+        else:
+            # Default to user preferences with smart adjustments
+            if current_weight < 20:
+                return base_increment / 2  # Smaller increment for lighter weights
+            elif current_weight > 100:
+                return base_increment * 2  # Larger increment for very heavy weights
+            else:
+                return base_increment
+
+    def _round_to_practical_weight(self, weight: float, exercise_info: Dict) -> float:
+        """Round weight to practical increments based on equipment type"""
+        exercise_name = exercise_info.get('name', '').lower()
+
+        # Machine exercises should round to 2.5kg or 5kg increments
+        machine_keywords = ['machine', 'cable', 'lat pulldown', 'leg press']
+        is_machine = any(keyword in exercise_name for keyword in machine_keywords)
+
+        if is_machine:
+            # Round to nearest 2.5kg
+            return round(weight * 2) / 2
+        else:
+            # Free weights can be more precise - round to nearest 0.5kg
+            return round(weight * 2) / 2
+
+    def _get_equipment_type(self, exercise_info: Dict) -> str:
+        """Determine equipment type for an exercise"""
+        if not exercise_info:
+            return 'unknown'
+
+        exercise_name = exercise_info.get('name', '').lower()
+
+        machine_keywords = ['machine', 'cable', 'lat pulldown', 'leg press']
+        free_weight_keywords = ['dumbbell', 'barbell', 'bench press', 'squat', 'deadlift']
+        bodyweight_keywords = ['push up', 'pull up', 'chin up', 'dip', 'bodyweight']
+
+        if any(keyword in exercise_name for keyword in machine_keywords):
+            return 'machine'
+        elif any(keyword in exercise_name for keyword in free_weight_keywords):
+            return 'free_weight'
+        elif any(keyword in exercise_name for keyword in bodyweight_keywords):
+            return 'bodyweight'
+        else:
+            return 'unknown'
+
+    def get_last_deterministic_weight(self, user_id: int, exercise_id: int) -> float:
+        """Get the most recent deterministic weight used for an exercise"""
+        try:
+            history = self.get_exercise_performance_history(user_id, exercise_id, limit=1)
+            if not history or not history[0]['sets']:
+                return 0.0
+
+            # Get weights from the most recent workout
+            weights = [s['weight'] for s in history[0]['sets'] if s['weight'] > 0]
+            return self._get_deterministic_weight(weights)
+
+        except Exception as e:
+            logger.error(f"Error getting last deterministic weight: {e}")
+            return 0.0
