@@ -1,0 +1,694 @@
+{% extends "layout.html" %}
+
+{% block title %}Progression Suggestions - Gym Tracker{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="hero-section">
+    <div class="hero-gradient"></div>
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <nav aria-label="breadcrumb" class="mb-3">
+                    <ol class="breadcrumb hero-breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('gym.dashboard') }}">Gym</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('gym.progression_dashboard') }}">Progression</a></li>
+                        <li class="breadcrumb-item active">Suggestions</li>
+                    </ol>
+                </nav>
+                <h1 class="hero-title">Progression Suggestions</h1>
+                <p class="hero-subtitle">Smart recommendations to optimize your training progress</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <a href="{{ url_for('gym.preferences') }}" class="btn btn-outline-light">
+                    <i class="bi bi-gear"></i> Preferences
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <!-- Strategy Info Card -->
+    <div class="card strategy-card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="card-title mb-2">
+                        <i class="bi bi-strategy text-primary"></i> Your Progression Strategy
+                    </h5>
+                    <p class="card-text mb-0">
+                        {% if preferences.progression_strategy == 'reps_first' %}
+                            <span class="badge bg-primary me-2">Reps First</span>
+                            Focus on increasing reps ({{ preferences.min_reps_target }} → {{ preferences.max_reps_target }}) before adding weight
+                        {% elif preferences.progression_strategy == 'weight_first' %}
+                            <span class="badge bg-success me-2">Weight First</span>
+                            Prioritize weight increases with consistent form
+                        {% else %}
+                            <span class="badge bg-info me-2">Hybrid</span>
+                            Balanced approach between reps and weight progression
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-4 text-md-end">
+                    <div class="strategy-stats">
+                        <small class="text-muted">Weight Increments</small><br>
+                        <span class="fw-bold">Upper: {{ preferences.weight_increment_upper }}kg</span><br>
+                        <span class="fw-bold">Lower: {{ preferences.weight_increment_lower }}kg</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if suggestions %}
+        <!-- Ready to Progress Section -->
+        {% set ready_suggestions = suggestions | selectattr('ready', 'equalto', true) | list %}
+        {% if ready_suggestions %}
+            <div class="section-header mb-4">
+                <h3 class="section-title">
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                    Ready to Progress
+                    <span class="badge bg-success ms-2">{{ ready_suggestions|length }}</span>
+                </h3>
+                <p class="section-subtitle">These exercises are ready for progression based on your recent performance</p>
+            </div>
+
+            <div class="row g-4 mb-5">
+                {% for suggestion in ready_suggestions %}
+                    <div class="col-lg-6">
+                        <div class="card progression-card ready-card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h5 class="card-title mb-1">{{ suggestion.exercise_name }}</h5>
+                                        <span class="badge bg-light text-dark">{{ suggestion.muscle_group }}</span>
+                                    </div>
+                                    <div class="progression-status">
+                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-success border-0 mb-3">
+                                    <i class="bi bi-lightbulb-fill me-2"></i>
+                                    <strong>{{ suggestion.reason }}</strong>
+                                </div>
+
+                                {% if suggestion.suggestion == 'increase_weight' %}
+                                    <div class="progression-details mb-4">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <div class="metric-card current">
+                                                    <div class="metric-label">Current</div>
+                                                    <div class="metric-value">{{ suggestion.current_weight }}kg</div>
+                                                    <div class="metric-sub">{{ preferences.max_reps_target }} reps</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="metric-card suggested">
+                                                    <div class="metric-label">Suggested</div>
+                                                    <div class="metric-value">{{ suggestion.new_weight }}kg</div>
+                                                    <div class="metric-sub">{{ suggestion.new_reps_target }} reps</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="progression-arrow">
+                                            <i class="bi bi-arrow-right"></i>
+                                            <span class="increment-badge">+{{ (suggestion.new_weight - suggestion.current_weight) }}kg</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="action-buttons">
+                                        <button class="btn btn-success accept-progression"
+                                                data-exercise-id="{{ suggestion.exercise_id }}"
+                                                data-exercise-name="{{ suggestion.exercise_name }}"
+                                                data-old-weight="{{ suggestion.current_weight }}"
+                                                data-new-weight="{{ suggestion.new_weight }}"
+                                                data-progression-type="weight_increase">
+                                            <i class="bi bi-check-lg me-2"></i>Accept Progression
+                                        </button>
+                                        <a href="{{ url_for('gym.exercise_progression', exercise_id=suggestion.exercise_id) }}"
+                                           class="btn btn-outline-primary">
+                                            <i class="bi bi-graph-up me-2"></i>View Details
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- Keep Working Section -->
+        {% set not_ready_suggestions = suggestions | rejectattr('ready') | list %}
+        {% if not_ready_suggestions %}
+            <div class="section-header mb-4">
+                <h3 class="section-title">
+                    <i class="bi bi-hourglass-split text-warning"></i>
+                    Keep Working
+                    <span class="badge bg-warning text-dark ms-2">{{ not_ready_suggestions|length }}</span>
+                </h3>
+                <p class="section-subtitle">Continue building strength on these exercises</p>
+            </div>
+
+            <div class="row g-4">
+                {% for suggestion in not_ready_suggestions %}
+                    <div class="col-lg-6">
+                        <div class="card progression-card working-card">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h5 class="card-title mb-1">{{ suggestion.exercise_name }}</h5>
+                                        <span class="badge bg-light text-dark">{{ suggestion.muscle_group }}</span>
+                                    </div>
+                                    <div class="progression-status">
+                                        <i class="bi bi-clock text-warning"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <p class="reason-text mb-3">{{ suggestion.reason }}</p>
+
+                                {% if suggestion.current_avg_reps %}
+                                    <div class="progress-section mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <span class="progress-label">Progress to Target</span>
+                                            <span class="progress-value">{{ suggestion.current_avg_reps }} / {{ suggestion.target_reps }} reps</span>
+                                        </div>
+                                        {% set progress_pct = (suggestion.current_avg_reps / suggestion.target_reps * 100) | round %}
+                                        <div class="progress custom-progress">
+                                            <div class="progress-bar bg-warning" role="progressbar"
+                                                 style="width: {{ progress_pct }}%"
+                                                 aria-valuenow="{{ suggestion.current_avg_reps }}"
+                                                 aria-valuemin="{{ preferences.min_reps_target }}"
+                                                 aria-valuemax="{{ suggestion.target_reps }}">
+                                            </div>
+                                        </div>
+                                        <small class="text-muted mt-1">
+                                            {{ suggestion.reps_to_go }} more reps needed on average
+                                        </small>
+                                    </div>
+                                {% endif %}
+
+                                <div class="action-buttons">
+                                    <a href="{{ url_for('gym.exercise_progression', exercise_id=suggestion.exercise_id) }}"
+                                       class="btn btn-outline-primary">
+                                        <i class="bi bi-graph-up me-2"></i>View History
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="bi bi-graph-up"></i>
+            </div>
+            <h4 class="empty-state-title">No Exercise Data</h4>
+            <p class="empty-state-text">Complete a few workouts to start seeing progression suggestions.</p>
+            <div class="empty-state-actions">
+                <a href="{{ url_for('gym.choose_workout') }}" class="btn btn-primary">
+                    <i class="bi bi-play-fill me-2"></i>Start a Workout
+                </a>
+                <a href="{{ url_for('gym.templates') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-collection me-2"></i>Browse Templates
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Progression Confirmation Modal -->
+<div class="modal fade" id="progressionModal" tabindex="-1" aria-labelledby="progressionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title" id="progressionModalLabel">
+                    <i class="bi bi-check-circle text-success me-2"></i>Confirm Progression
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="progression-summary mb-4">
+                    <h6 class="mb-3">Ready to progress on <strong id="modalExerciseName"></strong>?</h6>
+
+                    <div class="progression-comparison">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="comparison-card from">
+                                    <div class="comparison-label">From</div>
+                                    <div class="comparison-value">
+                                        <span id="modalOldWeight"></span>kg
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="comparison-card to">
+                                    <div class="comparison-label">To</div>
+                                    <div class="comparison-value">
+                                        <span id="modalNewWeight"></span>kg
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="comparison-arrow">
+                            <i class="bi bi-arrow-right"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="progressionNotes" class="form-label">Notes (optional)</label>
+                    <textarea class="form-control" id="progressionNotes" rows="3"
+                              placeholder="Add any notes about this progression..."></textarea>
+                </div>
+
+                <div class="alert alert-info border-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <small>This progression will be applied to your next workout with this exercise.</small>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-success" id="confirmProgression">
+                    <i class="bi bi-check-lg me-2"></i>Confirm Progression
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="progressionToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="bi bi-check-circle-fill text-success me-2"></i>
+            <strong class="me-auto">Progression Recorded</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            Your progression has been recorded successfully! Use the new weight in your next workout.
+        </div>
+    </div>
+</div>
+
+<style>
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 3rem 0;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+}
+
+.hero-breadcrumb {
+    background: none;
+    padding: 0;
+    margin: 0;
+}
+
+.hero-breadcrumb .breadcrumb-item a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+}
+
+.hero-breadcrumb .breadcrumb-item.active {
+    color: white;
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin-bottom: 0;
+}
+
+.strategy-card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+}
+
+.strategy-stats {
+    text-align: right;
+}
+
+.section-header {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.section-subtitle {
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+.progression-card {
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.progression-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.ready-card {
+    border-left: 4px solid #198754;
+    box-shadow: 0 2px 10px rgba(25, 135, 84, 0.1);
+}
+
+.working-card {
+    border-left: 4px solid #ffc107;
+    box-shadow: 0 2px 10px rgba(255, 193, 7, 0.1);
+}
+
+.progression-status {
+    font-size: 1.2rem;
+}
+
+.progression-details {
+    position: relative;
+}
+
+.metric-card {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.metric-card.suggested {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #198754;
+}
+
+.metric-sub {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.progression-arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-size: 1.2rem;
+    color: #198754;
+}
+
+.increment-badge {
+    position: absolute;
+    top: -8px;
+    right: -20px;
+    background: #198754;
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.action-buttons .btn {
+    flex: 1;
+    min-width: 120px;
+}
+
+.progress-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.progress-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.progress-value {
+    font-weight: 600;
+    color: #ffc107;
+}
+
+.custom-progress {
+    height: 8px;
+    border-radius: 4px;
+}
+
+.reason-text {
+    color: #6c757d;
+    font-style: italic;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    color: #dee2e6;
+    margin-bottom: 1.5rem;
+}
+
+.empty-state-title {
+    color: #495057;
+    margin-bottom: 1rem;
+}
+
+.empty-state-text {
+    color: #6c757d;
+    margin-bottom: 2rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.empty-state-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.progression-summary h6 {
+    color: #495057;
+}
+
+.progression-comparison {
+    position: relative;
+    margin: 1.5rem 0;
+}
+
+.comparison-card {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 8px;
+    background: #f8f9fa;
+}
+
+.comparison-card.to {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+}
+
+.comparison-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.comparison-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #198754;
+}
+
+.comparison-arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    font-size: 1.1rem;
+    color: #198754;
+}
+
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-buttons .btn {
+        flex: none;
+    }
+
+    .empty-state-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = new bootstrap.Modal(document.getElementById('progressionModal'));
+    const toast = new bootstrap.Toast(document.getElementById('progressionToast'));
+    let currentProgression = {};
+
+    // Handle accept progression buttons
+    document.querySelectorAll('.accept-progression').forEach(button => {
+        button.addEventListener('click', function() {
+            currentProgression = {
+                exercise_id: this.dataset.exerciseId,
+                exercise_name: this.dataset.exerciseName,
+                old_weight: parseFloat(this.dataset.oldWeight),
+                new_weight: parseFloat(this.dataset.newWeight),
+                progression_type: this.dataset.progressionType
+            };
+
+            document.getElementById('modalExerciseName').textContent = currentProgression.exercise_name;
+            document.getElementById('modalOldWeight').textContent = currentProgression.old_weight;
+            document.getElementById('modalNewWeight').textContent = currentProgression.new_weight;
+            document.getElementById('progressionNotes').value = '';
+
+            modal.show();
+        });
+    });
+
+    // Handle confirm progression
+    document.getElementById('confirmProgression').addEventListener('click', function() {
+        const notes = document.getElementById('progressionNotes').value;
+        const confirmBtn = this;
+
+        // Show loading state
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Recording...';
+
+        fetch(`/gym/exercise/${currentProgression.exercise_id}/accept-progression`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...currentProgression,
+                notes: notes
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                modal.hide();
+                toast.show();
+
+                // Remove the accepted suggestion from the page
+                const suggestionCard = document.querySelector(`[data-exercise-id="${currentProgression.exercise_id}"]`).closest('.col-lg-6');
+                if (suggestionCard) {
+                    suggestionCard.style.transition = 'all 0.3s ease';
+                    suggestionCard.style.opacity = '0';
+                    suggestionCard.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        suggestionCard.remove();
+
+                        // Check if no more ready suggestions
+                        const readySuggestions = document.querySelectorAll('.ready-card');
+                        if (readySuggestions.length === 0) {
+                            setTimeout(() => window.location.reload(), 1000);
+                        }
+                    }, 300);
+                }
+            } else {
+                throw new Error(data.message || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to record progression: ' + error.message);
+        })
+        .finally(() => {
+            // Reset button state
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="bi bi-check-lg me-2"></i>Confirm Progression';
+        });
+    });
+
+    // Auto-hide toast after 5 seconds
+    document.getElementById('progressionToast').addEventListener('shown.bs.toast', function() {
+        setTimeout(() => {
+            toast.hide();
+        }, 5000);
+    });
+});
+</script>
+{% endblock %}
