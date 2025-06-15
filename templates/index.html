@@ -383,6 +383,12 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Heartbeat Animation */
+@keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
 </style>
 {% endblock %}
 
@@ -390,7 +396,10 @@ body {
 <div class="dashboard-container">
     <!-- Hero Section -->
     <div class="hero-section">
-        <h1 class="hero-title">Welcome to VitaSync</h1>
+        <h1 class="hero-title">
+            <i class="fas fa-heartbeat text-danger me-2" style="animation: heartbeat 2s ease-in-out infinite;"></i>
+            Welcome to VitaSync
+        </h1>
         <p class="hero-subtitle">Your complete health and fitness companion</p>
 
         <div class="hero-stats">

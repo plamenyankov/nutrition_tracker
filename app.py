@@ -47,7 +47,8 @@ class User(UserMixin):
 
 # Hardcoded user credentials
 USERS = {
-    'plamenyankov': 'somestrongpassword'
+    'plamenyankov': 'somestrongpassword',
+    'demo': 'demo'
 }
 
 @login_manager.user_loader
@@ -69,6 +70,11 @@ def login():
             return redirect(next_page) if next_page else redirect(url_for('home'))
         else:
             flash('Invalid username or password', 'error')
+    else:
+        # Clear any existing flash messages when showing login page (GET request)
+        # This prevents messages from other pages showing up on login
+        from flask import session
+        session.pop('_flashes', None)
 
     return render_template('login.html')
 
