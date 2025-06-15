@@ -38,6 +38,11 @@
     }
 
     /* Enhanced Navigation Styling */
+    .navbar {
+        position: relative;
+        z-index: 1030; /* Ensure navbar is above other content */
+    }
+
     .navbar-brand {
         font-weight: 700;
         font-size: 1.5rem;
@@ -73,6 +78,7 @@
         border-radius: 8px;
         padding: 0.5rem 0;
         margin-top: 0.5rem;
+        z-index: 1050; /* Ensure dropdown appears above sticky headers */
     }
 
     .dropdown-item {

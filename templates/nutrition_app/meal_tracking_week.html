@@ -3,21 +3,21 @@
 {% block content %}
 <div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
     <!-- Header Section -->
-    <div class="sticky-top" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+    <div class="sticky-top" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2); z-index: 100;">
         <div class="container py-3" style="max-width: 1200px;">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=prev_week) }}"
+                    <a href="{{ url_for('meal_bp.meal_tracking_week', week_offset=week_offset-1) }}"
                        class="btn btn-outline-primary btn-sm rounded-pill">
                         <i class="bi bi-chevron-left"></i>
                     </a>
                 </div>
                 <div class="col text-center">
-                    <h4 class="mb-0 fw-bold text-dark">{{ week_display }}</h4>
-                    <small class="text-muted">Weekly Overview</small>
+                    <h4 class="mb-0 fw-bold text-dark">Week {{ week_number }}</h4>
+                    <small class="text-muted">{{ week_start }} - {{ week_end }}</small>
                 </div>
                 <div class="col-auto">
-                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=next_week) }}"
+                    <a href="{{ url_for('meal_bp.meal_tracking_week', week_offset=week_offset+1) }}"
                        class="btn btn-outline-primary btn-sm rounded-pill">
                         <i class="bi bi-chevron-right"></i>
                     </a>
@@ -29,11 +29,15 @@
                 <div class="col text-center">
                     <a href="{{ url_for('meal_bp.meal_tracking_week') }}"
                        class="btn btn-outline-secondary btn-sm rounded-pill me-2">
-                        <i class="bi bi-calendar-check"></i> This Week
+                        <i class="bi bi-calendar-check"></i> Current Week
                     </a>
                     <a href="{{ url_for('meal_bp.meal_tracking') }}"
-                       class="btn btn-outline-primary btn-sm rounded-pill">
-                        <i class="bi bi-calendar-day"></i> Daily View
+                       class="btn btn-outline-primary btn-sm rounded-pill me-2">
+                        <i class="bi bi-calendar-day"></i> Today
+                    </a>
+                    <a href="{{ url_for('food_bp.food_database') }}"
+                       class="btn btn-primary btn-sm rounded-pill">
+                        <i class="bi bi-plus-circle"></i> Add Food
                     </a>
                 </div>
             </div>
