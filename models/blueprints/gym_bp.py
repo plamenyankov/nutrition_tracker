@@ -56,10 +56,20 @@ def log_workout():
     """Log workout sets"""
     data = request.json
     session_id = data.get('session_id')
+    create_session_only = data.get('create_session_only', False)
 
     if not session_id:
         # Create new session
-        session_id = gym_service.start_workout_session()
+        try:
+            session_id = gym_service.start_workout_session()
+            if not session_id:
+                return jsonify({'success': False, 'error': 'Failed to create workout session'}), 400
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Error creating session: {str(e)}'}), 400
+
+    # If only creating session, return early
+    if create_session_only:
+        return jsonify({'success': True, 'session_id': session_id})
 
     # Log the set
     try:
@@ -68,7 +78,8 @@ def log_workout():
             data['exercise_id'],
             data['set_number'],
             data['weight'],
-            data['reps']
+            data['reps'],
+            duration_seconds=data.get('duration_seconds', 0)
         )
         return jsonify({'success': True, 'session_id': session_id})
     except Exception as e:
@@ -121,7 +132,7 @@ def workout_detail(workout_id):
     # Group sets by exercise
     exercises = {}
     for set_data in sets:
-        exercise_name = set_data[12]  # Exercise name from join (after workout_sets columns)
+        exercise_name = set_data[16]  # Exercise name from join (after workout_sets columns)
         if exercise_name not in exercises:
             exercises[exercise_name] = []
         exercises[exercise_name].append(set_data)
@@ -433,7 +444,7 @@ def create_template_from_workout(workout_id):
     # Get exercise summary for preview
     exercises = {}
     for set_data in sets:
-        exercise_name = set_data[12]  # Exercise name from join (after workout_sets columns)
+        exercise_name = set_data[16]  # Exercise name from join (after workout_sets columns)
         if exercise_name not in exercises:
             exercises[exercise_name] = {
                 'sets': 0,
