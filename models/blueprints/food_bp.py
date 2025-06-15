@@ -10,9 +10,36 @@ food_service = FoodService()
 @login_required
 def food_database():
     """Food Database - View and manage all foods"""
-    foods = food_service.get_all_foods_with_favorites()
     today = datetime.now().strftime('%Y-%m-%d')
-    return render_template('nutrition_app/food_database.html', foods=foods, today=today)
+    return render_template('nutrition_app/food_database.html', today=today)
+
+@food_bp.route('/api/paginated')
+@login_required
+def get_foods_paginated():
+    """Get paginated foods with search and filters"""
+    try:
+        page = int(request.args.get('page', 1))
+        per_page = int(request.args.get('per_page', 24))
+        search = request.args.get('search', '').strip()
+
+        # Filters
+        filters = {}
+        if request.args.get('favorites_only') == 'true':
+            filters['favorites_only'] = True
+        if request.args.get('min_calories'):
+            filters['min_calories'] = float(request.args.get('min_calories'))
+        if request.args.get('max_calories'):
+            filters['max_calories'] = float(request.args.get('max_calories'))
+        if request.args.get('min_protein'):
+            filters['min_protein'] = float(request.args.get('min_protein'))
+        if request.args.get('max_protein'):
+            filters['max_protein'] = float(request.args.get('max_protein'))
+
+        result = food_service.get_foods_paginated(page, per_page, search, filters)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @food_bp.route('/toggle-favorite/<int:ingredient_id>', methods=['POST'])
 @login_required

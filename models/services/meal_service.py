@@ -238,27 +238,46 @@ class MealService:
     def add_food_to_meal(self, food_id, meal_type, quantity, date_str):
         """Add food to a meal"""
         try:
+            # Convert food_id to integer and quantity to float
+            food_id = int(food_id)
+            quantity = float(quantity)
+
+            print(f"Adding food to meal: food_id={food_id}, meal_type={meal_type}, quantity={quantity}, date_str={date_str}")
+
             # Convert date format
             date = self._convert_date_format(date_str)
+            print(f"Converted date: {date}")
 
             # Get food details
             food = self.food_db.fetch_nutrition(food_id)
+
+            if not food:
+                return {'success': False, 'error': 'Food not found'}
+
+            print(f"Found food: {food['ingredient']}")
 
             # Handle quantity scaling
             if quantity != food['qty']:
                 ingredient_id, unit_id = self.food_db.get_unit_ingredient_from_iq(food_id)
                 ingredient_quantity_id = self.food_db.save_ingredient_qty(quantity, ingredient_id, unit_id)
+                print(f"Created new ingredient quantity: {ingredient_quantity_id}")
             else:
                 ingredient_quantity_id = food_id
+                print(f"Using existing ingredient quantity: {ingredient_quantity_id}")
 
             # Save to consumption
-            self.food_db.save_consumption(date, ingredient_quantity_id, meal_type)
+            result = self.food_db.save_consumption(date, ingredient_quantity_id, meal_type)
+            print(f"Save consumption result: {result}")
 
             return {
                 'success': True,
                 'message': f'Added {food["ingredient"]} to {meal_type}!'
             }
+        except ValueError as e:
+            print(f"ValueError in add_food_to_meal: {e}")
+            return {'success': False, 'error': f'Invalid input: {str(e)}'}
         except Exception as e:
+            print(f"Exception in add_food_to_meal: {e}")
             return {'success': False, 'error': str(e)}
 
     def delete_consumption(self, consumption_id, is_recipe=False):
@@ -313,9 +332,21 @@ class MealService:
         return pd.to_datetime(date_str)
 
     def _convert_date_format(self, date_str):
-        """Convert date from ISO format to DD.MM.YYYY"""
+        """Convert date to the format expected by the database"""
         if '-' in date_str and len(date_str.split('-')[0]) == 4:
-            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-            return date_obj.strftime('%d.%m.%Y')
+            # Already in YYYY-MM-DD format, return as is for MySQL
+            return date_str
         else:
-            return date_str if date_str else datetime.now().strftime('%d.%m.%Y')
+            # Convert other formats to YYYY-MM-DD for MySQL compatibility
+            if date_str:
+                try:
+                    # Try to parse DD.MM.YYYY format
+                    if '.' in date_str:
+                        date_obj = datetime.strptime(date_str, '%d.%m.%Y')
+                    else:
+                        date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                    return date_obj.strftime('%Y-%m-%d')
+                except:
+                    return datetime.now().strftime('%Y-%m-%d')
+            else:
+                return datetime.now().strftime('%Y-%m-%d')
