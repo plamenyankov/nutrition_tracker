@@ -182,8 +182,50 @@ class AIService:
 
         if temp_results is not None:
             try:
-                # Clean column names
+                # Clean column names and ensure they match expected format
                 temp_results.columns = temp_results.columns.str.strip()
+
+                # Map column names to expected format
+                column_mapping = {
+                    'qty': 'qty',
+                    'quantity': 'qty',
+                    'unit': 'unit',
+                    'unit_name': 'unit',
+                    'ingr': 'ingr',
+                    'ingredient': 'ingr',
+                    'ingredient_name': 'ingr',
+                    'kcal': 'kcal',
+                    'calories': 'kcal',
+                    'fats': 'fats',
+                    'fat': 'fats',
+                    'carbs': 'carbs',
+                    'carb': 'carbs',
+                    'fiber': 'fiber',
+                    'net_carbs': 'net_carbs',
+                    'net_carb': 'net_carbs',
+                    'protein': 'protein'
+                }
+
+                # Rename columns to match expected format
+                temp_results = temp_results.rename(columns=column_mapping)
+
+                # Ensure all required columns exist with default values if missing
+                required_columns = ['qty', 'unit', 'ingr', 'kcal', 'fats', 'carbs', 'fiber', 'net_carbs', 'protein']
+                for col in required_columns:
+                    if col not in temp_results.columns:
+                        if col == 'net_carbs':
+                            # Calculate net carbs if missing
+                            temp_results[col] = temp_results.get('carbs', 0) - temp_results.get('fiber', 0)
+                        else:
+                            temp_results[col] = 0
+
+                # Ensure numeric columns are properly formatted
+                numeric_columns = ['qty', 'kcal', 'fats', 'carbs', 'fiber', 'net_carbs', 'protein']
+                for col in numeric_columns:
+                    temp_results[col] = pd.to_numeric(temp_results[col], errors='coerce').fillna(0)
+
+                # Reorder columns to match expected format
+                temp_results = temp_results[required_columns]
 
                 # Save to database
                 self.food_db.save_to_database(temp_results.to_csv(index=False))

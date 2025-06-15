@@ -1,243 +1,374 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="text-center mt-4 mb-4">Meal Tracking</h1>
-
-    <!-- Date Navigation -->
-    <div class="card mb-4">
-        <div class="card-body">
+<div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <!-- Header Section -->
+    <div class="sticky-top" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+        <div class="container py-3" style="max-width: 1200px;">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <a href="{{ url_for('meal_bp.meal_tracking', date_str=prev_date) }}" class="btn btn-outline-primary">
-                        <i class="bi bi-chevron-left"></i> Previous
+                    <a href="{{ url_for('meal_bp.meal_tracking', date_str=prev_date) }}"
+                       class="btn btn-outline-primary btn-sm rounded-pill">
+                        <i class="bi bi-chevron-left"></i>
                     </a>
                 </div>
                 <div class="col text-center">
-                    <h4 class="mb-0">{{ display_date }}</h4>
+                    <h4 class="mb-0 fw-bold text-dark">{{ display_date }}</h4>
+                    <small class="text-muted">Meal Tracking</small>
                 </div>
                 <div class="col-auto">
-                    <a href="{{ url_for('meal_bp.meal_tracking', date_str=next_date) }}" class="btn btn-outline-primary">
-                        Next <i class="bi bi-chevron-right"></i>
+                    <a href="{{ url_for('meal_bp.meal_tracking', date_str=next_date) }}"
+                       class="btn btn-outline-primary btn-sm rounded-pill">
+                        <i class="bi bi-chevron-right"></i>
                     </a>
                 </div>
             </div>
+
+            <!-- Date Picker Row -->
             <div class="row mt-3">
-                <div class="col-md-4 mx-auto">
+                <div class="col-md-6 mx-auto">
                     <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
-                        <input type="date" class="form-control" id="mealDate" value="{{ selected_date }}">
-                        <button class="btn btn-primary" onclick="goToDate()">Go</button>
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="bi bi-calendar text-primary"></i>
+                        </span>
+                        <input type="date" class="form-control border-start-0" id="mealDate" value="{{ selected_date }}">
+                        <button class="btn btn-primary rounded-end" onclick="goToDate()">Go</button>
                     </div>
                 </div>
-                <div class="col-md-4 text-center">
-                    <a href="{{ url_for('meal_bp.meal_tracking') }}" class="btn btn-outline-secondary">
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row mt-3">
+                <div class="col text-center">
+                    <a href="{{ url_for('meal_bp.meal_tracking') }}"
+                       class="btn btn-outline-secondary btn-sm rounded-pill me-2">
                         <i class="bi bi-calendar-check"></i> Today
                     </a>
-                    <a href="{{ url_for('meal_bp.meal_tracking_week') }}" class="btn btn-outline-primary ms-2">
-                        <i class="bi bi-calendar-week"></i> Week View
+                    <a href="{{ url_for('meal_bp.meal_tracking_week') }}"
+                       class="btn btn-outline-primary btn-sm rounded-pill me-2">
+                        <i class="bi bi-calendar-week"></i> Week
+                    </a>
+                    <a href="{{ url_for('food_bp.food_database') }}"
+                       class="btn btn-primary btn-sm rounded-pill">
+                        <i class="bi bi-plus-circle"></i> Add Food
                     </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Quick Add Buttons -->
-    <div class="row mb-4">
-        <div class="col text-end">
-            <a href="{{ url_for('food_bp.food_database') }}" class="btn btn-primary">
-                <i class="bi bi-plus-circle"></i> Add from Food Database
-            </a>
-            <a href="{{ url_for('ai_bp.ai_assistant') }}" class="btn btn-success">
-                <i class="bi bi-robot"></i> Quick Add with AI
-            </a>
+    <div class="container py-4" style="max-width: 1200px;">
+        <!-- Daily Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); border-radius: 16px;">
+                    <div class="card-body text-center text-white">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-fire" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-1">{{ daily_totals.calories|default(0) }}</h3>
+                        <small class="opacity-75">Calories</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #4ecdc4, #44a08d); border-radius: 16px;">
+                    <div class="card-body text-center text-white">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-lightning-charge" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-1">{{ daily_totals.protein|default(0) }}g</h3>
+                        <small class="opacity-75">Protein</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ffeaa7, #fdcb6e); border-radius: 16px;">
+                    <div class="card-body text-center text-white">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-battery-charging" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-1">{{ daily_totals.carbs|default(0) }}g</h3>
+                        <small class="opacity-75">Carbs</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #a29bfe, #6c5ce7); border-radius: 16px;">
+                    <div class="card-body text-center text-white">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-droplet" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-1">{{ daily_totals.fat|default(0) }}g</h3>
+                        <small class="opacity-75">Fat</small>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- Daily Summary Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Daily Calories</h5>
-                    <h2 class="text-primary">{{ daily_totals.calories|default(0) }}</h2>
-                    <small class="text-muted">kcal</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Daily Protein</h5>
-                    <h2 class="text-success">{{ daily_totals.protein|default(0) }}</h2>
-                    <small class="text-muted">grams</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Daily Carbs</h5>
-                    <h2 class="text-warning">{{ daily_totals.carbs|default(0) }}</h2>
-                    <small class="text-muted">grams</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center">
-                <div class="card-body">
-                    <h5 class="card-title">Daily Fat</h5>
-                    <h2 class="text-info">{{ daily_totals.fat|default(0) }}</h2>
-                    <small class="text-muted">grams</small>
-                </div>
-            </div>
-        </div>
-    </div>
+        <!-- Meals by Type -->
+        {% set meal_icons = {
+            'breakfast': 'bi-sunrise',
+            'lunch': 'bi-sun',
+            'dinner': 'bi-moon',
+            'snacks': 'bi-cookie',
+            'other': 'bi-three-dots'
+        } %}
 
-    <!-- Meals by Type -->
-    {% set meal_icons = {
-        'breakfast': 'bi-sunrise',
-        'lunch': 'bi-sun',
-        'dinner': 'bi-moon',
-        'snacks': 'bi-cookie',
-        'other': 'bi-three-dots'
-    } %}
+        {% set meal_colors = {
+            'breakfast': 'linear-gradient(135deg, #ffeaa7, #fdcb6e)',
+            'lunch': 'linear-gradient(135deg, #ff7675, #e84393)',
+            'dinner': 'linear-gradient(135deg, #6c5ce7, #a29bfe)',
+            'snacks': 'linear-gradient(135deg, #fd79a8, #fdcb6e)',
+            'other': 'linear-gradient(135deg, #74b9ff, #0984e3)'
+        } %}
 
-    {% for meal_type, meals in meals_by_type.items() %}
-    <div class="card mb-3">
-        <div class="card-header bg-light">
-            <div class="row align-items-center">
-                <div class="col">
-                    <h5 class="mb-0">
-                        <i class="bi {{ meal_icons[meal_type] }}"></i>
-                        {{ meal_type|title }}
-                    </h5>
+        {% for meal_type, meals in meals_by_type.items() %}
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 20px; overflow: hidden;">
+            <!-- Meal Header -->
+            <div class="card-header border-0 p-0">
+                <div class="p-4" style="background: {{ meal_colors[meal_type] }};">
+                    <div class="row align-items-center text-white">
+                        <div class="col">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="bi {{ meal_icons[meal_type] }}" style="font-size: 1.8rem;"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1 fw-bold">{{ meal_type|title }}</h5>
+                                    <small class="opacity-75">
+                                        {{ meal_totals[meal_type].calories }} kcal •
+                                        {{ meal_totals[meal_type].protein }}g protein
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-light btn-sm rounded-pill" data-meal-type="{{ meal_type }}">
+                                <i class="bi bi-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-auto">
-                    <small class="text-muted">
-                        {{ meal_totals[meal_type].calories }} kcal |
-                        {{ meal_totals[meal_type].protein }}g protein |
-                        {{ meal_totals[meal_type].carbs }}g carbs |
-                        {{ meal_totals[meal_type].fat }}g fat
-                    </small>
-                </div>
-                <div class="col-auto">
-                    <button class="btn btn-sm btn-outline-primary" data-meal-type="{{ meal_type }}">
-                        <i class="bi bi-plus"></i> Add Food
+            </div>
+
+            <!-- Meal Content -->
+            <div class="card-body p-0">
+                {% if meals %}
+                    {% for item in meals %}
+                    <div class="border-bottom border-light p-4 meal-item" style="transition: all 0.3s ease;">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-3">
+                                        {% if item.get('is_recipe') %}
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                                 style="width: 48px; height: 48px; background: linear-gradient(135deg, #667eea, #764ba2);">
+                                                <i class="bi bi-book text-white"></i>
+                                            </div>
+                                        {% else %}
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                                 style="width: 48px; height: 48px; background: linear-gradient(135deg, #4ecdc4, #44a08d);">
+                                                <i class="bi bi-egg-fried text-white"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1 fw-semibold">
+                                            {% if item.get('is_recipe') %}
+                                                <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=item.recipe_id) }}"
+                                                   class="text-decoration-none text-dark">{{ item.ingredient }}</a>
+                                            {% else %}
+                                                <a href="/nutrition/{{ item.iq_id }}"
+                                                   class="text-decoration-none text-dark">{{ item.ingredient }}</a>
+                                            {% endif %}
+                                        </h6>
+                                        <div class="text-muted small">
+                                            <span class="me-3">{{ item.qty }} {{ item.unit }}</span>
+                                            <span class="me-3">{{ item.kcal }} kcal</span>
+                                        </div>
+                                        <div class="mt-2">
+                                            <div class="row g-2">
+                                                <div class="col-3">
+                                                    <div class="text-center p-2 rounded" style="background: rgba(78, 205, 196, 0.1);">
+                                                        <small class="text-muted d-block">Protein</small>
+                                                        <strong class="text-success">{{ item.protein }}g</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="col-3">
+                                                    <div class="text-center p-2 rounded" style="background: rgba(255, 234, 167, 0.3);">
+                                                        <small class="text-muted d-block">Carbs</small>
+                                                        <strong class="text-warning">{{ item.carb }}g</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="col-3">
+                                                    <div class="text-center p-2 rounded" style="background: rgba(162, 155, 254, 0.2);">
+                                                        <small class="text-muted d-block">Fat</small>
+                                                        <strong class="text-info">{{ item.fat }}g</strong>
+                                                    </div>
+                                                </div>
+                                                <div class="col-3">
+                                                    <div class="d-flex justify-content-end align-items-center h-100">
+                                                        {% if not item.get('is_recipe') %}
+                                                        <button class="btn btn-outline-warning btn-sm rounded-circle me-2 edit-btn"
+                                                                data-consumption-id="{{ item.consumption_id }}"
+                                                                data-food-name="{{ item.ingredient }}"
+                                                                data-quantity="{{ item.qty }}"
+                                                                data-unit="{{ item.unit }}"
+                                                                style="width: 32px; height: 32px;">
+                                                            <i class="bi bi-pencil" style="font-size: 0.8rem;"></i>
+                                                        </button>
+                                                        {% endif %}
+                                                        <button class="btn btn-outline-danger btn-sm rounded-circle delete-btn"
+                                                                data-consumption-id="{{ item.get('recipe_consumption_id') if item.get('is_recipe') else item.consumption_id }}"
+                                                                data-food-name="{{ item.ingredient }}"
+                                                                data-is-recipe="{{ 'true' if item.get('is_recipe') else 'false' }}"
+                                                                style="width: 32px; height: 32px;">
+                                                            <i class="bi bi-trash" style="font-size: 0.8rem;"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                <div class="p-5 text-center text-muted">
+                    <i class="bi bi-plate" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="mt-3 mb-3">No foods logged for {{ meal_type }}</p>
+                    <button class="btn btn-primary btn-sm rounded-pill" data-meal-type="{{ meal_type }}">
+                        <i class="bi bi-plus-circle"></i> Add First Food
                     </button>
                 </div>
+                {% endif %}
             </div>
         </div>
-        <div class="card-body">
-            {% if meals %}
-            <div class="table-responsive">
-                <table class="table table-sm table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>Food</th>
-                            <th>Quantity</th>
-                            <th>Calories</th>
-                            <th>Protein</th>
-                            <th>Carbs</th>
-                            <th>Fat</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in meals %}
-                        <tr>
-                            <td>
-                                {% if item.get('is_recipe') %}
-                                    <i class="bi bi-book text-primary" title="Recipe"></i>
-                                    <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=item.recipe_id) }}">{{ item.ingredient }}</a>
-                                {% else %}
-                                    <a href="/nutrition/{{ item.iq_id }}">{{ item.ingredient }}</a>
-                                {% endif %}
-                            </td>
-                            <td>{{ item.qty }} {{ item.unit }}</td>
-                            <td>{{ item.kcal }}</td>
-                            <td>{{ item.protein }}g</td>
-                            <td>{{ item.carb }}g</td>
-                            <td>{{ item.fat }}g</td>
-                            <td>
-                                {% if not item.get('is_recipe') %}
-                                <button class="btn btn-sm btn-warning edit-btn"
-                                        data-consumption-id="{{ item.consumption_id }}"
-                                        data-food-name="{{ item.ingredient }}"
-                                        data-quantity="{{ item.qty }}"
-                                        data-unit="{{ item.unit }}">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                {% endif %}
-                                <button class="btn btn-sm btn-danger delete-btn"
-                                        data-consumption-id="{{ item.get('recipe_consumption_id') if item.get('is_recipe') else item.consumption_id }}"
-                                        data-food-name="{{ item.ingredient }}"
-                                        data-is-recipe="{{ 'true' if item.get('is_recipe') else 'false' }}">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p class="text-muted text-center mb-0">No foods logged for {{ meal_type }}</p>
-            {% endif %}
-        </div>
-    </div>
-    {% endfor %}
+        {% endfor %}
 
-    <!-- Empty state if no meals -->
-    {% if daily_totals.calories == 0 %}
-    <div class="text-center py-5 text-muted">
-        <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
-        <p class="mt-3">No meals logged for this day.</p>
-        <button class="btn btn-primary" data-meal-type="breakfast">
-            <i class="bi bi-plus-circle"></i> Start Tracking
-        </button>
+        <!-- Empty state if no meals -->
+        {% if daily_totals.calories == 0 %}
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="bi bi-calendar-x text-muted" style="font-size: 4rem; opacity: 0.3;"></i>
+            </div>
+            <h4 class="text-white mb-3">No meals logged today</h4>
+            <p class="text-white-50 mb-4">Start tracking your nutrition journey!</p>
+            <button class="btn btn-light btn-lg rounded-pill px-4" data-meal-type="breakfast">
+                <i class="bi bi-plus-circle me-2"></i> Start Tracking
+            </button>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
 <!-- Edit Quantity Modal -->
 <div class="modal fade" id="editQuantityModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Quantity</h5>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Edit Quantity</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <form id="editQuantityForm">
                     <input type="hidden" id="editConsumptionId">
 
-                    <div class="mb-3">
-                        <label class="form-label">Food</label>
-                        <input type="text" class="form-control" id="editFoodName" readonly>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Food Item</label>
+                        <input type="text" class="form-control border-0 bg-light" id="editFoodName" readonly style="border-radius: 12px;">
                     </div>
 
-                    <div class="row mb-3">
+                    <div class="row g-3">
                         <div class="col">
-                            <label class="form-label">Quantity</label>
-                            <input type="number" class="form-control" id="editQuantity" name="quantity" step="0.01" required>
+                            <label class="form-label fw-semibold">Quantity</label>
+                            <input type="number" class="form-control" id="editQuantity" name="quantity"
+                                   step="0.01" required style="border-radius: 12px;">
                         </div>
                         <div class="col">
-                            <label class="form-label">Unit</label>
-                            <input type="text" class="form-control" id="editUnit" readonly>
+                            <label class="form-label fw-semibold">Unit</label>
+                            <input type="text" class="form-control border-0 bg-light" id="editUnit" readonly style="border-radius: 12px;">
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="updateQuantity()">Update</button>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" onclick="updateQuantity()">Update</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+    <div id="successToast" class="toast border-0 shadow-lg" role="alert" style="border-radius: 12px;">
+        <div class="toast-body bg-success text-white d-flex align-items-center" style="border-radius: 12px;">
+            <i class="bi bi-check-circle me-2"></i>
+            <span id="toastMessage">Success!</span>
+        </div>
+    </div>
+</div>
+
+<style>
+.meal-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+    transform: translateX(4px);
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .meal-item {
+        padding: 1rem;
+    }
+}
+</style>
+
 <script>
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('successToast');
+    const toastBody = toast.querySelector('.toast-body');
+    const toastMessage = document.getElementById('toastMessage');
+
+    toastMessage.textContent = message;
+
+    if (type === 'success') {
+        toastBody.className = 'toast-body bg-success text-white d-flex align-items-center';
+        toastBody.innerHTML = '<i class="bi bi-check-circle me-2"></i><span>' + message + '</span>';
+    } else {
+        toastBody.className = 'toast-body bg-danger text-white d-flex align-items-center';
+        toastBody.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i><span>' + message + '</span>';
+    }
+
+    new bootstrap.Toast(toast).show();
+}
+
 // Handle date navigation
 function goToDate() {
     const selectedDate = document.getElementById('mealDate').value;
@@ -306,13 +437,13 @@ document.querySelectorAll('.delete-btn').forEach(button => {
                 const result = await response.json();
 
                 if (result.success) {
-                    // Reload the page to show updated data
-                    window.location.reload();
+                    showToast('Food item deleted successfully!');
+                    setTimeout(() => window.location.reload(), 1000);
                 } else {
-                    alert('Error deleting item: ' + result.error);
+                    showToast('Error deleting item: ' + result.error, 'error');
                 }
             } catch (error) {
-                alert('Error deleting item: ' + error);
+                showToast('Error deleting item: ' + error, 'error');
             }
         }
     });
@@ -335,14 +466,15 @@ async function updateQuantity() {
         const result = await response.json();
 
         if (result.success) {
-            // Close modal and reload page
+            // Close modal and show success
             bootstrap.Modal.getInstance(document.getElementById('editQuantityModal')).hide();
-            window.location.reload();
+            showToast('Quantity updated successfully!');
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert('Error updating quantity: ' + result.error);
+            showToast('Error updating quantity: ' + result.error, 'error');
         }
     } catch (error) {
-        alert('Error updating quantity: ' + error);
+        showToast('Error updating quantity: ' + error, 'error');
     }
 }
 </script>

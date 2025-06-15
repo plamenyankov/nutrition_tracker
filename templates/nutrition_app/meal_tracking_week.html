@@ -1,33 +1,38 @@
 {% extends 'layout.html' %}
 
 {% block content %}
-<div class="container-fluid">
-    <h1 class="text-center mt-4 mb-4">Weekly Meal Overview</h1>
-
-    <!-- Week Navigation -->
-    <div class="card mb-4">
-        <div class="card-body">
+<div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <!-- Header Section -->
+    <div class="sticky-top" style="background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255, 255, 255, 0.2);">
+        <div class="container py-3" style="max-width: 1200px;">
             <div class="row align-items-center">
                 <div class="col-auto">
-                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=prev_week) }}" class="btn btn-outline-primary">
-                        <i class="bi bi-chevron-left"></i> Previous Week
+                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=prev_week) }}"
+                       class="btn btn-outline-primary btn-sm rounded-pill">
+                        <i class="bi bi-chevron-left"></i>
                     </a>
                 </div>
                 <div class="col text-center">
-                    <h4 class="mb-0">{{ week_display }}</h4>
+                    <h4 class="mb-0 fw-bold text-dark">{{ week_display }}</h4>
+                    <small class="text-muted">Weekly Overview</small>
                 </div>
                 <div class="col-auto">
-                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=next_week) }}" class="btn btn-outline-primary">
-                        Next Week <i class="bi bi-chevron-right"></i>
+                    <a href="{{ url_for('meal_bp.meal_tracking_week', start_date=next_week) }}"
+                       class="btn btn-outline-primary btn-sm rounded-pill">
+                        <i class="bi bi-chevron-right"></i>
                     </a>
                 </div>
             </div>
+
+            <!-- Quick Actions -->
             <div class="row mt-3">
                 <div class="col text-center">
-                    <a href="{{ url_for('meal_bp.meal_tracking_week') }}" class="btn btn-outline-secondary">
-                        <i class="bi bi-calendar-check"></i> Current Week
+                    <a href="{{ url_for('meal_bp.meal_tracking_week') }}"
+                       class="btn btn-outline-secondary btn-sm rounded-pill me-2">
+                        <i class="bi bi-calendar-check"></i> This Week
                     </a>
-                    <a href="{{ url_for('meal_bp.meal_tracking') }}" class="btn btn-outline-primary ms-2">
+                    <a href="{{ url_for('meal_bp.meal_tracking') }}"
+                       class="btn btn-outline-primary btn-sm rounded-pill">
                         <i class="bi bi-calendar-day"></i> Daily View
                     </a>
                 </div>
@@ -35,125 +40,275 @@
         </div>
     </div>
 
-    <!-- Weekly Summary -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card text-center bg-primary text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Weekly Calories</h6>
-                    <h3>{{ week_totals.calories|round|int }}</h3>
-                    <small>{{ (week_totals.calories / 7)|round|int }} avg/day</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center bg-success text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Weekly Protein</h6>
-                    <h3>{{ week_totals.protein|round|int }}g</h3>
-                    <small>{{ (week_totals.protein / 7)|round|int }}g avg/day</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center bg-warning text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Weekly Carbs</h6>
-                    <h3>{{ week_totals.carbs|round|int }}g</h3>
-                    <small>{{ (week_totals.carbs / 7)|round|int }}g avg/day</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card text-center bg-info text-white">
-                <div class="card-body">
-                    <h6 class="card-title">Weekly Fat</h6>
-                    <h3>{{ week_totals.fat|round|int }}g</h3>
-                    <small>{{ (week_totals.fat / 7)|round|int }}g avg/day</small>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Weekly Calendar Grid -->
-    <div class="row">
-        {% for date_key, day_data in week_data.items() %}
-        <div class="col-md-12 col-lg-6 col-xl-4 mb-4">
-            <div class="card h-100 {% if day_data.date.date() == now().date() %}border-primary{% endif %}">
-                <div class="card-header {% if day_data.date.date() == now().date() %}bg-primary text-white{% else %}bg-light{% endif %}">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">{{ day_data.display_date }}</h6>
-                        <a href="{{ url_for('meal_bp.meal_tracking', date_str=date_key) }}"
-                           class="btn btn-sm {% if day_data.date.date() == now().date() %}btn-light{% else %}btn-primary{% endif %}">
-                            <i class="bi bi-eye"></i> View
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <!-- Day Totals -->
-                    {% if day_data.totals.calories > 0 %}
-                    <div class="mb-3">
-                        <small class="text-muted">
-                            <strong>{{ day_data.totals.calories|round|int }}</strong> kcal |
-                            <strong>{{ day_data.totals.protein|round|int }}</strong>g protein |
-                            <strong>{{ day_data.totals.carbs|round|int }}</strong>g carbs |
-                            <strong>{{ day_data.totals.fat|round|int }}</strong>g fat
-                        </small>
-                    </div>
-                    {% endif %}
-
-                    <!-- Meals Summary -->
-                    {% set meal_icons = {
-                        'breakfast': 'bi-sunrise',
-                        'lunch': 'bi-sun',
-                        'dinner': 'bi-moon',
-                        'snacks': 'bi-cookie',
-                        'other': 'bi-three-dots'
-                    } %}
-
-                    {% for meal_type in ['breakfast', 'lunch', 'dinner', 'snacks', 'other'] %}
-                        {% if day_data.meals[meal_type] %}
-                        <div class="mb-2">
-                            <h6 class="text-muted mb-1">
-                                <i class="bi {{ meal_icons[meal_type] }}"></i> {{ meal_type|title }}
-                            </h6>
-                            <ul class="list-unstyled small ms-3">
-                                {% for item in day_data.meals[meal_type][:3] %}
-                                <li class="text-truncate">
-                                    • {% if item.get('is_recipe') %}<i class="bi bi-book text-primary" title="Recipe"></i>{% endif %} {{ item.ingredient }} ({{ item.kcal|round|int }} kcal)
-                                </li>
-                                {% endfor %}
-                                {% if day_data.meals[meal_type]|length > 3 %}
-                                <li class="text-muted">
-                                    • +{{ day_data.meals[meal_type]|length - 3 }} more items
-                                </li>
-                                {% endif %}
-                            </ul>
+    <div class="container py-4" style="max-width: 1200px;">
+        <!-- Weekly Summary Cards -->
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); border-radius: 16px;">
+                    <div class="card-body text-center text-white p-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-fire" style="font-size: 1.5rem;"></i>
                         </div>
-                        {% endif %}
-                    {% endfor %}
-
-                    {% if day_data.totals.calories == 0 %}
-                    <p class="text-muted text-center mb-0">
-                        <i class="bi bi-inbox"></i> No meals logged
-                    </p>
-                    {% endif %}
+                        <h4 class="fw-bold mb-1">{{ week_totals.calories|round|int }}</h4>
+                        <small class="opacity-75 d-block">Total Calories</small>
+                        <small class="opacity-50">{{ (week_totals.calories / 7)|round|int }} avg/day</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #4ecdc4, #44a08d); border-radius: 16px;">
+                    <div class="card-body text-center text-white p-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-lightning-charge" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h4 class="fw-bold mb-1">{{ week_totals.protein|round|int }}g</h4>
+                        <small class="opacity-75 d-block">Total Protein</small>
+                        <small class="opacity-50">{{ (week_totals.protein / 7)|round|int }}g avg/day</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #ffeaa7, #fdcb6e); border-radius: 16px;">
+                    <div class="card-body text-center text-white p-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-battery-charging" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h4 class="fw-bold mb-1">{{ week_totals.carbs|round|int }}g</h4>
+                        <small class="opacity-75 d-block">Total Carbs</small>
+                        <small class="opacity-50">{{ (week_totals.carbs / 7)|round|int }}g avg/day</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #a29bfe, #6c5ce7); border-radius: 16px;">
+                    <div class="card-body text-center text-white p-3">
+                        <div class="d-flex align-items-center justify-content-center mb-2">
+                            <i class="bi bi-droplet" style="font-size: 1.5rem;"></i>
+                        </div>
+                        <h4 class="fw-bold mb-1">{{ week_totals.fat|round|int }}g</h4>
+                        <small class="opacity-75 d-block">Total Fat</small>
+                        <small class="opacity-50">{{ (week_totals.fat / 7)|round|int }}g avg/day</small>
+                    </div>
                 </div>
             </div>
         </div>
-        {% endfor %}
+
+        <!-- Weekly Calendar Grid -->
+        <div class="row g-3">
+            {% set meal_icons = {
+                'breakfast': 'bi-sunrise',
+                'lunch': 'bi-sun',
+                'dinner': 'bi-moon',
+                'snacks': 'bi-cookie',
+                'other': 'bi-three-dots'
+            } %}
+
+            {% set day_colors = [
+                'linear-gradient(135deg, #ff7675, #e84393)',
+                'linear-gradient(135deg, #fd79a8, #fdcb6e)',
+                'linear-gradient(135deg, #ffeaa7, #fdcb6e)',
+                'linear-gradient(135deg, #4ecdc4, #44a08d)',
+                'linear-gradient(135deg, #74b9ff, #0984e3)',
+                'linear-gradient(135deg, #a29bfe, #6c5ce7)',
+                'linear-gradient(135deg, #fd79a8, #e84393)'
+            ] %}
+
+            {% for date_key, day_data in week_data.items() %}
+            {% set loop_index = loop.index0 %}
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card border-0 shadow-sm h-100 day-card"
+                     style="border-radius: 20px; overflow: hidden; {% if day_data.date.date() == now().date() %}box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3) !important; transform: scale(1.02);{% endif %}">
+
+                    <!-- Day Header -->
+                    <div class="card-header border-0 p-0">
+                        <div class="p-4" style="background: {{ day_colors[loop_index % 7] }};">
+                            <div class="row align-items-center text-white">
+                                <div class="col">
+                                    <h5 class="mb-1 fw-bold">{{ day_data.display_date }}</h5>
+                                    {% if day_data.date.date() == now().date() %}
+                                        <small class="opacity-75">
+                                            <i class="bi bi-circle-fill me-1" style="font-size: 0.5rem;"></i>
+                                            Today
+                                        </small>
+                                    {% else %}
+                                        <small class="opacity-75">
+                                            {% if day_data.totals.calories > 0 %}
+                                                {{ day_data.totals.calories|round|int }} kcal
+                                            {% else %}
+                                                No meals logged
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-auto">
+                                    <a href="{{ url_for('meal_bp.meal_tracking', date_str=date_key) }}"
+                                       class="btn btn-light btn-sm rounded-pill">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Day Content -->
+                    <div class="card-body p-0">
+                        {% if day_data.totals.calories > 0 %}
+                            <!-- Daily Nutrition Summary -->
+                            <div class="p-3 border-bottom border-light">
+                                <div class="row g-2 text-center">
+                                    <div class="col-3">
+                                        <div class="p-2 rounded" style="background: rgba(78, 205, 196, 0.1);">
+                                            <small class="text-muted d-block">Protein</small>
+                                            <strong class="text-success">{{ day_data.totals.protein|round|int }}g</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="p-2 rounded" style="background: rgba(255, 234, 167, 0.3);">
+                                            <small class="text-muted d-block">Carbs</small>
+                                            <strong class="text-warning">{{ day_data.totals.carbs|round|int }}g</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="p-2 rounded" style="background: rgba(162, 155, 254, 0.2);">
+                                            <small class="text-muted d-block">Fat</small>
+                                            <strong class="text-info">{{ day_data.totals.fat|round|int }}g</strong>
+                                        </div>
+                                    </div>
+                                    <div class="col-3">
+                                        <div class="p-2 rounded" style="background: rgba(255, 107, 107, 0.1);">
+                                            <small class="text-muted d-block">Calories</small>
+                                            <strong class="text-danger">{{ day_data.totals.calories|round|int }}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Meals Summary -->
+                            <div class="p-3">
+                                {% for meal_type in ['breakfast', 'lunch', 'dinner', 'snacks', 'other'] %}
+                                    {% if day_data.meals[meal_type] %}
+                                    <div class="mb-3">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="me-2">
+                                                <i class="bi {{ meal_icons[meal_type] }} text-primary"></i>
+                                            </div>
+                                            <h6 class="mb-0 fw-semibold text-dark">{{ meal_type|title }}</h6>
+                                            <span class="ms-auto badge bg-light text-dark">{{ day_data.meals[meal_type]|length }}</span>
+                                        </div>
+                                        <div class="ms-4">
+                                            {% for item in day_data.meals[meal_type][:2] %}
+                                            <div class="d-flex align-items-center mb-1">
+                                                <div class="me-2">
+                                                    {% if item.get('is_recipe') %}
+                                                        <i class="bi bi-book text-primary" style="font-size: 0.8rem;"></i>
+                                                    {% else %}
+                                                        <i class="bi bi-circle-fill text-muted" style="font-size: 0.4rem;"></i>
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted text-truncate flex-grow-1">{{ item.ingredient }}</small>
+                                                <small class="text-muted ms-2">{{ item.kcal|round|int }}cal</small>
+                                            </div>
+                                            {% endfor %}
+                                            {% if day_data.meals[meal_type]|length > 2 %}
+                                            <small class="text-muted ms-3">
+                                                +{{ day_data.meals[meal_type]|length - 2 }} more items
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <!-- Empty State -->
+                            <div class="p-5 text-center">
+                                <div class="mb-3">
+                                    <i class="bi bi-calendar-x text-muted" style="font-size: 2.5rem; opacity: 0.3;"></i>
+                                </div>
+                                <p class="text-muted mb-3">No meals logged</p>
+                                <a href="{{ url_for('meal_bp.meal_tracking', date_str=date_key) }}"
+                                   class="btn btn-primary btn-sm rounded-pill">
+                                    <i class="bi bi-plus-circle"></i> Add Meals
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
 </div>
 
 <style>
-/* Make cards equal height within rows */
-.card {
-    height: 100%;
+.day-card {
+    transition: all 0.3s ease;
 }
 
-/* Highlight today's card */
-.border-primary {
-    border-width: 2px !important;
+.day-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.card {
+    transition: all 0.3s ease;
+}
+
+/* Today's card special styling */
+.day-card[style*="scale(1.02)"] {
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+    50% {
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+    }
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .day-card {
+        margin-bottom: 1rem;
+    }
+
+    .row.g-3 {
+        margin: 0 -0.5rem;
+    }
+
+    .row.g-3 > * {
+        padding: 0 0.5rem;
+    }
+}
+
+/* Responsive grid adjustments */
+@media (min-width: 1200px) {
+    .col-lg-4 {
+        flex: 0 0 auto;
+        width: 33.333333%;
+    }
+}
+
+@media (min-width: 1400px) {
+    .container {
+        max-width: 1320px;
+        margin: 0 auto;
+    }
 }
 </style>
 {% endblock %}

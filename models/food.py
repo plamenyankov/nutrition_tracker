@@ -54,15 +54,26 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             if self.connection_manager.use_mysql:
-                cursor.execute('INSERT IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (%s,%s,%s)', (quantity, ingredient_id, unit_id,))
+                # First check if it already exists
                 cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=%s AND unit_id=%s AND quantity=%s', (ingredient_id, unit_id, quantity))
+                existing = cursor.fetchone()
+                if existing:
+                    return existing[0]
+
+                # Insert new record
+                cursor.execute('INSERT INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (%s,%s,%s)', (quantity, ingredient_id, unit_id,))
+                conn.commit()
+
+                # Get the inserted ID
+                cursor.execute('SELECT LAST_INSERT_ID()')
+                ingredient_quantity_id = cursor.fetchone()[0]
+                return ingredient_quantity_id
             else:
                 cursor.execute('INSERT OR IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (?,?,?)', (quantity, ingredient_id, unit_id,))
                 cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=? AND unit_id=? AND quantity=?', (ingredient_id, unit_id, quantity))
-
-            ingredient_quantity_id = cursor.fetchone()
-            if ingredient_quantity_id:
-                return ingredient_quantity_id[0]
+                ingredient_quantity_id = cursor.fetchone()
+                if ingredient_quantity_id:
+                    return ingredient_quantity_id[0]
 
     def save_nutrition(self, ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein):
         with self.connection_manager.get_connection() as conn:
@@ -87,14 +98,15 @@ class FoodDatabase:
                 if cnt:
                     cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = %s AND consumption_date = %s AND meal_type = %s', (ingredient_quantity_id, date, meal_type))
                 else:
-                    cursor.execute('INSERT IGNORE INTO Consumption (ingredient_quantity_id, consumption_date, meal_type) VALUES (%s,%s,%s)', (ingredient_quantity_id, date, meal_type))
+                    cursor.execute('INSERT INTO Consumption (consumption_date, ingredient_quantity_id, ingredient_quantity_portions, meal_type) VALUES (%s,%s,%s,%s)', (date, ingredient_quantity_id, 1, meal_type))
+                    conn.commit()  # Ensure the transaction is committed
             else:
                 cursor.execute('SELECT COUNT(*) cnt FROM Consumption WHERE ingredient_quantity_id = ? AND consumption_date = ? AND meal_type = ?', (ingredient_quantity_id, date, meal_type))
                 cnt = cursor.fetchone()[0]
                 if cnt:
                     cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = ? AND consumption_date = ? AND meal_type = ?', (ingredient_quantity_id, date, meal_type))
                 else:
-                    cursor.execute('INSERT OR IGNORE INTO Consumption (ingredient_quantity_id, consumption_date, meal_type) VALUES (?,?,?)', (ingredient_quantity_id, date, meal_type))
+                    cursor.execute('INSERT INTO Consumption (consumption_date, ingredient_quantity_id, ingredient_quantity_portions, meal_type) VALUES (?,?,?,?)', (date, ingredient_quantity_id, 1, meal_type))
             return cnt
 
     def delete_consumption(self, ingredient_id):
