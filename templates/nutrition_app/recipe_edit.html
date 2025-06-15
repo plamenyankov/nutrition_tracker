@@ -1,51 +1,695 @@
-{% extends 'layout.html' %}
+{% extends "layout.html" %}
 
 {% block content %}
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="row mt-4 mb-4">
-        <div class="col">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipes_list') }}">Recipes</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}">{{ recipe.recipe_name }}</a></li>
-                    <li class="breadcrumb-item active">Edit</li>
-                </ol>
-            </nav>
+<div class="min-vh-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+    <!-- Hero Section -->
+    <div class="hero-section text-center py-5 mb-4">
+        <div class="container position-relative">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="hero-content">
+                        <nav aria-label="breadcrumb" class="mb-3">
+                            <ol class="breadcrumb justify-content-center" style="background: rgba(255,255,255,0.1); border-radius: 25px; padding: 0.5rem 1rem;">
+                                <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipes_list') }}" style="color: rgba(255,255,255,0.8); text-decoration: none;">Recipes</a></li>
+                                <li class="breadcrumb-item"><a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}" style="color: rgba(255,255,255,0.8); text-decoration: none;">{{ recipe.recipe_name }}</a></li>
+                                <li class="breadcrumb-item active" style="color: white;">Edit</li>
+                            </ol>
+                        </nav>
+                        <h1 class="display-3 fw-bold mb-3 hero-title" style="color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+                            <i class="bi bi-pencil-square"></i> Edit Recipe
+                        </h1>
+                        <p class="lead mb-4 hero-subtitle" style="color: rgba(255,255,255,0.9);">
+                            {{ recipe.recipe_name }} • {{ recipe.serv }} servings
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <h1 class="mb-4">Edit Recipe: {{ recipe.recipe_name }}</h1>
+    <!-- Main Content -->
+    <div class="container" style="max-width: 1200px;">
+        <!-- Usage Information -->
+        {% if usage_count > 0 %}
+        <div class="alert alert-warning border-0 shadow-sm mb-4" style="border-radius: 16px; background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%); color: #2d3436;">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
+                <div>
+                    <h5 class="mb-1 fw-bold">Recipe Usage Warning</h5>
+                    <p class="mb-0">This recipe has been used <strong>{{ usage_count }} time{{ 's' if usage_count != 1 else '' }}</strong> in meal tracking.
+                    Editing the original recipe will affect your historical nutrition data.</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info border-0 shadow-sm mb-4" style="border-radius: 16px; background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%); color: white;">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-3 fs-4"></i>
+                <div>
+                    <h5 class="mb-1 fw-bold">Safe to Edit</h5>
+                    <p class="mb-0">This recipe hasn't been used in meal tracking yet, so you can safely edit it without affecting any historical data.</p>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
-    <div class="alert alert-info">
-        <i class="bi bi-info-circle"></i> Recipe editing functionality is coming soon!
+        <!-- Edit Choice Section -->
+        {% if usage_count > 0 %}
+        <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+            <div class="card-header border-0" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem;">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-question-circle me-2"></i>Choose Your Action</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="choice-card p-3 border rounded" style="border-radius: 16px !important; cursor: pointer; transition: all 0.3s ease;" onclick="selectChoice('variation')">
+                            <div class="d-flex align-items-center mb-3">
+                                <input type="radio" name="edit_choice" value="variation" id="choice_variation" class="me-3">
+                                <h6 class="mb-0 fw-bold">Create Variation (Recommended)</h6>
+                            </div>
+                            <p class="text-muted mb-0">Creates a new version of the recipe while keeping the original intact. Your meal tracking history remains unchanged.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="choice-card p-3 border rounded" style="border-radius: 16px !important; cursor: pointer; transition: all 0.3s ease;" onclick="selectChoice('edit')">
+                            <div class="d-flex align-items-center mb-3">
+                                <input type="radio" name="edit_choice" value="edit" id="choice_edit" class="me-3">
+                                <h6 class="mb-0 fw-bold">Edit Original Recipe</h6>
+                            </div>
+                            <p class="text-muted mb-0">Modifies the existing recipe. This will change the nutrition values in your meal tracking history.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="POST" id="editRecipeForm">
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <!-- Recipe Details -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+                        <div class="card-header border-0" style="background: linear-gradient(135deg, #007bff, #0056b3); color: white; padding: 1.5rem;">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2"></i>Recipe Details</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <label class="form-label fw-semibold">Recipe Name</label>
+                                    <input type="text" class="form-control" name="recipe_name"
+                                           value="{{ recipe.recipe_name }}" required
+                                           style="border-radius: 12px; border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label fw-semibold">Number of Servings</label>
+                                    <input type="number" class="form-control" name="servings"
+                                           min="1" value="{{ recipe.serv }}" required
+                                           style="border-radius: 12px; border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ingredients -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 16px;">
+                        <div class="card-header border-0" style="background: linear-gradient(135deg, #4ecdc4, #44a08d); color: white; padding: 1.5rem;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0 fw-bold"><i class="bi bi-basket me-2"></i>Ingredients</h5>
+                                <button type="button" class="btn btn-light btn-sm rounded-pill" onclick="addIngredientRow()">
+                                    <i class="bi bi-plus-circle me-1"></i>Add Ingredient
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-4">
+                            <div id="ingredientsList">
+                                {% for ingredient in ingredients %}
+                                <div class="ingredient-row mb-3" id="ingredient_{{ loop.index }}">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="position-relative">
+                                                <input type="text" class="form-control ingredient-search"
+                                                       value="{{ ingredient.ingredient }}"
+                                                       data-row-id="ingredient_{{ loop.index }}"
+                                                       style="border-radius: 12px; border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                                                <input type="hidden" name="ingredient_ids[]" id="ingredient_{{ loop.index }}_id" value="{{ ingredient.id }}">
+                                                <div class="autocomplete-results position-absolute bg-white border rounded shadow-sm d-none mt-1 w-100">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="input-group">
+                                                <input type="number" class="form-control quantity-input"
+                                                       name="quantities[]" value="{{ ingredient.qty }}"
+                                                       step="0.01" min="0.01"
+                                                       data-row-id="ingredient_{{ loop.index }}"
+                                                       style="border-radius: 12px 0 0 12px; border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                                                <span class="input-group-text unit-display" style="border-radius: 0 12px 12px 0; background: #e9ecef;">{{ ingredient.unit }}</span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <button type="button" class="btn btn-danger btn-sm rounded-pill w-100" onclick="removeIngredient('ingredient_{{ loop.index }}')">
+                                                <i class="bi bi-trash"></i> Remove
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="nutrition-info text-muted mt-2">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        <span class="text-primary fw-semibold">{{ ingredient.kcal|round }} kcal</span> |
+                                        <span class="text-success">{{ ingredient.protein|round(1) }}g protein</span> |
+                                        <span class="text-warning">{{ ingredient.carb|round(1) }}g carbs</span> |
+                                        <span class="text-info">{{ ingredient.fat|round(1) }}g fat</span>
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="text-center mt-4">
+                                <button type="button" class="btn btn-outline-primary rounded-pill" onclick="addIngredientRow()">
+                                    <i class="bi bi-plus me-2"></i>Add Another Ingredient
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex justify-content-between mb-4">
+                        <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}" class="btn rounded-pill px-4"
+                           style="background: #6c757d; color: white; border: none;">
+                            <i class="bi bi-arrow-left me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn rounded-pill px-4"
+                                style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; font-weight: 600;">
+                            <i class="bi bi-check-circle me-2"></i><span id="submit-text">Save Changes</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Nutrition Preview -->
+                    <div class="card border-0 shadow-sm sticky-top" style="top: 20px; border-radius: 16px;">
+                        <div class="card-header border-0" style="background: linear-gradient(135deg, #ff6b6b, #ee5a52); color: white; padding: 1.5rem;">
+                            <h5 class="mb-0 fw-bold"><i class="bi bi-bar-chart me-2"></i>Nutrition Preview</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <h6 class="text-muted mb-3 fw-semibold">Total Recipe:</h6>
+                            <div class="row g-3 text-center mb-4">
+                                <div class="col-6">
+                                    <div class="p-3 rounded" style="background: rgba(255, 107, 107, 0.1);">
+                                        <h5 class="mb-0 fw-bold" style="color: #ff6b6b;" id="totalCalories">{{ recipe.kcal|round }}</h5>
+                                        <small class="text-muted">Calories</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 rounded" style="background: rgba(78, 205, 196, 0.1);">
+                                        <h5 class="mb-0 fw-bold text-success" id="totalProtein">{{ recipe.protein|round(1) }}g</h5>
+                                        <small class="text-muted">Protein</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 rounded" style="background: rgba(255, 234, 167, 0.3);">
+                                        <h5 class="mb-0 fw-bold text-warning" id="totalCarbs">{{ recipe.carb|round(1) }}g</h5>
+                                        <small class="text-muted">Carbs</small>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-3 rounded" style="background: rgba(162, 155, 254, 0.2);">
+                                        <h5 class="mb-0 fw-bold text-info" id="totalFat">{{ recipe.fat|round(1) }}g</h5>
+                                        <small class="text-muted">Fat</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <h6 class="text-muted mb-3 fw-semibold">Per Serving:</h6>
+                            <div class="text-center p-3 rounded" style="background: #f8f9fa;" id="perServingInfo">
+                                <div class="d-flex justify-content-around align-items-center">
+                                    <div>
+                                        <span class="text-primary fw-bold">{{ (recipe.kcal / recipe.serv)|round }}</span>
+                                        <small class="text-muted d-block">kcal</small>
+                                    </div>
+                                    <div>
+                                        <span class="text-success fw-bold">{{ (recipe.protein / recipe.serv)|round(1) }}g</span>
+                                        <small class="text-muted d-block">protein</small>
+                                    </div>
+                                    <div>
+                                        <span class="text-warning fw-bold">{{ (recipe.carb / recipe.serv)|round(1) }}g</span>
+                                        <small class="text-muted d-block">carbs</small>
+                                    </div>
+                                    <div>
+                                        <span class="text-info fw-bold">{{ (recipe.fat / recipe.serv)|round(1) }}g</span>
+                                        <small class="text-muted d-block">fat</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden input for variation choice -->
+            <input type="hidden" name="create_variation" id="create_variation" value="">
+        </form>
     </div>
+</div>
 
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Current Recipe Details</h5>
-        </div>
-        <div class="card-body">
-            <p><strong>Recipe Name:</strong> {{ recipe.recipe_name }}</p>
-            <p><strong>Servings:</strong> {{ recipe.serv }}</p>
-            <p><strong>Created:</strong> {{ recipe.date }}</p>
-
-            <h6 class="mt-3">Current Ingredients:</h6>
-            <ul>
-                {% for ingredient in ingredients %}
-                <li>{{ ingredient.ingredient }} - {{ ingredient.qty }} {{ ingredient.unit }}</li>
-                {% endfor %}
-            </ul>
-
-            <p class="text-muted mt-3">
-                <small>To modify this recipe, please delete it and create a new one with your desired changes.</small>
-            </p>
-        </div>
-        <div class="card-footer">
-            <a href="{{ url_for('recipe_bp.recipe_detail', recipe_id=recipe.recipe_id) }}" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Back to Recipe
-            </a>
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1080;">
+    <div id="successToast" class="toast border-0 shadow-lg" role="alert" style="border-radius: 12px;">
+        <div class="toast-body bg-success text-white d-flex align-items-center" style="border-radius: 12px;">
+            <i class="bi bi-check-circle me-2"></i>
+            <span id="toastMessage">Success!</span>
         </div>
     </div>
 </div>
+
+<style>
+/* Card hover effects */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15) !important;
+}
+
+/* Button hover effects */
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Hero animation */
+.hero-content {
+    animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Ingredient row styling */
+.ingredient-row {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.ingredient-row:hover {
+    background: #e9ecef;
+}
+
+/* Choice card styling */
+.choice-card:hover {
+    border-color: #667eea !important;
+    background: #f0f4ff !important;
+}
+
+.choice-card.selected {
+    border-color: #667eea !important;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+}
+
+/* Autocomplete styling */
+.autocomplete-results {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.autocomplete-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.autocomplete-item:hover {
+    background-color: #f8f9fa;
+    padding-left: 1.25rem;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+/* Nutrition info styling */
+.nutrition-info {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: white;
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+/* Breadcrumb styling */
+.breadcrumb-item + .breadcrumb-item::before {
+    color: rgba(255,255,255,0.6);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .sticky-top {
+        position: relative !important;
+        top: 0 !important;
+    }
+}
+</style>
+
+<script>
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('successToast');
+    const toastBody = toast.querySelector('.toast-body');
+
+    if (type === 'success') {
+        toastBody.className = 'toast-body bg-success text-white d-flex align-items-center';
+        toastBody.innerHTML = '<i class="bi bi-check-circle me-2"></i><span>' + message + '</span>';
+    } else {
+        toastBody.className = 'toast-body bg-danger text-white d-flex align-items-center';
+        toastBody.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i><span>' + message + '</span>';
+    }
+
+    new bootstrap.Toast(toast).show();
+}
+
+// Food data for autocomplete and nutrition calculation
+const foods = [
+    {% for food in foods %}
+    {
+        id: "{{ food.id }}",
+        name: "{{ food.ingredient }}",
+        unit: "{{ food.unit }}",
+        qty: {{ food.qty }},
+        kcal: {{ food.kcal }},
+        protein: {{ food.protein }},
+        carb: {{ food.carb }},
+        fat: {{ food.fat }}
+    },
+    {% endfor %}
+];
+
+let ingredientCount = {{ ingredients|length }};
+let selectedIngredients = {};
+
+// Initialize existing ingredients
+{% for ingredient in ingredients %}
+selectedIngredients['ingredient_{{ loop.index }}'] = {
+    id: "{{ ingredient.id }}",
+    name: "{{ ingredient.ingredient }}",
+    unit: "{{ ingredient.unit }}",
+    qty: {{ ingredient.qty }},
+    kcal: {{ ingredient.kcal }},
+    protein: {{ ingredient.protein }},
+    carb: {{ ingredient.carb }},
+    fat: {{ ingredient.fat }}
+};
+{% endfor %}
+
+// Choice selection functions
+function selectChoice(choice) {
+    // Update radio buttons
+    document.getElementById('choice_variation').checked = choice === 'variation';
+    document.getElementById('choice_edit').checked = choice === 'edit';
+
+    // Update visual selection
+    document.querySelectorAll('.choice-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+
+    // Update hidden input
+    document.getElementById('create_variation').value = choice === 'variation' ? 'true' : '';
+
+    // Update submit button text
+    const submitText = document.getElementById('submit-text');
+    if (choice === 'variation') {
+        submitText.textContent = 'Create Variation';
+    } else {
+        submitText.textContent = 'Update Recipe';
+    }
+}
+
+// Initialize choice selection for recipes with usage
+{% if usage_count > 0 %}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('choice_variation').checked = true;
+    document.querySelector('.choice-card').classList.add('selected');
+    document.getElementById('create_variation').value = 'true';
+    document.getElementById('submit-text').textContent = 'Create Variation';
+});
+{% endif %}
+
+// Add ingredient row
+function addIngredientRow() {
+    ingredientCount++;
+    const rowId = `ingredient_${ingredientCount}`;
+
+    const row = `
+        <div class="ingredient-row mb-3" id="${rowId}">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="position-relative">
+                        <input type="text" class="form-control ingredient-search"
+                               placeholder="Search for ingredient..."
+                               data-row-id="${rowId}"
+                               style="border-radius: 12px; border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                        <input type="hidden" name="ingredient_ids[]" id="${rowId}_id">
+                        <div class="autocomplete-results position-absolute bg-white border rounded shadow-sm d-none mt-1 w-100">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <input type="number" class="form-control quantity-input"
+                               name="quantities[]" placeholder="Qty"
+                               step="0.01" min="0.01"
+                               data-row-id="${rowId}" disabled
+                               style="border-radius: 12px 0 0 12px; border: 1px solid #dee2e6; padding: 0.75rem 1rem;">
+                        <span class="input-group-text unit-display" style="border-radius: 0 12px 12px 0; background: #e9ecef;">-</span>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm rounded-pill w-100" onclick="removeIngredient('${rowId}')">
+                        <i class="bi bi-trash"></i> Remove
+                    </button>
+                </div>
+            </div>
+            <small class="nutrition-info text-muted mt-2"></small>
+        </div>
+    `;
+
+    document.getElementById('ingredientsList').insertAdjacentHTML('beforeend', row);
+
+    // Setup autocomplete for the new row
+    setupAutocomplete(rowId);
+}
+
+// Setup autocomplete for ingredient search
+function setupAutocomplete(rowId) {
+    const searchInput = document.querySelector(`#${rowId} .ingredient-search`);
+    const resultsDiv = document.querySelector(`#${rowId} .autocomplete-results`);
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        if (searchTerm.length < 2) {
+            resultsDiv.classList.add('d-none');
+            return;
+        }
+
+        const matches = foods.filter(food =>
+            food.name.toLowerCase().includes(searchTerm)
+        ).slice(0, 10);
+
+        if (matches.length > 0) {
+            resultsDiv.innerHTML = matches.map(food => `
+                <div class="autocomplete-item"
+                     onclick="selectIngredient('${rowId}', '${food.id}')">
+                    <strong>${food.name}</strong>
+                    <small class="text-muted ms-2">(${food.qty} ${food.unit})</small>
+                </div>
+            `).join('');
+            resultsDiv.classList.remove('d-none');
+        } else {
+            resultsDiv.innerHTML = '<div class="p-3 text-center text-muted">No ingredients found</div>';
+            resultsDiv.classList.remove('d-none');
+        }
+    });
+
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest(`#${rowId}`)) {
+            resultsDiv.classList.add('d-none');
+        }
+    });
+}
+
+// Select ingredient from autocomplete
+function selectIngredient(rowId, foodId) {
+    const food = foods.find(f => f.id === foodId);
+    if (!food) return;
+
+    // Update UI
+    document.querySelector(`#${rowId} .ingredient-search`).value = food.name;
+    document.querySelector(`#${rowId}_id`).value = food.id;
+    document.querySelector(`#${rowId} .quantity-input`).disabled = false;
+    document.querySelector(`#${rowId} .quantity-input`).value = food.qty;
+    document.querySelector(`#${rowId} .unit-display`).textContent = food.unit;
+    document.querySelector(`#${rowId} .autocomplete-results`).classList.add('d-none');
+
+    // Store ingredient data
+    selectedIngredients[rowId] = food;
+
+    // Update nutrition preview
+    updateNutritionPreview();
+
+    // Setup quantity change listener
+    const qtyInput = document.querySelector(`#${rowId} .quantity-input`);
+    qtyInput.addEventListener('input', updateNutritionPreview);
+}
+
+// Remove ingredient row
+function removeIngredient(rowId) {
+    document.getElementById(rowId).remove();
+    delete selectedIngredients[rowId];
+    updateNutritionPreview();
+}
+
+// Update nutrition preview
+function updateNutritionPreview() {
+    let totalCalories = 0;
+    let totalProtein = 0;
+    let totalCarbs = 0;
+    let totalFat = 0;
+
+    // Calculate totals
+    Object.keys(selectedIngredients).forEach(rowId => {
+        const ingredient = selectedIngredients[rowId];
+        const qtyInput = document.querySelector(`#${rowId} .quantity-input`);
+
+        if (qtyInput && qtyInput.value) {
+            const quantity = parseFloat(qtyInput.value);
+            const scale = quantity / ingredient.qty;
+
+            totalCalories += ingredient.kcal * scale;
+            totalProtein += ingredient.protein * scale;
+            totalCarbs += ingredient.carb * scale;
+            totalFat += ingredient.fat * scale;
+
+            // Update row nutrition info
+            const nutritionInfo = document.querySelector(`#${rowId} .nutrition-info`);
+            if (nutritionInfo) {
+                nutritionInfo.innerHTML = `
+                    <i class="bi bi-info-circle me-1"></i>
+                    <span class="text-primary fw-semibold">${Math.round(ingredient.kcal * scale)} kcal</span> |
+                    <span class="text-success">${(ingredient.protein * scale).toFixed(1)}g protein</span> |
+                    <span class="text-warning">${(ingredient.carb * scale).toFixed(1)}g carbs</span> |
+                    <span class="text-info">${(ingredient.fat * scale).toFixed(1)}g fat</span>
+                `;
+            }
+        }
+    });
+
+    // Update totals display
+    document.getElementById('totalCalories').textContent = Math.round(totalCalories);
+    document.getElementById('totalProtein').textContent = totalProtein.toFixed(1) + 'g';
+    document.getElementById('totalCarbs').textContent = totalCarbs.toFixed(1) + 'g';
+    document.getElementById('totalFat').textContent = totalFat.toFixed(1) + 'g';
+
+    // Update per serving
+    const servings = parseInt(document.querySelector('input[name="servings"]').value) || 1;
+    const perServingDiv = document.getElementById('perServingInfo');
+
+    if (totalCalories > 0) {
+        perServingDiv.innerHTML = `
+            <div class="d-flex justify-content-around align-items-center">
+                <div>
+                    <span class="text-primary fw-bold">${Math.round(totalCalories / servings)}</span>
+                    <small class="text-muted d-block">kcal</small>
+                </div>
+                <div>
+                    <span class="text-success fw-bold">${(totalProtein / servings).toFixed(1)}g</span>
+                    <small class="text-muted d-block">protein</small>
+                </div>
+                <div>
+                    <span class="text-warning fw-bold">${(totalCarbs / servings).toFixed(1)}g</span>
+                    <small class="text-muted d-block">carbs</small>
+                </div>
+                <div>
+                    <span class="text-info fw-bold">${(totalFat / servings).toFixed(1)}g</span>
+                    <small class="text-muted d-block">fat</small>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Setup existing ingredients
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup autocomplete for existing ingredients
+    {% for ingredient in ingredients %}
+    setupAutocomplete('ingredient_{{ loop.index }}');
+
+    // Setup quantity change listener
+    const qtyInput{{ loop.index }} = document.querySelector('#ingredient_{{ loop.index }} .quantity-input');
+    if (qtyInput{{ loop.index }}) {
+        qtyInput{{ loop.index }}.addEventListener('input', updateNutritionPreview);
+    }
+    {% endfor %}
+
+    // Update preview when servings change
+    document.querySelector('input[name="servings"]').addEventListener('input', updateNutritionPreview);
+});
+
+// Form validation
+document.getElementById('editRecipeForm').addEventListener('submit', function(e) {
+    const hasIngredients = document.querySelectorAll('input[name="ingredient_ids[]"]').length > 0 &&
+                          Array.from(document.querySelectorAll('input[name="ingredient_ids[]"]')).some(input => input.value);
+
+    if (!hasIngredients) {
+        e.preventDefault();
+        showToast('Please add at least one ingredient to the recipe.', 'error');
+        return;
+    }
+
+    // Show loading state
+    const submitBtn = document.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+    submitBtn.disabled = true;
+});
+
+// Show flash messages as toasts
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            setTimeout(() => {
+                showToast('{{ message }}', '{{ "success" if category == "success" else "error" }}');
+            }, 100);
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+</script>
 {% endblock %}

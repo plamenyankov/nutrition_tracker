@@ -45,8 +45,19 @@ def recipe_create():
 def recipe_edit(recipe_id):
     """Edit existing recipe"""
     if request.method == 'POST':
-        flash('Recipe editing will be implemented soon!', 'info')
-        return redirect(url_for('recipe_bp.recipe_detail', recipe_id=recipe_id))
+        # Check if user wants to create variation or update original
+        create_variation = 'create_variation' in request.form
+
+        result = recipe_service.update_recipe(recipe_id, request.form, create_variation)
+
+        if result['success']:
+            flash(result['message'], 'success')
+            if result.get('is_variation'):
+                return redirect(url_for('recipe_bp.recipes_list'))
+            else:
+                return redirect(url_for('recipe_bp.recipe_detail', recipe_id=recipe_id))
+        else:
+            flash(result['message'], 'danger')
 
     result = recipe_service.get_recipe_for_edit(recipe_id)
 
