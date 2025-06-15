@@ -2,123 +2,649 @@
 
 {% block title %}Log Workout - Gym Tracker{% endblock %}
 
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+/* Modern Mobile-First Design */
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-radius: 12px;
+    --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.workout-container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Header */
+.workout-header {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.workout-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0;
+    text-align: center;
+}
+
+/* Timer Section */
+.timer-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+}
+
+.timer-display {
+    font-size: 2.5rem;
+    font-weight: 300;
+    margin: 0.5rem 0;
+    font-family: 'SF Mono', Monaco, monospace;
+}
+
+.timer-status {
+    opacity: 0.8;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.timer-btn {
+    background: rgba(255,255,255,0.2);
+    border: 2px solid rgba(255,255,255,0.3);
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.timer-btn:hover, .timer-btn:focus {
+    background: rgba(255,255,255,0.3);
+    border-color: rgba(255,255,255,0.5);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.timer-btn.running {
+    background: rgba(255,193,7,0.2);
+    border-color: rgba(255,193,7,0.5);
+}
+
+.timer-btn.paused {
+    background: rgba(40,167,69,0.2);
+    border-color: rgba(40,167,69,0.5);
+}
+
+/* Quick Stats */
+.quick-stats {
+    background: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-around;
+    box-shadow: var(--shadow);
+}
+
+.stat-item {
+    text-align: center;
+    flex: 1;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Exercise Selection */
+.exercise-selector {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.selector-header {
+    background: var(--light-color);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.selector-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dark-color);
+}
+
+.selector-body {
+    padding: 1rem;
+}
+
+.form-floating {
+    margin-bottom: 1rem;
+}
+
+.form-floating > .form-select,
+.form-floating > .form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    padding: 1rem 0.75rem 0.5rem;
+    height: auto;
+    font-size: 1rem;
+}
+
+.form-floating > .form-select:focus,
+.form-floating > .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+}
+
+.form-floating > label {
+    padding: 1rem 0.75rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.add-exercise-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    width: 100%;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.add-exercise-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    background: linear-gradient(135deg, #0056b3 0%, var(--primary-color) 100%);
+}
+
+/* Exercise Cards */
+.exercise-card {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.exercise-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+
+.exercise-info {
+    flex: 1;
+}
+
+.exercise-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin: 0 0 0.25rem 0;
+}
+
+.exercise-history {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.remove-exercise-btn {
+    background: var(--danger-color);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.remove-exercise-btn:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+/* Set Rows */
+.sets-container {
+    padding: 1rem;
+}
+
+.set-row {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.set-row.logged {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-color: var(--success-color);
+}
+
+.set-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.set-number {
+    font-weight: 700;
+    color: var(--dark-color);
+    font-size: 1rem;
+}
+
+.set-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.set-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.input-group {
+    position: relative;
+}
+
+.set-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.set-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+.set-input:disabled {
+    background: transparent;
+    color: var(--dark-color);
+}
+
+.input-label {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: white;
+    padding: 0 4px;
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.set-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    min-width: 70px;
+}
+
+.btn-save {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-edit {
+    background: var(--warning-color);
+    color: var(--dark-color);
+}
+
+.btn-delete {
+    background: var(--danger-color);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.set-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.add-set-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem;
+    border-radius: 10px;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.add-set-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+/* Bottom Actions */
+.bottom-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 1rem;
+    z-index: 50;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-finish {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+    color: white;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.action-btn:disabled {
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Notes Section */
+.notes-section {
+    background: white;
+    margin: 1rem;
+    margin-bottom: 100px; /* Space for bottom actions */
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.notes-header {
+    background: var(--light-color);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.notes-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dark-color);
+}
+
+.notes-body {
+    padding: 1rem;
+}
+
+.notes-textarea {
+    width: 100%;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+    transition: all 0.3s ease;
+}
+
+.notes-textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+/* Progress Badge */
+.progress-badge {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Loading States */
+.loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6c757d;
+    font-size: 0.85rem;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e9ecef;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .workout-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .bottom-actions {
+        position: relative;
+        box-shadow: none;
+        margin: 1rem;
+        border-radius: var(--border-radius);
+    }
+
+    .notes-section {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --light-color: #2d3748;
+        --dark-color: #f7fafc;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">Log Workout</h2>
+<div class="workout-container">
+    <!-- Header -->
+    <div class="workout-header">
+        <h1 class="workout-title">💪 Log Workout</h1>
+    </div>
 
-    <div class="row">
-        <div class="col-md-8">
-            <!-- Exercise Selection -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Add Exercise</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <label for="muscle-group-filter" class="form-label">Filter by Muscle Group:</label>
-                            <select id="muscle-group-filter" class="form-select">
-                                <option value="">All Muscle Groups</option>
-                                <option value="chest">Chest</option>
-                                <option value="back">Back</option>
-                                <option value="shoulders">Shoulders</option>
-                                <option value="biceps">Biceps</option>
-                                <option value="triceps">Triceps</option>
-                                <option value="legs">Legs</option>
-                                <option value="abs">Abs</option>
-                                <option value="glutes">Glutes</option>
-                                <option value="cardio">Cardio</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-8">
-                            <select id="exercise-select" class="form-select">
-                                <option value="">Choose an exercise...</option>
-                                {% for exercise in exercises %}
-                                    <option value="{{ exercise[0] }}" data-muscle-group="{{ exercise[2] or '' }}">
-                                        {{ exercise[1] }}{% if exercise[2] %} ({{ exercise[2] }}){% endif %}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <button id="add-exercise-btn" class="btn btn-primary w-100">
-                                <i class="fas fa-plus"></i> Add Exercise
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Timer Section -->
+    <div class="timer-section">
+        <div class="timer-display" id="workout-timer">00:00:00</div>
+        <div class="timer-status" id="timer-status">Ready to start</div>
+        <button id="timer-toggle" class="timer-btn">
+            <i class="fas fa-play"></i> Start Timer
+        </button>
+    </div>
 
-            <!-- Active Exercises -->
-            <div id="exercises-container"></div>
-
-            <div class="d-flex justify-content-between mt-3">
-                <a href="{{ url_for('gym.dashboard') }}" class="btn btn-secondary">Cancel</a>
-                <button id="finish-workout" class="btn btn-success" disabled>
-                    <i class="fas fa-check"></i> Finish Workout
-                </button>
-            </div>
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+        <div class="stat-item">
+            <span class="stat-number" id="exercise-count">0</span>
+            <span class="stat-label">Exercises</span>
         </div>
-
-        <div class="col-md-4">
-            <!-- Workout Summary -->
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">Workout Summary</h5>
-                </div>
-                <div class="card-body">
-                    <p class="mb-2">Date: <strong id="workout-date"></strong></p>
-                    <p class="mb-2">Exercises: <strong id="exercise-count">0</strong></p>
-                    <p class="mb-2">Total Sets: <strong id="total-sets">0</strong></p>
-                    <div class="workout-timer-section">
-                        <hr>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span>Workout Timer:</span>
-                            <button id="timer-toggle" class="btn btn-sm btn-success">
-                                <i class="fas fa-play"></i> Start
-                            </button>
-                        </div>
-                        <div class="text-center">
-                            <h4 id="workout-timer" class="mb-0 text-primary">00:00:00</h4>
-                            <small class="text-muted" id="timer-status">Not started</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notes -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Notes</h5>
-                </div>
-                <div class="card-body">
-                    <textarea id="workout-notes" class="form-control" rows="3" placeholder="Add workout notes..."></textarea>
-                </div>
-            </div>
+        <div class="stat-item">
+            <span class="stat-number" id="total-sets">0</span>
+            <span class="stat-label">Sets</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-number" id="workout-date"></span>
+            <span class="stat-label">Date</span>
         </div>
     </div>
-</div>
 
-<style>
-    .exercise-card {
-        margin-bottom: 20px;
-    }
-    .set-row {
-        margin-bottom: 10px;
-        padding: 10px;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-    }
-    .set-row.logged {
-        background-color: #d4edda;
-    }
-    .set-row input:disabled {
-        background-color: transparent;
-        border: 1px solid #ced4da;
-    }
-</style>
+    <!-- Exercise Selection -->
+    <div class="exercise-selector">
+        <div class="selector-header">
+            <h3 class="selector-title">🎯 Add Exercise</h3>
+        </div>
+        <div class="selector-body">
+            <div class="form-floating">
+                <select id="muscle-group-filter" class="form-select">
+                    <option value="">All Muscle Groups</option>
+                    <option value="chest">💪 Chest</option>
+                    <option value="back">🏋️ Back</option>
+                    <option value="shoulders">🤲 Shoulders</option>
+                    <option value="biceps">💪 Biceps</option>
+                    <option value="triceps">💪 Triceps</option>
+                    <option value="legs">🦵 Legs</option>
+                    <option value="abs">🔥 Abs</option>
+                    <option value="glutes">🍑 Glutes</option>
+                    <option value="cardio">❤️ Cardio</option>
+                </select>
+                <label for="muscle-group-filter">Filter by Muscle Group</label>
+            </div>
+
+            <div class="form-floating">
+                <select id="exercise-select" class="form-select">
+                    <option value="">Choose an exercise...</option>
+                    {% for exercise in exercises %}
+                        <option value="{{ exercise[0] }}" data-muscle-group="{{ exercise[2] or '' }}">
+                            {{ exercise[1] }}{% if exercise[2] %} ({{ exercise[2] }}){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <label for="exercise-select">Select Exercise</label>
+            </div>
+
+            <button id="add-exercise-btn" class="add-exercise-btn">
+                <i class="fas fa-plus"></i> Add Exercise
+            </button>
+        </div>
+    </div>
+
+    <!-- Active Exercises Container -->
+    <div id="exercises-container"></div>
+
+    <!-- Notes Section -->
+    <div class="notes-section">
+        <div class="notes-header">
+            <h3 class="notes-title">📝 Workout Notes</h3>
+        </div>
+        <div class="notes-body">
+            <textarea id="workout-notes" class="notes-textarea" placeholder="How did the workout feel? Any observations or goals for next time..."></textarea>
+        </div>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="bottom-actions">
+        <a href="{{ url_for('gym.dashboard') }}" class="action-btn btn-cancel">
+            <i class="fas fa-times"></i> Cancel
+        </a>
+        <button id="finish-workout" class="action-btn btn-finish" disabled>
+            <i class="fas fa-check"></i> Finish Workout
+        </button>
+    </div>
+</div>
 
 <script>
 let sessionId = null;
@@ -130,12 +656,12 @@ let workoutStartTime = null;
 let timerInterval = null;
 let isTimerRunning = false;
 let isPaused = false;
-let pausedTime = 0; // Total time spent paused
-let pauseStartTime = null; // When the current pause started
-let lastSetTime = null; // Time when last set was completed
+let pausedTime = 0;
+let pauseStartTime = null;
+let lastSetTime = null;
 
 // Set today's date
-document.getElementById('workout-date').textContent = new Date().toISOString().split('T')[0];
+document.getElementById('workout-date').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 // Muscle group filter
 document.getElementById('muscle-group-filter').addEventListener('change', function() {
@@ -151,7 +677,6 @@ document.getElementById('muscle-group-filter').addEventListener('change', functi
         }
     });
 
-    // Reset selection if current selection is hidden
     if (exerciseSelect.value && exerciseSelect.selectedOptions[0].style.display === 'none') {
         exerciseSelect.value = '';
     }
@@ -163,20 +688,26 @@ document.getElementById('add-exercise-btn').addEventListener('click', function()
     const exerciseId = select.value;
 
     if (!exerciseId) {
-        alert('Please select an exercise');
+        showToast('Please select an exercise', 'warning');
         return;
     }
 
     if (exerciseData[exerciseId]) {
-        alert('This exercise has already been added');
+        showToast('This exercise has already been added', 'warning');
         return;
     }
 
     const exerciseName = select.options[select.selectedIndex].text;
     addExerciseCard(exerciseId, exerciseName);
-
-    // Reset selection
     select.value = '';
+
+    // Scroll to the new exercise
+    setTimeout(() => {
+        document.getElementById(`exercise-${exerciseId}`).scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+        });
+    }, 100);
 });
 
 function addExerciseCard(exerciseId, exerciseName) {
@@ -186,24 +717,25 @@ function addExerciseCard(exerciseId, exerciseName) {
     };
 
     const exerciseCard = document.createElement('div');
-    exerciseCard.className = 'card exercise-card';
+    exerciseCard.className = 'exercise-card';
     exerciseCard.id = `exercise-${exerciseId}`;
     exerciseCard.innerHTML = `
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <div>
-                <h6 class="mb-0">${exerciseName}</h6>
-                <div class="progression-info text-muted small" id="progression-info-${exerciseId}">
-                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                    Loading history...
-                </div>
+        <div class="exercise-header">
+            <div class="exercise-info">
+                <h4 class="exercise-name">${exerciseName}</h4>
+                <p class="exercise-history" id="progression-info-${exerciseId}">
+                    <span class="loading">
+                        <span class="spinner"></span>
+                        Loading history...
+                    </span>
+                </p>
             </div>
-            <button class="btn btn-sm btn-danger remove-exercise" data-exercise-id="${exerciseId}">
+            <button class="remove-exercise-btn" data-exercise-id="${exerciseId}">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="card-body">
-            <div class="sets-container" id="sets-${exerciseId}"></div>
-            <button class="btn btn-sm btn-primary add-set-btn" data-exercise-id="${exerciseId}">
+        <div class="sets-container" id="sets-${exerciseId}">
+            <button class="add-set-btn" data-exercise-id="${exerciseId}">
                 <i class="fas fa-plus"></i> Add Set
             </button>
         </div>
@@ -211,7 +743,7 @@ function addExerciseCard(exerciseId, exerciseName) {
 
     document.getElementById('exercises-container').appendChild(exerciseCard);
 
-    // Fetch and display progression info
+    // Fetch progression info
     fetch(`/gym/exercise/${exerciseId}/quick-progression`)
         .then(response => response.json())
         .then(data => {
@@ -219,19 +751,19 @@ function addExerciseCard(exerciseId, exerciseName) {
             if (data.has_history) {
                 let infoHtml = `Last: ${data.last_weight}kg × ${data.last_reps} reps`;
                 if (data.ready_for_progression) {
-                    infoHtml += ' <span class="badge bg-success"><i class="fas fa-arrow-up"></i> Ready to progress!</span>';
+                    infoHtml += ' <span class="progress-badge"><i class="fas fa-arrow-up"></i> Ready to progress!</span>';
                 }
                 infoDiv.innerHTML = infoHtml;
             } else {
-                infoDiv.innerHTML = 'No previous history';
+                infoDiv.innerHTML = '🆕 No previous history';
             }
         })
         .catch(error => {
-            document.getElementById(`progression-info-${exerciseId}`).innerHTML = '';
+            document.getElementById(`progression-info-${exerciseId}`).innerHTML = '📊 History unavailable';
         });
 
     // Add event listeners
-    exerciseCard.querySelector('.remove-exercise').addEventListener('click', function() {
+    exerciseCard.querySelector('.remove-exercise-btn').addEventListener('click', function() {
         removeExercise(exerciseId);
     });
 
@@ -244,27 +776,51 @@ function addExerciseCard(exerciseId, exerciseName) {
     updateSummary();
 }
 
-function removeExercise(exerciseId) {
-    if (confirm('Remove this exercise and all its sets?')) {
-        // Update total sets
-        totalSets -= exerciseData[exerciseId].sets.length;
-
-        delete exerciseData[exerciseId];
-        document.getElementById(`exercise-${exerciseId}`).remove();
-        updateSummary();
-    }
-}
-
 function addSetRow(exerciseId) {
     const setNumber = exerciseData[exerciseId].sets.length + 1;
     const setId = `${exerciseId}-${setNumber}`;
 
-    // Fetch progression suggestion if this is the first set
+    const setDiv = document.createElement('div');
+    setDiv.className = 'set-row';
+    setDiv.id = `set-${setId}`;
+    setDiv.innerHTML = `
+        <div class="set-header">
+            <span class="set-number">Set ${setNumber}</span>
+            <div class="set-actions">
+                <button class="set-btn btn-save" data-set-id="${setId}" data-exercise-id="${exerciseId}">
+                    <i class="fas fa-check"></i> Save
+                </button>
+                <button class="set-btn btn-edit d-none" data-set-id="${setId}">
+                    <i class="fas fa-edit"></i> Edit
+                </button>
+                <button class="set-btn btn-delete" data-set-id="${setId}" data-exercise-id="${exerciseId}">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="set-inputs">
+            <div class="input-group">
+                <label class="input-label">Weight (kg)</label>
+                <input type="number" class="set-input weight-input"
+                       placeholder="0" step="0.5" min="0" id="weight-${setId}">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Reps</label>
+                <input type="number" class="set-input reps-input"
+                       placeholder="0" min="1" id="reps-${setId}">
+            </div>
+        </div>
+    `;
+
+    // Insert before the add set button
+    const addSetBtn = document.querySelector(`#sets-${exerciseId} .add-set-btn`);
+    addSetBtn.parentNode.insertBefore(setDiv, addSetBtn);
+
+    // Fetch progression suggestions for first set
     if (setNumber === 1) {
         fetch(`/gym/exercise/${exerciseId}/quick-progression`)
             .then(response => response.json())
             .then(data => {
-                // Update the weight and reps inputs with suggestions
                 if (data.has_history) {
                     const weightInput = document.getElementById(`weight-${setId}`);
                     const repsInput = document.getElementById(`reps-${setId}`);
@@ -277,62 +833,21 @@ function addSetRow(exerciseId) {
                         repsInput.value = data.suggested_reps;
                         repsInput.placeholder = `Last: ${data.last_reps} reps`;
                     }
-
-                    // Add progression indicator if ready
-                    if (data.ready_for_progression) {
-                        const setDiv = document.getElementById(`set-${setId}`);
-                        const progressionBadge = document.createElement('span');
-                        progressionBadge.className = 'badge bg-success ms-2';
-                        progressionBadge.innerHTML = '<i class="fas fa-arrow-up"></i> Ready to progress!';
-                        setDiv.querySelector('strong').appendChild(progressionBadge);
-                    }
                 }
             })
             .catch(error => console.error('Error fetching progression data:', error));
     }
 
-    const setDiv = document.createElement('div');
-    setDiv.className = 'set-row';
-    setDiv.id = `set-${setId}`;
-    setDiv.innerHTML = `
-        <div class="row align-items-center">
-            <div class="col-auto">
-                <strong>Set ${setNumber}</strong>
-            </div>
-            <div class="col">
-                <input type="number" class="form-control form-control-sm weight-input"
-                       placeholder="Weight (kg)" step="0.5" min="0" id="weight-${setId}">
-            </div>
-            <div class="col">
-                <input type="number" class="form-control form-control-sm reps-input"
-                       placeholder="Reps" min="1" id="reps-${setId}">
-            </div>
-            <div class="col-auto">
-                <button class="btn btn-sm btn-primary save-set-btn" data-set-id="${setId}" data-exercise-id="${exerciseId}">
-                    Save
-                </button>
-                <button class="btn btn-sm btn-warning edit-set-btn d-none" data-set-id="${setId}">
-                    Edit
-                </button>
-                <button class="btn btn-sm btn-danger delete-set-btn" data-set-id="${setId}" data-exercise-id="${exerciseId}">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-
-    document.getElementById(`sets-${exerciseId}`).appendChild(setDiv);
-
     // Add event listeners
-    setDiv.querySelector('.save-set-btn').addEventListener('click', function() {
+    setDiv.querySelector('.btn-save').addEventListener('click', function() {
         saveSet(exerciseId, setId, setNumber);
     });
 
-    setDiv.querySelector('.edit-set-btn').addEventListener('click', function() {
+    setDiv.querySelector('.btn-edit').addEventListener('click', function() {
         editSet(setId);
     });
 
-    setDiv.querySelector('.delete-set-btn').addEventListener('click', function() {
+    setDiv.querySelector('.btn-delete').addEventListener('click', function() {
         deleteSetRow(exerciseId, setId);
     });
 
@@ -345,16 +860,21 @@ function saveSet(exerciseId, setId, setNumber) {
     const reps = document.getElementById(`reps-${setId}`).value;
 
     if (!weight || !reps) {
-        alert('Please enter both weight and reps');
+        showToast('Please enter both weight and reps', 'warning');
         return;
     }
 
-    // Check if updating existing set
+    // Show loading state
+    const saveBtn = document.querySelector(`[data-set-id="${setId}"].btn-save`);
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="spinner"></span>';
+    saveBtn.disabled = true;
+
     const existingSet = exerciseData[exerciseId].sets.find(s => s.localId === setId);
     const isUpdate = existingSet && existingSet.logged;
 
     if (isUpdate && existingSet.dbId) {
-        // Update existing set in database
+        // Update existing set
         fetch('/gym/workout/update-set', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -367,25 +887,26 @@ function saveSet(exerciseId, setId, setNumber) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update local data
                 existingSet.weight = parseFloat(weight);
                 existingSet.reps = parseInt(reps);
-
-                // Update UI
                 lockSet(setId);
                 updateSummary();
+                showToast('Set updated!', 'success');
             } else {
-                alert('Error updating set: ' + (data.error || 'Unknown error'));
+                showToast('Error updating set: ' + (data.error || 'Unknown error'), 'error');
             }
+        })
+        .finally(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
         });
     } else {
-        // Calculate set duration (time since last set or workout start)
+        // Calculate set duration
         let setDuration = 0;
         if (isTimerRunning && lastSetTime) {
             const now = new Date();
             const timeSinceLastSet = Math.floor((now - lastSetTime) / 1000);
 
-            // If currently paused, subtract the current pause duration
             if (isPaused && pauseStartTime) {
                 const currentPauseDuration = Math.floor((now - pauseStartTime) / 1000);
                 setDuration = Math.max(0, timeSinceLastSet - currentPauseDuration);
@@ -411,15 +932,12 @@ function saveSet(exerciseId, setId, setNumber) {
         .then(data => {
             if (data.success) {
                 sessionId = data.session_id;
-
-                // Update last set time for duration tracking
                 lastSetTime = new Date();
 
-                // Store set data
                 if (!existingSet) {
                     exerciseData[exerciseId].sets.push({
                         localId: setId,
-                        dbId: null, // Will be set if we retrieve it later
+                        dbId: null,
                         weight: parseFloat(weight),
                         reps: parseInt(reps),
                         logged: true
@@ -431,15 +949,17 @@ function saveSet(exerciseId, setId, setNumber) {
                     existingSet.reps = parseInt(reps);
                 }
 
-                // Update UI
                 lockSet(setId);
                 updateSummary();
-
-                // Enable finish button
                 document.getElementById('finish-workout').disabled = false;
+                showToast(`💪 Set logged: ${weight}kg × ${reps} reps`, 'success');
             } else {
-                alert('Error logging set: ' + (data.error || 'Unknown error'));
+                showToast('Error logging set: ' + (data.error || 'Unknown error'), 'error');
             }
+        })
+        .finally(() => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
         });
     }
 }
@@ -453,8 +973,8 @@ function lockSet(setId) {
     setDiv.querySelector('.reps-input').disabled = true;
 
     // Toggle buttons
-    setDiv.querySelector('.save-set-btn').classList.add('d-none');
-    setDiv.querySelector('.edit-set-btn').classList.remove('d-none');
+    setDiv.querySelector('.btn-save').classList.add('d-none');
+    setDiv.querySelector('.btn-edit').classList.remove('d-none');
 }
 
 function editSet(setId) {
@@ -466,10 +986,9 @@ function editSet(setId) {
     setDiv.querySelector('.reps-input').disabled = false;
 
     // Toggle buttons
-    setDiv.querySelector('.save-set-btn').classList.remove('d-none');
-    setDiv.querySelector('.edit-set-btn').classList.add('d-none');
+    setDiv.querySelector('.btn-save').classList.remove('d-none');
+    setDiv.querySelector('.btn-edit').classList.add('d-none');
 
-    // Focus on weight input
     setDiv.querySelector('.weight-input').focus();
 }
 
@@ -478,7 +997,6 @@ function deleteSetRow(exerciseId, setId) {
         const set = exerciseData[exerciseId].sets.find(s => s.localId === setId);
 
         if (set && set.logged && set.dbId) {
-            // Delete from database if it was saved
             fetch('/gym/workout/delete-set', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -486,25 +1004,32 @@ function deleteSetRow(exerciseId, setId) {
             });
         }
 
-        // Remove from local data
         exerciseData[exerciseId].sets = exerciseData[exerciseId].sets.filter(s => s.localId !== setId);
         if (set && set.logged) {
             totalSets--;
         }
 
-        // Remove from UI
         document.getElementById(`set-${setId}`).remove();
-
-        // Renumber remaining sets
         renumberSets(exerciseId);
         updateSummary();
+        showToast('Set deleted', 'info');
+    }
+}
+
+function removeExercise(exerciseId) {
+    if (confirm('Remove this exercise and all its sets?')) {
+        totalSets -= exerciseData[exerciseId].sets.length;
+        delete exerciseData[exerciseId];
+        document.getElementById(`exercise-${exerciseId}`).remove();
+        updateSummary();
+        showToast('Exercise removed', 'info');
     }
 }
 
 function renumberSets(exerciseId) {
     const setDivs = document.querySelectorAll(`#sets-${exerciseId} .set-row`);
     setDivs.forEach((div, index) => {
-        div.querySelector('strong').textContent = `Set ${index + 1}`;
+        div.querySelector('.set-number').textContent = `Set ${index + 1}`;
     });
 }
 
@@ -515,7 +1040,6 @@ function updateSummary() {
 
 // Timer functions
 function startWorkoutTimer() {
-    // Create session if it doesn't exist
     if (!sessionId) {
         fetch('/gym/workout/log', {
             method: 'POST',
@@ -535,12 +1059,12 @@ function startWorkoutTimer() {
                 sessionId = data.session_id;
                 startTimerWithSession();
             } else {
-                alert('Error creating workout session: ' + (data.error || 'Unknown error'));
+                showToast('Error creating workout session: ' + (data.error || 'Unknown error'), 'error');
             }
         })
         .catch(error => {
             console.error('Error creating session:', error);
-            alert('Error creating workout session');
+            showToast('Error creating workout session', 'error');
         });
     } else {
         startTimerWithSession();
@@ -548,27 +1072,22 @@ function startWorkoutTimer() {
 }
 
 function startTimerWithSession() {
-    // Start local timer immediately
     workoutStartTime = new Date();
-    lastSetTime = new Date(); // Initialize last set time to workout start
+    lastSetTime = new Date();
     isTimerRunning = true;
     isPaused = false;
     pausedTime = 0;
 
-    // Update UI
     const toggleBtn = document.getElementById('timer-toggle');
     toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
-    toggleBtn.className = 'btn btn-sm btn-warning';
-    document.getElementById('timer-status').textContent = 'Running';
+    toggleBtn.className = 'timer-btn running';
+    document.getElementById('timer-status').textContent = 'Workout in progress';
 
-    // Enable finish button since workout has started
     document.getElementById('finish-workout').disabled = false;
 
-    // Start timer display
     timerInterval = setInterval(updateTimerDisplay, 1000);
     updateTimerDisplay();
 
-    // Update database with start time
     fetch('/api/timer/workout/start', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -582,22 +1101,45 @@ function startTimerWithSession() {
     });
 }
 
+function pauseWorkoutTimer() {
+    if (!isTimerRunning || isPaused) return;
+
+    isPaused = true;
+    pauseStartTime = new Date();
+
+    const toggleBtn = document.getElementById('timer-toggle');
+    toggleBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+    toggleBtn.className = 'timer-btn paused';
+    document.getElementById('timer-status').textContent = 'Paused';
+}
+
+function resumeWorkoutTimer() {
+    if (!isTimerRunning || !isPaused) return;
+
+    const pauseDuration = Math.floor((new Date() - pauseStartTime) / 1000);
+    pausedTime += pauseDuration;
+
+    isPaused = false;
+
+    const toggleBtn = document.getElementById('timer-toggle');
+    toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+    toggleBtn.className = 'timer-btn running';
+    document.getElementById('timer-status').textContent = 'Workout in progress';
+}
+
 function stopWorkoutTimer() {
     if (!sessionId) return;
 
-    // Stop the local timer
     isTimerRunning = false;
     isPaused = false;
     clearInterval(timerInterval);
 
-    // Update UI
     const toggleBtn = document.getElementById('timer-toggle');
     toggleBtn.innerHTML = '<i class="fas fa-check"></i> Completed';
-    toggleBtn.className = 'btn btn-sm btn-success';
+    toggleBtn.className = 'timer-btn';
     toggleBtn.disabled = true;
     document.getElementById('timer-status').textContent = 'Completed';
 
-    // Update database
     fetch('/api/timer/workout/complete', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -615,7 +1157,6 @@ function updateTimerDisplay() {
 
     let elapsed;
     if (isPaused) {
-        // If paused, don't update the elapsed time
         elapsed = Math.max(0, Math.floor((pauseStartTime - workoutStartTime) / 1000) - pausedTime);
     } else {
         const now = new Date();
@@ -630,35 +1171,6 @@ function updateTimerDisplay() {
     document.getElementById('workout-timer').textContent = timeString;
 }
 
-function pauseWorkoutTimer() {
-    if (!isTimerRunning || isPaused) return;
-
-    isPaused = true;
-    pauseStartTime = new Date();
-
-    // Update UI
-    const toggleBtn = document.getElementById('timer-toggle');
-    toggleBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
-    toggleBtn.className = 'btn btn-sm btn-success';
-    document.getElementById('timer-status').textContent = 'Paused';
-}
-
-function resumeWorkoutTimer() {
-    if (!isTimerRunning || !isPaused) return;
-
-    // Add the paused duration to total paused time
-    const pauseDuration = Math.floor((new Date() - pauseStartTime) / 1000);
-    pausedTime += pauseDuration;
-
-    isPaused = false;
-
-    // Update UI
-    const toggleBtn = document.getElementById('timer-toggle');
-    toggleBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
-    toggleBtn.className = 'btn btn-sm btn-warning';
-    document.getElementById('timer-status').textContent = 'Running';
-}
-
 // Timer toggle event listener
 document.getElementById('timer-toggle').addEventListener('click', function() {
     if (!isTimerRunning) {
@@ -670,23 +1182,21 @@ document.getElementById('timer-toggle').addEventListener('click', function() {
     }
 });
 
+// Finish workout
 document.getElementById('finish-workout').addEventListener('click', function() {
     if (!sessionId) {
-        alert('No workout session to complete. Please start the timer or log at least one set.');
+        showToast('No workout session to complete. Please start the timer or log at least one set.', 'warning');
         return;
     }
 
     if (confirm('Are you sure you want to finish this workout?')) {
-        // Stop timer if running
         if (isTimerRunning) {
             stopWorkoutTimer();
         }
 
-        // Get notes
         const notes = document.getElementById('workout-notes').value.trim();
 
         if (notes) {
-            // Save notes first
             fetch('/gym/workout/update-notes', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -695,22 +1205,99 @@ document.getElementById('finish-workout').addEventListener('click', function() {
                     notes: notes
                 })
             }).then(() => {
-                // Then complete the workout
                 return fetch(`/gym/workout/${sessionId}/complete`, {
                     method: 'POST'
                 });
             }).then(() => {
-                window.location.href = '{{ url_for("gym.history") }}';
+                showToast('🎉 Workout completed!', 'success');
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("gym.history") }}';
+                }, 1500);
             });
         } else {
-            // Complete workout without notes
             fetch(`/gym/workout/${sessionId}/complete`, {
                 method: 'POST'
             }).then(() => {
-                window.location.href = '{{ url_for("gym.history") }}';
+                showToast('🎉 Workout completed!', 'success');
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("gym.history") }}';
+                }, 1500);
             });
         }
     }
 });
+
+// Toast notification system
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-message">${message}</span>
+            <button class="toast-close">&times;</button>
+        </div>
+    `;
+
+    // Add toast styles if not already added
+    if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+            .toast-notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+                max-width: 300px;
+            }
+            .toast-content {
+                padding: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .toast-message {
+                flex: 1;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            .toast-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                opacity: 0.7;
+            }
+            .toast-success { border-left: 4px solid var(--success-color); }
+            .toast-error { border-left: 4px solid var(--danger-color); }
+            .toast-warning { border-left: 4px solid var(--warning-color); }
+            .toast-info { border-left: 4px solid var(--primary-color); }
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(toast);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+
+    // Manual close
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.remove();
+    });
+}
 </script>
 {% endblock %}

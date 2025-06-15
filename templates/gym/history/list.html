@@ -2,45 +2,494 @@
 
 {% block title %}Workout History - Gym Tracker{% endblock %}
 
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+/* Modern Mobile-First Design */
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-radius: 12px;
+    --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.history-container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Header */
+.history-header {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.history-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 1rem 0;
+    text-align: center;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.header-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+    text-decoration: none;
+}
+
+/* Filter Section */
+.filter-section {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.filter-header {
+    background: var(--light-color);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.filter-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dark-color);
+}
+
+.filter-body {
+    padding: 1rem;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.filter-input {
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.filter-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+/* Workout Cards */
+.workouts-grid {
+    padding: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+
+.workout-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    animation: slideInUp 0.3s ease;
+}
+
+.workout-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.workout-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.workout-date {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.workout-time {
+    font-size: 0.85rem;
+    color: #6c757d;
+    background: rgba(255,255,255,0.7);
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    display: inline-block;
+}
+
+.workout-body {
+    padding: 1rem;
+}
+
+.workout-stats {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.workout-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+}
+
+.workout-stat i {
+    color: var(--primary-color);
+}
+
+.workout-notes {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-style: italic;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid var(--info-color);
+}
+
+.workout-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.action-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    flex: 1;
+    text-align: center;
+}
+
+.action-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+    color: white;
+    text-decoration: none;
+}
+
+.action-secondary {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    background: white;
+    border: 2px solid #e9ecef;
+    color: #6c757d;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    text-decoration: none;
+}
+
+.action-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: scale(1.1);
+    text-decoration: none;
+}
+
+.action-btn.danger:hover {
+    border-color: var(--danger-color);
+    color: var(--danger-color);
+    background: rgba(220,53,69,0.1);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--dark-color);
+}
+
+.empty-text {
+    margin-bottom: 1.5rem;
+}
+
+.empty-action {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.empty-action:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+    text-decoration: none;
+}
+
+/* Stats Summary */
+.stats-summary {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.stats-header {
+    background: var(--light-color);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.stats-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dark-color);
+}
+
+.stats-grid {
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .history-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .workouts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filter-row {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .workouts-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Workout History</h2>
-        <a href="{{ url_for('gym.start_workout') }}" class="btn btn-primary">
-            <i class="fas fa-plus"></i> New Workout
-        </a>
+<div class="history-container">
+    <!-- Header -->
+    <div class="history-header">
+        <h1 class="history-title">📊 Workout History</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('gym.dashboard') }}" class="header-btn" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
+                <i class="fas fa-arrow-left"></i> Dashboard
+            </a>
+            <a href="{{ url_for('gym.start_workout') }}" class="header-btn">
+                <i class="fas fa-plus"></i> New Workout
+            </a>
+        </div>
     </div>
 
     {% if workouts %}
-        <div class="row">
+        <!-- Stats Summary -->
+        <div class="stats-summary">
+            <div class="stats-header">
+                <h3 class="stats-title">📈 Summary</h3>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-number">{{ workouts|length }}</span>
+                    <span class="stat-label">Total Workouts</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">
+                        {% set total_exercises = 0 %}
+                        {% for workout in workouts %}
+                            {% set total_exercises = total_exercises + (workout[5] or 0) %}
+                        {% endfor %}
+                        {{ total_exercises }}
+                    </span>
+                    <span class="stat-label">Total Exercises</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">0</span>
+                    <span class="stat-label">Total Sets</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-header">
+                <h3 class="filter-title">🔍 Filter Workouts</h3>
+            </div>
+            <div class="filter-body">
+                <div class="filter-row">
+                    <input type="date" class="filter-input" id="date-from" placeholder="From Date">
+                    <input type="date" class="filter-input" id="date-to" placeholder="To Date">
+                </div>
+                <div class="filter-row">
+                    <input type="text" class="filter-input" id="search-notes" placeholder="Search notes...">
+                    <select class="filter-input" id="sort-by">
+                        <option value="date-desc">Newest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="exercises-desc">Most Exercises</option>
+                        <option value="exercises-asc">Least Exercises</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workouts Grid -->
+        <div class="workouts-grid" id="workouts-container">
             {% for workout in workouts %}
-                <div class="col-md-6 col-lg-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ workout[2] }}</h5>
-                            <p class="card-text">
-                                <i class="fas fa-dumbbell"></i> {{ workout[8] }} exercise{{ 's' if workout[8] != 1 else '' }}<br>
-                                <i class="fas fa-calendar"></i> {{ workout[2] }}
-                            </p>
-                            {% if workout[3] %}
-                                <p class="card-text"><small class="text-muted">{{ workout[3] }}</small></p>
-                            {% endif %}
+                <div class="workout-card" data-date="{{ workout[2] }}" data-exercises="{{ workout[5] or 0 }}" data-notes="{{ workout[3] or '' }}">
+                    <div class="workout-header">
+                        <h4 class="workout-date">{{ workout[2] }}</h4>
+                        <span class="workout-time">{{ workout[4].strftime('%H:%M') if workout[4] else 'No time recorded' }}</span>
+                    </div>
+                    <div class="workout-body">
+                        <div class="workout-stats">
+                            <div class="workout-stat">
+                                <i class="fas fa-dumbbell"></i>
+                                <span>{{ workout[5] or 0 }} exercise{{ 's' if (workout[5] or 0) != 1 else '' }}</span>
+                            </div>
                         </div>
-                        <div class="card-footer bg-transparent">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="btn btn-sm btn-outline-primary">
-                                    View Details
+
+                        {% if workout[3] %}
+                            <div class="workout-notes">
+                                <i class="fas fa-sticky-note"></i> {{ workout[3] }}
+                            </div>
+                        {% endif %}
+
+                        <div class="workout-actions">
+                            <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="action-primary">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                            <div class="action-secondary">
+                                <a href="{{ url_for('gym.edit_workout', workout_id=workout[0]) }}" class="action-btn" title="Edit Workout">
+                                    <i class="fas fa-edit"></i>
                                 </a>
-                                <div>
-                                    <a href="{{ url_for('gym.edit_workout', workout_id=workout[0]) }}" class="btn btn-sm btn-outline-secondary">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <form method="POST" action="{{ url_for('gym.delete_workout', workout_id=workout[0]) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this workout? This cannot be undone.');">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
+                                <button type="button" class="action-btn danger" title="Delete Workout" onclick="deleteWorkout({{ workout[0] }}, this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -48,9 +497,179 @@
             {% endfor %}
         </div>
     {% else %}
-        <div class="alert alert-info">
-            <p class="mb-0">No workouts recorded yet. <a href="{{ url_for('gym.start_workout') }}" class="alert-link">Start your first workout!</a></p>
+        <div class="empty-state">
+            <div class="empty-icon">🏋️‍♂️</div>
+            <h4 class="empty-title">No workouts yet</h4>
+            <p class="empty-text">Ready to start tracking your fitness journey?</p>
+            <a href="{{ url_for('gym.start_workout') }}" class="empty-action">
+                <i class="fas fa-play"></i> Start Your First Workout
+            </a>
         </div>
     {% endif %}
 </div>
+
+<script>
+// Filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const dateFrom = document.getElementById('date-from');
+    const dateTo = document.getElementById('date-to');
+    const searchNotes = document.getElementById('search-notes');
+    const sortBy = document.getElementById('sort-by');
+    const workoutsContainer = document.getElementById('workouts-container');
+
+    if (!workoutsContainer) return;
+
+    const workoutCards = Array.from(workoutsContainer.children);
+
+    function filterAndSort() {
+        let filteredCards = workoutCards.filter(card => {
+            const cardDate = card.dataset.date;
+            const cardNotes = card.dataset.notes.toLowerCase();
+
+            // Date filter
+            if (dateFrom.value && cardDate < dateFrom.value) return false;
+            if (dateTo.value && cardDate > dateTo.value) return false;
+
+            // Notes search
+            if (searchNotes.value && !cardNotes.includes(searchNotes.value.toLowerCase())) return false;
+
+            return true;
+        });
+
+        // Sort
+        const sortValue = sortBy.value;
+        filteredCards.sort((a, b) => {
+            switch (sortValue) {
+                case 'date-desc':
+                    return b.dataset.date.localeCompare(a.dataset.date);
+                case 'date-asc':
+                    return a.dataset.date.localeCompare(b.dataset.date);
+                case 'exercises-desc':
+                    return parseInt(b.dataset.exercises) - parseInt(a.dataset.exercises);
+                case 'exercises-asc':
+                    return parseInt(a.dataset.exercises) - parseInt(b.dataset.exercises);
+                default:
+                    return 0;
+            }
+        });
+
+        // Hide all cards
+        workoutCards.forEach(card => card.style.display = 'none');
+
+        // Show filtered and sorted cards
+        filteredCards.forEach(card => card.style.display = 'block');
+
+        // Update container
+        filteredCards.forEach(card => workoutsContainer.appendChild(card));
+    }
+
+    // Add event listeners
+    dateFrom.addEventListener('change', filterAndSort);
+    dateTo.addEventListener('change', filterAndSort);
+    searchNotes.addEventListener('input', filterAndSort);
+    sortBy.addEventListener('change', filterAndSort);
+});
+
+// Delete workout function
+function deleteWorkout(workoutId, buttonElement) {
+    if (confirm('Are you sure you want to delete this workout? This cannot be undone.')) {
+        fetch('/gym/workout/' + workoutId + '/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                // Remove the card from the DOM by finding the button's parent card
+                const card = buttonElement.closest('.workout-card');
+                if (card) {
+                    card.style.animation = 'slideOutUp 0.3s ease';
+                    setTimeout(function() { card.remove(); }, 300);
+                }
+                showToast('Workout deleted successfully', 'success');
+            } else {
+                showToast('Error deleting workout', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error deleting workout', 'error');
+        });
+    }
+}
+
+// Toast notification system
+function showToast(message, type) {
+    if (!type) type = 'info';
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification toast-' + type;
+    toast.innerHTML = '<div class="toast-content"><span class="toast-message">' + message + '</span><button class="toast-close">&times;</button></div>';
+
+    // Add toast styles if not already added
+    if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+            .toast-notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+                max-width: 300px;
+            }
+            .toast-content {
+                padding: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .toast-message {
+                flex: 1;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            .toast-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                opacity: 0.7;
+            }
+            .toast-success { border-left: 4px solid var(--success-color); }
+            .toast-error { border-left: 4px solid var(--danger-color); }
+            .toast-warning { border-left: 4px solid var(--warning-color); }
+            .toast-info { border-left: 4px solid var(--primary-color); }
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOutUp {
+                from { transform: translateY(0); opacity: 1; }
+                to { transform: translateY(-20px); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(toast);
+
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+
+    // Manual close
+    toast.querySelector('.toast-close').addEventListener('click', function() {
+        toast.remove();
+    });
+}
+</script>
 {% endblock %}
