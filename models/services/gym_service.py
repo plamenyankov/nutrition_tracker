@@ -50,9 +50,10 @@ class GymService:
                     (self.user_id, datetime.now().date(), notes, 'in_progress')
                 )
             session_id = cursor.lastrowid
+            conn.commit()
             return session_id
 
-    def log_set(self, session_id, exercise_id, set_number, weight, reps, start_timer=True):
+    def log_set(self, session_id, exercise_id, set_number, weight, reps, duration_seconds=0, start_timer=True):
         """Log a single set with optional timing"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -60,13 +61,13 @@ class GymService:
             # Insert the set
             if self.connection_manager.use_mysql:
                 cursor.execute(
-                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at) VALUES (%s, %s, %s, %s, %s, %s)',
-                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None)
+                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at, duration_seconds) VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None, duration_seconds)
                 )
             else:
                 cursor.execute(
-                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at) VALUES (?, ?, ?, ?, ?, ?)',
-                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None)
+                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None, duration_seconds)
                 )
 
             set_id = cursor.lastrowid
@@ -290,12 +291,12 @@ class GymService:
         # Group by exercise
         exercises = {}
         for set_data in sets:
-            exercise_id = set_data[14]  # e.id from the join (after workout_sets columns)
-            exercise_name = set_data[12]  # e.name from the join
+            exercise_id = set_data[18]  # e.id from the join (after workout_sets columns)
+            exercise_name = set_data[16]  # e.name from the join
             if exercise_id not in exercises:
                 exercises[exercise_id] = {
                     'name': exercise_name,
-                    'muscle_group': set_data[13],  # e.muscle_group
+                    'muscle_group': set_data[17],  # e.muscle_group
                     'sets': []
                 }
             exercises[exercise_id]['sets'].append({
