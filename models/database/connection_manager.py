@@ -61,15 +61,33 @@ class DatabaseConnectionManager:
             connection = None
             try:
                 connection = self.connection_pool.get_connection()
+                # Ensure connection is in a clean state
+                if connection.is_connected():
+                    connection.autocommit = False
                 yield connection
             except mysql.connector.Error as e:
-                if connection:
-                    connection.rollback()
+                if connection and connection.is_connected():
+                    try:
+                        connection.rollback()
+                    except:
+                        pass
                 logger.error(f"MySQL connection error: {e}")
                 raise
             finally:
                 if connection and connection.is_connected():
-                    connection.close()
+                    try:
+                        # Ensure all pending results are consumed
+                        try:
+                            # Try to get any unread results
+                            connection.get_warnings()
+                        except:
+                            pass
+                        # Commit any pending transactions
+                        connection.commit()
+                    except:
+                        pass
+                    finally:
+                        connection.close()
         else:
             # SQLite fallback
             connection = sqlite3.connect(self.sqlite_path)
@@ -183,6 +201,29 @@ class DatabaseConnectionManager:
         except Exception as e:
             logger.error(f"Connection test failed: {e}")
             return False
+
+    def cleanup_connections(self):
+        """Cleanup and reset connection pool"""
+        if self.use_mysql and self.connection_pool:
+            try:
+                # Close all connections in the pool
+                while True:
+                    try:
+                        conn = self.connection_pool.get_connection(timeout=1)
+                        if conn.is_connected():
+                            conn.close()
+                    except:
+                        break
+                logger.info("Connection pool cleaned up")
+            except Exception as e:
+                logger.error(f"Error cleaning up connections: {e}")
+
+    def __del__(self):
+        """Cleanup when manager is destroyed"""
+        try:
+            self.cleanup_connections()
+        except:
+            pass
 
 # Global connection manager instance (will be initialized when needed)
 _db_manager = None

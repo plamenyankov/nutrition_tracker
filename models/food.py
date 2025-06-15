@@ -1,5 +1,6 @@
 import os
 from models.database.connection_manager import DatabaseConnectionManager
+from datetime import datetime
 
 # Use environment variable for database path (for backward compatibility)
 db_path = os.getenv('DATABASE_PATH', 'database.db')
@@ -22,30 +23,56 @@ class FoodDatabase:
     def save_unit(self, data):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('INSERT IGNORE INTO Unit (unit_name) VALUES (%s)', (data,))
-                cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = %s', (data,))
-            else:
-                cursor.execute('INSERT OR IGNORE INTO Unit (unit_name) VALUES (?)', (data,))
-                cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = ?', (data,))
+            try:
+                if self.connection_manager.use_mysql:
+                    # First check if it exists
+                    cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = %s', (data,))
+                    existing = cursor.fetchone()
+                    # Consume any remaining results
+                    cursor.fetchall()
 
-            unit_id = cursor.fetchone()
-            if unit_id:
-                return unit_id[0]
+                    if existing:
+                        return existing[0]
+
+                    # Insert if it doesn't exist
+                    cursor.execute('INSERT INTO Unit (unit_name) VALUES (%s)', (data,))
+                    conn.commit()
+                    return cursor.lastrowid
+                else:
+                    cursor.execute('INSERT OR IGNORE INTO Unit (unit_name) VALUES (?)', (data,))
+                    cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = ?', (data,))
+                    unit_id = cursor.fetchone()
+                    if unit_id:
+                        return unit_id[0]
+            finally:
+                cursor.close()
 
     def save_ingredient(self, data):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('INSERT IGNORE INTO Ingredient (ingredient_name) VALUES (%s)', (data,))
-                cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = %s', (data,))
-            else:
-                cursor.execute('INSERT OR IGNORE INTO Ingredient (ingredient_name) VALUES (?)', (data,))
-                cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = ?', (data,))
+            try:
+                if self.connection_manager.use_mysql:
+                    # First check if it exists
+                    cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = %s', (data,))
+                    existing = cursor.fetchone()
+                    # Consume any remaining results
+                    cursor.fetchall()
 
-            ingredient_id = cursor.fetchone()
-            if ingredient_id:
-                return ingredient_id[0]
+                    if existing:
+                        return existing[0]
+
+                    # Insert if it doesn't exist
+                    cursor.execute('INSERT INTO Ingredient (ingredient_name) VALUES (%s)', (data,))
+                    conn.commit()
+                    return cursor.lastrowid
+                else:
+                    cursor.execute('INSERT OR IGNORE INTO Ingredient (ingredient_name) VALUES (?)', (data,))
+                    cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = ?', (data,))
+                    ingredient_id = cursor.fetchone()
+                    if ingredient_id:
+                        return ingredient_id[0]
+            finally:
+                cursor.close()
 
     def save_ingredient_qty(self, quantity, ingredient_id, unit_id, serv=None):
         if serv is not None:
@@ -53,41 +80,59 @@ class FoodDatabase:
 
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                # First check if it already exists
-                cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=%s AND unit_id=%s AND quantity=%s', (ingredient_id, unit_id, quantity))
-                existing = cursor.fetchone()
-                if existing:
-                    return existing[0]
+            try:
+                if self.connection_manager.use_mysql:
+                    # First check if it already exists
+                    cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=%s AND unit_id=%s AND quantity=%s', (ingredient_id, unit_id, quantity))
+                    existing = cursor.fetchone()
+                    # Consume any remaining results
+                    cursor.fetchall()
 
-                # Insert new record
-                cursor.execute('INSERT INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (%s,%s,%s)', (quantity, ingredient_id, unit_id,))
-                conn.commit()
+                    if existing:
+                        return existing[0]
 
-                # Get the inserted ID
-                cursor.execute('SELECT LAST_INSERT_ID()')
-                ingredient_quantity_id = cursor.fetchone()[0]
-                return ingredient_quantity_id
-            else:
-                cursor.execute('INSERT OR IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (?,?,?)', (quantity, ingredient_id, unit_id,))
-                cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=? AND unit_id=? AND quantity=?', (ingredient_id, unit_id, quantity))
-                ingredient_quantity_id = cursor.fetchone()
-                if ingredient_quantity_id:
-                    return ingredient_quantity_id[0]
+                    # Insert new record
+                    cursor.execute('INSERT INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (%s,%s,%s)', (quantity, ingredient_id, unit_id,))
+                    conn.commit()
+
+                    # Get the inserted ID using lastrowid
+                    ingredient_quantity_id = cursor.lastrowid
+                    return ingredient_quantity_id
+                else:
+                    cursor.execute('INSERT OR IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (?,?,?)', (quantity, ingredient_id, unit_id,))
+                    cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=? AND unit_id=? AND quantity=?', (ingredient_id, unit_id, quantity))
+                    ingredient_quantity_id = cursor.fetchone()
+                    if ingredient_quantity_id:
+                        return ingredient_quantity_id[0]
+            finally:
+                cursor.close()
 
     def save_nutrition(self, ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('INSERT IGNORE INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein,))
-                cursor.execute('SELECT * FROM Nutrition WHERE ingredient_id=%s AND unit_id=%s', (ingredient_id, unit_id,))
-            else:
-                cursor.execute('INSERT OR IGNORE INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (?,?,?,?,?,?,?,?)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein,))
-                cursor.execute('SELECT * FROM Nutrition WHERE ingredient_id=? AND unit_id=?', (ingredient_id, unit_id,))
+            try:
+                if self.connection_manager.use_mysql:
+                    # First check if it exists
+                    cursor.execute('SELECT ingredient_id FROM Nutrition WHERE ingredient_id=%s AND unit_id=%s', (ingredient_id, unit_id))
+                    existing = cursor.fetchone()
+                    # Consume any remaining results
+                    cursor.fetchall()
 
-            nutrition = cursor.fetchone()
-            if nutrition:
-                return nutrition[0]
+                    if existing:
+                        return existing[0]
+
+                    # Insert if it doesn't exist
+                    cursor.execute('INSERT INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein))
+                    conn.commit()
+                    return ingredient_id  # Return ingredient_id since there's no auto-increment ID
+                else:
+                    cursor.execute('INSERT OR IGNORE INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (?,?,?,?,?,?,?,?)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein))
+                    cursor.execute('SELECT * FROM Nutrition WHERE ingredient_id=? AND unit_id=?', (ingredient_id, unit_id))
+                    nutrition = cursor.fetchone()
+                    if nutrition:
+                        return nutrition[0]
+            finally:
+                cursor.close()
 
     def save_consumption(self, date, ingredient_quantity_id, meal_type='other'):
         with self.connection_manager.get_connection() as conn:
@@ -175,13 +220,16 @@ class FoodDatabase:
     def save_recipe_ingredient(self, recipe_id, ingredient_quantity_id):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s,%s)', (recipe_id, ingredient_quantity_id,))
-            else:
-                cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (?,?)', (recipe_id, ingredient_quantity_id,))
+            try:
+                if self.connection_manager.use_mysql:
+                    cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s,%s)', (recipe_id, ingredient_quantity_id,))
+                else:
+                    cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (?,?)', (recipe_id, ingredient_quantity_id,))
 
-            # Ideally, return a success message or status
-            return "Added Ingredient successful"
+                conn.commit()
+                return "Added Ingredient successful"
+            finally:
+                cursor.close()
 
     def converter_base_unit(self, qty, kcal, fats, carbs, fiber, net_carbs, protein):
 
@@ -227,28 +275,122 @@ class FoodDatabase:
         try:
             ingredients_qty_list = self.save_to_database(data, serv)
 
+            # Use a fresh connection for recipe creation
+            recipe_id = None
             with self.connection_manager.get_connection() as conn:
                 cursor = conn.cursor()
-                if self.connection_manager.use_mysql:
-                    cursor.execute('INSERT IGNORE INTO Recipe (recipe_name, recipe_date, servings) VALUES (%s,%s,%s)',
-                                   (recipe, date, serv,))
-                    cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=%s', (recipe,))
-                else:
-                    cursor.execute('INSERT OR IGNORE INTO Recipe (recipe_name, recipe_date, servings) VALUES (?,?,?)',
-                                   (recipe, date, serv,))
-                    cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=?', (recipe,))
+                try:
+                    if self.connection_manager.use_mysql:
+                        # Check if recipe already exists
+                        cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=%s', (recipe,))
+                        existing = cursor.fetchone()
+                        # Consume any remaining results
+                        cursor.fetchall()
 
-                recipe_id = cursor.fetchone()[0]
+                        if existing:
+                            recipe_id = existing[0]
+                        else:
+                            # Insert new recipe
+                            cursor.execute('INSERT INTO Recipe (recipe_name, recipe_date, servings) VALUES (%s,%s,%s)',
+                                           (recipe, date, serv,))
+                            # Get the inserted recipe ID immediately
+                            recipe_id = cursor.lastrowid
+                            conn.commit()
 
+                    else:
+                        cursor.execute('INSERT OR IGNORE INTO Recipe (recipe_name, recipe_date, servings) VALUES (?,?,?)',
+                                       (recipe, date, serv,))
+                        cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=?', (recipe,))
+                        recipe_result = cursor.fetchone()
+                        if recipe_result:
+                            recipe_id = recipe_result[0]
+
+                    if not recipe_id:
+                        raise Exception("Failed to get recipe ID")
+
+                finally:
+                    cursor.close()
+
+            # Link ingredients to recipe using separate connections
             for ingredient_quantity_id in ingredients_qty_list:
-                self.save_recipe_ingredient(recipe_id, ingredient_quantity_id)  # Pass individual ID
+                self.save_recipe_ingredient(recipe_id, ingredient_quantity_id)
 
-            # Ideally, return a success message or status
             return ingredients_qty_list
 
         except Exception as e:
-            # Handle the error and perhaps return a meaningful message
+            print(f"Error in save_recipe: {e}")
             return f"Error: {e}"
+
+    def update_recipe(self, recipe_id, recipe_name, servings, csv_data):
+        """Update an existing recipe with new data"""
+        try:
+            # First, process ingredients outside of the main transaction
+            lines = csv_data.strip().split("\n")
+            headers = lines[0].split(',')
+            entries = [dict(zip(headers, line.split(','))) for line in lines[1:]]
+
+            # Process each ingredient and collect the IDs
+            ingredient_qty_ids = []
+
+            for entry in entries:
+                # Insert into Unit table
+                unit_id = self.save_unit(entry['unit'])
+
+                # Insert into Ingredient table
+                ingredient_id = self.save_ingredient(entry['ingr'])
+
+                # Save ingredient quantity and get the id
+                ingredient_quantity_id = self.save_ingredient_qty(entry['qty'], ingredient_id, unit_id, servings)
+                ingredient_qty_ids.append(ingredient_quantity_id)
+
+                # Convert Nutrition to Base Unit
+                kcal, fats, carbs, fiber, net_carbs, protein = self.converter_base_unit(
+                    entry['qty'], entry['kcal'], entry['fats'], entry['carbs'],
+                    entry['fiber'], entry['net_carbs'], entry['protein']
+                )
+
+                # Save Nutritions
+                self.save_nutrition(ingredient_id, unit_id, kcal, fats, carbs, fiber, net_carbs, protein)
+
+            # Now update the recipe in a single transaction
+            with self.connection_manager.get_connection() as conn:
+                cursor = conn.cursor()
+
+                # First, delete existing recipe ingredients
+                if self.connection_manager.use_mysql:
+                    cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = %s', (recipe_id,))
+                else:
+                    cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = ?', (recipe_id,))
+
+                # Update recipe basic info
+                if self.connection_manager.use_mysql:
+                    cursor.execute('''
+                        UPDATE Recipe
+                        SET recipe_name = %s, servings = %s, recipe_date = %s
+                        WHERE recipe_id = %s
+                    ''', (recipe_name, servings, datetime.now().strftime('%Y-%m-%d'), recipe_id))
+                else:
+                    cursor.execute('''
+                        UPDATE Recipe
+                        SET recipe_name = ?, servings = ?, recipe_date = ?
+                        WHERE recipe_id = ?
+                    ''', (recipe_name, servings, datetime.now().strftime('%Y-%m-%d'), recipe_id))
+
+                # Link new ingredients to recipe
+                for iq_id in ingredient_qty_ids:
+                    if self.connection_manager.use_mysql:
+                        cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s, %s)',
+                                     (recipe_id, iq_id))
+                    else:
+                        cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (?, ?)',
+                                     (recipe_id, iq_id))
+
+                conn.commit()
+                return True
+
+        except Exception as e:
+            print(f"Error updating recipe: {e}")
+            return False
 
     def update_nutrition(self, iq_id, n):
         kcal, fats, carbs, fiber, net_carbs, protein = self.converter_base_unit(n['qty'], n['kcal'],n['fat'],n['carb'],n['fiber'],n['net_carb'],n['protein'])
