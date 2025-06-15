@@ -2,118 +2,598 @@
 
 {% block title %}Workout Details - Gym Tracker{% endblock %}
 
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+/* Modern Mobile-First Design */
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-radius: 12px;
+    --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.detail-container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Header */
+.detail-header {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.detail-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 1rem 0;
+    text-align: center;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.header-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.header-btn.secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+}
+
+.header-btn.success {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+}
+
+.header-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+    text-decoration: none;
+}
+
+/* Workout Info Card */
+.workout-info {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.workout-info-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.workout-date {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.workout-status {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-completed {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+    color: white;
+}
+
+.status-in-progress {
+    background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
+    color: var(--dark-color);
+}
+
+.workout-info-body {
+    padding: 1.5rem;
+}
+
+.workout-meta {
+    display: grid;
+    gap: 1rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.meta-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.meta-content {
+    flex: 1;
+}
+
+.meta-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin: 0;
+}
+
+.meta-value {
+    font-size: 1rem;
+    color: var(--dark-color);
+    font-weight: 600;
+    margin: 0;
+}
+
+.workout-notes {
+    background: rgba(23,162,184,0.1);
+    border-left: 4px solid var(--info-color);
+    padding: 1rem;
+    border-radius: 0 8px 8px 0;
+    margin-top: 1rem;
+}
+
+.notes-text {
+    font-style: italic;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Exercise Cards */
+.exercises-section {
+    margin: 1rem;
+}
+
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: white;
+    margin: 0 0 1rem 0;
+    text-align: center;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.exercise-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 1rem;
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.exercise-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.exercise-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 0.25rem 0;
+}
+
+.exercise-muscle {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.sets-container {
+    padding: 1rem;
+}
+
+.sets-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.set-row {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: auto 1fr 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.set-row:hover {
+    background: rgba(0,123,255,0.05);
+    transform: translateY(-1px);
+}
+
+.set-number {
+    background: var(--primary-color);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.set-stat {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+}
+
+.exercise-summary {
+    background: rgba(0,123,255,0.05);
+    border-top: 1px solid #e9ecef;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    text-align: center;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.summary-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.summary-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.25rem;
+}
+
+/* Workout Summary */
+.workout-summary {
+    background: white;
+    margin: 1rem;
+    margin-bottom: 2rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    border: 2px solid var(--primary-color);
+}
+
+.summary-header {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.summary-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.summary-grid {
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+}
+
+.summary-stat {
+    text-align: center;
+}
+
+.summary-stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.summary-stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: white;
+    margin: 1rem;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.7;
+}
+
+.empty-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.empty-text {
+    opacity: 0.8;
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .detail-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .header-actions {
+        justify-content: center;
+    }
+
+    .workout-meta {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .set-row {
+        grid-template-columns: auto 1fr 1fr 1fr 1fr;
+    }
+}
+
+@media (min-width: 1024px) {
+    .workout-meta {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Workout Details</h2>
-        <div>
-            <a href="{{ url_for('gym.create_template_from_workout', workout_id=workout[0]) }}" class="btn btn-success">
+<div class="detail-container">
+    <!-- Header -->
+    <div class="detail-header">
+        <h1 class="detail-title">💪 Workout Details</h1>
+        <div class="header-actions">
+            <a href="{{ url_for('gym.history') }}" class="header-btn secondary">
+                <i class="fas fa-arrow-left"></i> Back
+            </a>
+            <a href="{{ url_for('gym.edit_workout', workout_id=workout[0]) }}" class="header-btn">
+                <i class="fas fa-edit"></i> Edit
+            </a>
+            <a href="{{ url_for('gym.create_template_from_workout', workout_id=workout[0]) }}" class="header-btn success">
                 <i class="fas fa-save"></i> Save as Template
             </a>
-            <a href="{{ url_for('gym.edit_workout', workout_id=workout[0]) }}" class="btn btn-primary">
-                <i class="fas fa-edit"></i> Edit Workout
-            </a>
-            <a href="{{ url_for('gym.history') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to History
-            </a>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">{{ workout[2] }}</h5>
-            <p class="card-text">
-                <i class="fas fa-calendar"></i> <strong>Date:</strong> {{ workout[2] }}<br>
-                {% if workout[3] %}
-                    <i class="fas fa-sticky-note"></i> <strong>Notes:</strong> {{ workout[3] }}<br>
+    <!-- Workout Info -->
+    <div class="workout-info">
+        <div class="workout-info-header">
+            <h2 class="workout-date">{{ workout[2] }}</h2>
+            <span class="workout-status {{ 'status-completed' if workout[6] == 'completed' else 'status-in-progress' }}">
+                {{ workout[6]|title if workout[6] else 'In Progress' }}
+            </span>
+        </div>
+        <div class="workout-info-body">
+            <div class="workout-meta">
+                <div class="meta-item">
+                    <div class="meta-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="meta-content">
+                        <p class="meta-label">Date</p>
+                        <p class="meta-value">{{ workout[2] }}</p>
+                    </div>
+                </div>
+
+                <div class="meta-item">
+                    <div class="meta-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="meta-content">
+                        <p class="meta-label">Logged At</p>
+                        <p class="meta-value">{{ workout[4].strftime('%H:%M') if workout[4] else 'No time' }}</p>
+                    </div>
+                </div>
+
+                {% if exercises %}
+                <div class="meta-item">
+                    <div class="meta-icon">
+                        <i class="fas fa-dumbbell"></i>
+                    </div>
+                    <div class="meta-content">
+                        <p class="meta-label">Exercises</p>
+                        <p class="meta-value">{{ exercises|length }}</p>
+                    </div>
+                </div>
                 {% endif %}
-                <i class="fas fa-clock"></i> <strong>Logged:</strong> {{ workout[4] }}<br>
-                <i class="fas fa-check-circle"></i> <strong>Status:</strong>
-                <span class="badge bg-{{ 'success' if workout[6] == 'completed' else 'warning' }}">{{ workout[6]|title }}</span>
-            </p>
+            </div>
+
+            {% if workout[3] %}
+                <div class="workout-notes">
+                    <p class="notes-text">
+                        <i class="fas fa-sticky-note"></i> {{ workout[3] }}
+                    </p>
+                </div>
+            {% endif %}
         </div>
     </div>
 
-    <h3 class="mb-3">Exercises</h3>
-
+    <!-- Exercises Section -->
     {% if exercises %}
-        {% for exercise_name, sets in exercises.items() %}
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0">{{ exercise_name }}</h5>
-                    {% if sets[0][10] %}
-                        <small class="text-muted">{{ sets[0][10] }}</small>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Set</th>
-                                    <th>Weight (kg)</th>
-                                    <th>Reps</th>
-                                    <th>Volume (kg)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for set in sets %}
-                                    <tr>
-                                        <td>{{ set[3] }}</td>
-                                        <td>{{ set[4] }}</td>
-                                        <td>{{ set[5] }}</td>
-                                        <td>{{ set[4] * set[5] }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot>
-                                <tr class="table-light">
-                                    <th>Total</th>
-                                    <th>-</th>
-                                    <th>{{ sets|sum(attribute='5') }}</th>
-                                    <th>
-                                        {% set total_volume = 0 %}
-                                        {% for set in sets %}
-                                            {% set total_volume = total_volume + (set[4] * set[5]) %}
-                                        {% endfor %}
-                                        {{ total_volume }}
-                                    </th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        {% endfor %}
+        <div class="exercises-section">
+            <h3 class="section-title">🎯 Exercises</h3>
 
-        <div class="card mt-4 border-primary">
-            <div class="card-body">
-                <h5 class="text-primary">Workout Summary</h5>
-                <div class="row text-center">
-                    <div class="col-md-4">
-                        <h6 class="text-muted">Total Exercises</h6>
-                        <h3 class="mb-0">{{ exercises|length }}</h3>
+            {% for exercise_name, sets in exercises.items() %}
+                <div class="exercise-card">
+                    <div class="exercise-header">
+                        <h4 class="exercise-name">{{ exercise_name }}</h4>
+                        {% if sets[0][10] %}
+                            <p class="exercise-muscle">{{ sets[0][10] }}</p>
+                        {% endif %}
                     </div>
-                    <div class="col-md-4">
-                        <h6 class="text-muted">Total Sets</h6>
-                        <h3 class="mb-0">{{ exercises.values()|map('length')|sum }}</h3>
-                    </div>
-                    <div class="col-md-4">
-                        <h6 class="text-muted">Total Volume</h6>
-                        {% set total_volume = namespace(value=0) %}
-                        {% for exercise_sets in exercises.values() %}
-                            {% for set in exercise_sets %}
-                                {% set total_volume.value = total_volume.value + (set[4] * set[5]) %}
+                    <div class="sets-container">
+                        <div class="sets-grid">
+                            {% for set in sets %}
+                                <div class="set-row">
+                                    <div class="set-number">{{ set[3] }}</div>
+                                    <div class="set-stat">
+                                        <span class="stat-value">{{ set[4] }}</span>
+                                        <div class="stat-label">kg</div>
+                                    </div>
+                                    <div class="set-stat">
+                                        <span class="stat-value">{{ set[5] }}</span>
+                                        <div class="stat-label">reps</div>
+                                    </div>
+                                    <div class="set-stat">
+                                        <span class="stat-value">{{ set[4] * set[5] }}</span>
+                                        <div class="stat-label">volume</div>
+                                    </div>
+                                </div>
                             {% endfor %}
-                        {% endfor %}
-                        <h3 class="mb-0 text-primary">{{ "{:,.0f}".format(total_volume.value) }} kg</h3>
+                        </div>
+
+                        <div class="exercise-summary">
+                            <div class="summary-item">
+                                <span class="summary-value">{{ sets|length }}</span>
+                                <span class="summary-label">Sets</span>
+                            </div>
+                            <div class="summary-item">
+                                <span class="summary-value">{{ sets|sum(attribute='5') }}</span>
+                                <span class="summary-label">Total Reps</span>
+                            </div>
+                            <div class="summary-item">
+                                {% set total_volume = 0 %}
+                                {% for set in sets %}
+                                    {% set total_volume = total_volume + (set[4] * set[5]) %}
+                                {% endfor %}
+                                <span class="summary-value">{{ total_volume }}</span>
+                                <span class="summary-label">Total Volume</span>
+                            </div>
+                        </div>
                     </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Workout Summary -->
+        <div class="workout-summary">
+            <div class="summary-header">
+                <h3 class="summary-title">📊 Workout Summary</h3>
+            </div>
+            <div class="summary-grid">
+                <div class="summary-stat">
+                    <span class="summary-stat-value">{{ exercises|length }}</span>
+                    <span class="summary-stat-label">Exercises</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="summary-stat-value">{{ exercises.values()|map('length')|sum }}</span>
+                    <span class="summary-stat-label">Total Sets</span>
+                </div>
+                <div class="summary-stat">
+                    {% set total_volume = namespace(value=0) %}
+                    {% for exercise_sets in exercises.values() %}
+                        {% for set in exercise_sets %}
+                            {% set total_volume.value = total_volume.value + (set[4] * set[5]) %}
+                        {% endfor %}
+                    {% endfor %}
+                    <span class="summary-stat-value">{{ "{:,.0f}".format(total_volume.value) }}</span>
+                    <span class="summary-stat-label">Total Volume (kg)</span>
                 </div>
             </div>
         </div>
     {% else %}
-        <div class="alert alert-info">
-            <p class="mb-0">No exercises logged for this workout.</p>
+        <div class="empty-state">
+            <div class="empty-icon">🏋️‍♂️</div>
+            <h4 class="empty-title">No exercises logged</h4>
+            <p class="empty-text">This workout doesn't have any exercises recorded yet.</p>
         </div>
     {% endif %}
 </div>

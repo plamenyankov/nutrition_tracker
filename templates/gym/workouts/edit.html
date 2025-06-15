@@ -3,801 +3,762 @@
 {% block title %}Edit Workout - Gym Tracker{% endblock %}
 
 {% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
-/* Mobile-friendly styles */
-@media (max-width: 768px) {
-    /* Stack buttons vertically on mobile */
-    .mobile-button-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    /* Make action buttons larger on mobile */
-    .btn-mobile-action {
-        min-width: 44px;
-        min-height: 44px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    /* Better spacing for mobile */
-    .mobile-compact {
-        padding: 0.5rem !important;
-    }
-
-    /* Hide table headers on mobile and display as cards */
-    .mobile-sets-table thead {
-        display: none;
-    }
-
-    .mobile-sets-table tbody tr {
-        display: block;
-        border: 1px solid #dee2e6;
-        margin-bottom: 0.5rem;
-        border-radius: 0.25rem;
-        padding: 0.5rem;
-    }
-
-    .mobile-sets-table tbody td {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.25rem 0;
-        border: none;
-    }
-
-    .mobile-sets-table tbody td:before {
-        content: attr(data-label);
-        font-weight: bold;
-        margin-right: 0.5rem;
-    }
-
-    /* Make inputs full width on mobile */
-    .mobile-sets-table input {
-        max-width: 100px;
-    }
+/* Modern Mobile-First Design */
+:root {
+    --primary-color: #007bff;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-radius: 12px;
+    --shadow: 0 2px 10px rgba(0,0,0,0.1);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.15);
 }
 
-/* Larger touch targets */
-.btn-touch {
-    min-width: 44px;
-    min-height: 38px;
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding-bottom: 100px;
 }
 
-/* Fixed bottom action bar for mobile */
-@media (max-width: 768px) {
-    .workout-actions-mobile {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: white;
-        border-top: 1px solid #dee2e6;
-        padding: 0.5rem;
-        z-index: 1000;
-    }
-
-    /* Add padding to prevent content being hidden behind fixed bar */
-    body {
-        padding-bottom: 80px;
-    }
+.edit-container {
+    padding: 0;
+    max-width: 100%;
 }
 
-/* Input group styles for increment/decrement */
-.input-group-compact {
+/* Header */
+.edit-header {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.edit-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin: 0 0 0.5rem 0;
+    text-align: center;
+}
+
+.workout-status {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 1rem;
+}
+
+.status-in-progress {
+    background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
+    color: var(--dark-color);
+}
+
+.status-completed {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+    color: white;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.header-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
+    font-size: 0.9rem;
 }
 
-.input-group-compact input {
-    text-align: center;
-    max-width: 80px;
+.header-btn.secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
 }
 
-.btn-increment {
-    min-width: 32px;
-    min-height: 32px;
-    padding: 0;
-    display: inline-flex;
+.header-btn.danger {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+}
+
+.header-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+    text-decoration: none;
+}
+
+/* Exercise Selector */
+.exercise-selector {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.selector-header {
+    background: var(--light-color);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.selector-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dark-color);
+}
+
+.selector-body {
+    padding: 1rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.exercise-select {
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.exercise-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+.add-exercise-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
+    color: white;
+    padding: 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.add-exercise-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Exercise Cards */
+.exercise-card {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: slideInUp 0.3s ease;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.exercise-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.exercise-info {
+    flex: 1;
+}
+
+.exercise-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+    margin: 0 0 0.25rem 0;
+}
+
+.exercise-muscle {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.add-set-btn {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
+    border: none;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.add-set-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+/* Sets Container */
+.sets-container {
+    padding: 1rem;
+}
+
+.sets-grid {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.set-row {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.set-row.editing {
+    border-color: var(--primary-color);
+    background: rgba(0,123,255,0.05);
+}
+
+.set-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.set-number {
+    background: var(--primary-color);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: bold;
+    font-weight: 700;
+    font-size: 0.9rem;
 }
 
-/* Progressive overload indicator */
-.progression-indicator {
-    font-size: 0.875rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    display: inline-block;
-    margin-left: 0.5rem;
-}
-
-.progression-ready {
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.progression-close {
-    background-color: #fff3cd;
-    color: #856404;
-}
-
-.progression-maintain {
-    background-color: #f8f9fa;
-    color: #6c757d;
-}
-
-.set-progression-info {
-    font-size: 0.75rem;
-    color: #6c757d;
-    margin-top: 0.25rem;
+.set-actions {
     display: flex;
-    align-items: center;
     gap: 0.5rem;
 }
 
-.last-performance {
+.set-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.input-group {
+    position: relative;
+}
+
+.input-label {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: white;
+    padding: 0 4px;
     font-size: 0.75rem;
     color: #6c757d;
-    margin-top: 0.25rem;
+    font-weight: 500;
 }
 
-@media (max-width: 768px) {
-    .progression-indicator {
-        display: block;
-        margin-left: 0;
-        margin-top: 0.25rem;
-    }
-}
-
-/* Pyramid Pattern Display */
-.pyramid-pattern-display {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+.set-input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid #e9ecef;
     border-radius: 8px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s ease;
 }
 
-.pyramid-pattern-header {
+.set-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+.set-input:disabled {
+    background: transparent;
+    color: var(--dark-color);
+}
+
+.increment-controls {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.pyramid-pattern-icon {
-    font-size: 1.5rem;
-}
-
-.pyramid-pattern-title {
-    font-weight: bold;
-    margin: 0;
-}
-
-.pyramid-pattern-description {
-    color: #6c757d;
-    font-size: 0.875rem;
-    margin: 0;
-}
-
-.pyramid-confidence {
-    display: inline-block;
-    background: rgba(255,255,255,0.7);
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-size: 0.75rem;
     margin-top: 0.5rem;
 }
 
-/* Enhanced Set Progression Display */
-.set-progression-detail {
+.increment-btn {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
+    justify-content: center;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
-.set-history-hint {
-    font-size: 0.75rem;
-    color: #6c757d;
-    margin-left: 0.5rem;
+.increment-btn:hover {
+    background: #0056b3;
+    transform: scale(1.1);
 }
 
-.progression-badge-ready {
-    background: #28a745;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-weight: 500;
-}
-
-.progression-badge-close {
-    background: #ffc107;
-    color: #212529;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-weight: 500;
-}
-
-.progression-badge-building {
+.increment-btn:disabled {
     background: #6c757d;
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
-    font-weight: 500;
+    transform: none;
 }
 
-.progression-suggestion {
-    color: #28a745;
-    font-weight: 500;
-}
-
-.volume-trend-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    background: rgba(255,255,255,0.9);
-    border-radius: 4px;
-    font-size: 0.75rem;
-}
-
-.trend-up { color: #28a745; }
-.trend-down { color: #dc3545; }
-.trend-stable { color: #6c757d; }
-
-/* Set Addition Suggestion Card */
-.set-addition-suggestion {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+.set-btn {
+    padding: 0.5rem 1rem;
     border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    min-width: 70px;
+}
+
+.btn-edit {
+    background: var(--warning-color);
+    color: var(--dark-color);
+}
+
+.btn-save {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-delete {
+    background: var(--danger-color);
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.set-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Workout Info */
+.workout-info {
+    background: white;
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.info-header {
+    background: var(--light-color);
     padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.info-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dark-color);
+}
+
+.info-body {
+    padding: 1rem;
+}
+
+.workout-meta {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.meta-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.meta-content {
+    flex: 1;
+}
+
+.meta-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin: 0;
+}
+
+.meta-value {
+    font-size: 1rem;
+    color: var(--dark-color);
+    font-weight: 600;
+    margin: 0;
+}
+
+.notes-section {
     margin-top: 1rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.set-addition-suggestion h6 {
+.notes-textarea {
+    width: 100%;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 1rem;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 100px;
+    transition: all 0.3s ease;
+}
+
+.notes-textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+.save-notes-btn {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    border: none;
     color: white;
-    margin-bottom: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    font-weight: 600;
+    margin-top: 1rem;
+    transition: all 0.3s ease;
 }
 
-.set-addition-suggestion small {
-    opacity: 0.9;
+.save-notes-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
 }
 
-.set-addition-suggestion .btn {
-    background: rgba(255,255,255,0.2);
-    border: 1px solid rgba(255,255,255,0.3);
+/* Bottom Actions */
+.bottom-actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 1rem;
+    z-index: 50;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-complete {
+    background: linear-gradient(135deg, var(--success-color) 0%, #1e7e34 100%);
     color: white;
 }
 
-.set-addition-suggestion .btn:hover {
-    background: rgba(255,255,255,0.3);
+.btn-abandon {
+    background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%);
+    color: var(--dark-color);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Responsive Design */
+@media (min-width: 768px) {
+    .edit-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    .bottom-actions {
+        position: relative;
+        box-shadow: none;
+        margin: 1rem;
+        border-radius: var(--border-radius);
+    }
+
+    body {
+        padding-bottom: 0;
+    }
+
+    .workout-meta {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .workout-meta {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-3">
-    <!-- Mobile-friendly header -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-2">
-        <div>
-            <h2 class="h4 h2-md d-inline">Edit Workout</h2>
+<div class="edit-container">
+    <!-- Header -->
+    <div class="edit-header">
+        <h1 class="edit-title">✏️ Edit Workout</h1>
+        <div style="text-align: center;">
             {% if workout_status == 'in_progress' %}
-                <span class="badge bg-warning ms-2">In Progress</span>
+                <span class="workout-status status-in-progress">In Progress</span>
             {% elif workout_status == 'completed' %}
-                <span class="badge bg-success ms-2">Completed</span>
-            {% elif workout_status == 'abandoned' %}
-                <span class="badge bg-secondary ms-2">Abandoned</span>
+                <span class="workout-status status-completed">Completed</span>
             {% endif %}
         </div>
-        <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="btn btn-secondary btn-sm">
-                <i class="fas fa-arrow-left d-md-none"></i>
-                <span class="d-none d-md-inline"><i class="fas fa-arrow-left"></i> Back to Details</span>
-                <span class="d-md-none">Back</span>
+        <div class="header-actions">
+            <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="header-btn secondary">
+                <i class="fas fa-arrow-left"></i> Back
             </a>
-            <form method="POST" action="{{ url_for('gym.delete_workout', workout_id=workout[0]) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this workout? This cannot be undone.');">
-                <button type="submit" class="btn btn-danger btn-sm">
-                    <i class="fas fa-trash d-md-none"></i>
-                    <span class="d-none d-md-inline"><i class="fas fa-trash"></i> Delete Workout</span>
-                    <span class="d-md-none">Delete</span>
-                </button>
-            </form>
+            <button onclick="deleteWorkout()" class="header-btn danger">
+                <i class="fas fa-trash"></i> Delete
+            </button>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12 col-lg-8 order-2 order-lg-1">
-            <!-- Add New Exercise -->
-            <div class="card mb-3">
-                <div class="card-header mobile-compact">
-                    <h5 class="mb-0 h6">Add Exercise</h5>
-                </div>
-                <div class="card-body mobile-compact">
-                    <div class="row g-2">
-                        <div class="col-12 col-md-8">
-                            <select id="exercise-select" class="form-select">
-                                <option value="">Choose an exercise...</option>
-                                {% for exercise in all_exercises %}
-                                    <option value="{{ exercise[0] }}">
-                                        {{ exercise[1] }}{% if exercise[2] %} ({{ exercise[2] }}){% endif %}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <button class="btn btn-primary w-100 btn-touch" onclick="addNewExercise()">
-                                <i class="fas fa-plus"></i> Add Exercise
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <!-- Exercise Selector -->
+    <div class="exercise-selector">
+        <div class="selector-header">
+            <h3 class="selector-title">➕ Add Exercise</h3>
+        </div>
+        <div class="selector-body">
+            <select id="exercise-select" class="exercise-select">
+                <option value="">Choose an exercise...</option>
+                {% for exercise in all_exercises %}
+                    <option value="{{ exercise[0] }}">
+                        {{ exercise[1] }}{% if exercise[2] %} ({{ exercise[2] }}){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <button onclick="addNewExercise()" class="add-exercise-btn">
+                <i class="fas fa-plus"></i> Add Exercise
+            </button>
+        </div>
+    </div>
 
-            <!-- Existing Exercises -->
-            <div id="exercises-container">
-                {% for exercise_id, exercise_info in exercises_data.items() %}
-                    <div class="card mb-3" id="exercise-{{ exercise_id }}">
-                        <div class="card-header d-flex justify-content-between align-items-center mobile-compact">
-                            <div>
-                                <h6 class="mb-0 text-break">{{ exercise_info.name }}{% if exercise_info.muscle_group %} <small class="text-muted d-block d-md-inline">({{ exercise_info.muscle_group }})</small>{% endif %}</h6>
-                                <div class="progression-info" id="progression-{{ exercise_id }}">
-                                    <!-- Progressive overload info will be loaded here -->
+    <!-- Exercises Container -->
+    <div id="exercises-container">
+        {% for exercise_id, exercise_info in exercises_data.items() %}
+            <div class="exercise-card" id="exercise-{{ exercise_id }}">
+                <div class="exercise-header">
+                    <div class="exercise-info">
+                        <h4 class="exercise-name">{{ exercise_info.name }}</h4>
+                        {% if exercise_info.muscle_group %}
+                            <p class="exercise-muscle">{{ exercise_info.muscle_group }}</p>
+                        {% endif %}
+                    </div>
+                    <button class="add-set-btn" onclick="addSetToExercise({{ exercise_id }})">
+                        <i class="fas fa-plus"></i> Add Set
+                    </button>
+                </div>
+                <div class="sets-container">
+                    <div class="sets-grid" id="sets-{{ exercise_id }}">
+                        {% for set in exercise_info.sets %}
+                            <div class="set-row" id="set-row-{{ set.id }}">
+                                <div class="set-header">
+                                    <span class="set-number">{{ set.set_number }}</span>
+                                    <div class="set-actions">
+                                        <button class="set-btn btn-edit" onclick="editSet({{ set.id }})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="set-btn btn-save d-none" onclick="saveSet({{ set.id }})">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="set-btn btn-delete" onclick="deleteSet({{ set.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="set-inputs">
+                                    <div class="input-group">
+                                        <label class="input-label">Weight (kg)</label>
+                                        <input type="number" class="set-input" id="weight-{{ set.id }}"
+                                               value="{{ set.weight }}" step="0.5" min="0" disabled>
+                                        <div class="increment-controls">
+                                            <button class="increment-btn" onclick="adjustWeight({{ set.id }}, -0.5)" disabled>
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <button class="increment-btn" onclick="adjustWeight({{ set.id }}, 0.5)" disabled>
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label class="input-label">Reps</label>
+                                        <input type="number" class="set-input" id="reps-{{ set.id }}"
+                                               value="{{ set.reps }}" min="1" disabled>
+                                        <div class="increment-controls">
+                                            <button class="increment-btn" onclick="adjustReps({{ set.id }}, -1)" disabled>
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <button class="increment-btn" onclick="adjustReps({{ set.id }}, 1)" disabled>
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <button class="btn btn-sm btn-primary btn-touch ms-2" data-exercise-id="{{ exercise_id }}" data-exercise-name="{{ exercise_info.name }}" onclick="addSetToExercise(this)">
-                                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Add Set</span>
-                            </button>
-                        </div>
-                        <div class="card-body mobile-compact">
-                            <div class="table-responsive">
-                                <table class="table table-sm mobile-sets-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Set</th>
-                                            <th>Weight (kg)</th>
-                                            <th>Reps</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="sets-{{ exercise_id }}">
-                                        {% for set in exercise_info.sets %}
-                                            <tr id="set-row-{{ set.id }}">
-                                                <td data-label="Set">
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="fw-bold">{{ set.set_number }}</span>
-                                                        <div class="set-progression-info ms-2" id="set-progression-{{ set.id }}">
-                                                            <!-- Set-specific progression info will be loaded here -->
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td data-label="Weight">
-                                                    <div class="input-group-compact">
-                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
-                                                                onclick="adjustWeight({{ set.id }}, -0.5)"
-                                                                id="weight-dec-{{ set.id }}" disabled>
-                                                            <i class="fas fa-minus"></i>
-                                                        </button>
-                                                        <input type="number" class="form-control form-control-sm"
-                                                               id="weight-{{ set.id }}" value="{{ set.weight }}"
-                                                               step="0.5" min="0" disabled>
-                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
-                                                                onclick="adjustWeight({{ set.id }}, 0.5)"
-                                                                id="weight-inc-{{ set.id }}" disabled>
-                                                            <i class="fas fa-plus"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td data-label="Reps">
-                                                    <div class="input-group-compact">
-                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
-                                                                onclick="adjustReps({{ set.id }}, -1)"
-                                                                id="reps-dec-{{ set.id }}" disabled>
-                                                            <i class="fas fa-minus"></i>
-                                                        </button>
-                                                        <input type="number" class="form-control form-control-sm"
-                                                               id="reps-{{ set.id }}" value="{{ set.reps }}"
-                                                               min="1" disabled>
-                                                        <button class="btn btn-sm btn-outline-secondary btn-increment"
-                                                                onclick="adjustReps({{ set.id }}, 1)"
-                                                                id="reps-inc-{{ set.id }}" disabled>
-                                                            <i class="fas fa-plus"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                                <td data-label="Actions">
-                                                    <div class="btn-group" role="group">
-                                                        <button class="btn btn-sm btn-warning btn-mobile-action" id="edit-btn-{{ set.id }}"
-                                                                onclick="editSet({{ set.id }})" title="Edit">
-                                                            <i class="fas fa-edit"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-success d-none btn-mobile-action" id="save-btn-{{ set.id }}"
-                                                                onclick="saveSet({{ set.id }})" title="Save">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-danger btn-mobile-action"
-                                                                onclick="deleteSet({{ set.id }})" title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-
-            <!-- Workout Info (moved to bottom) -->
-            <div class="card mb-3">
-                <div class="card-header mobile-compact">
-                    <h5 class="mb-0 h6">Workout Information</h5>
-                </div>
-                <div class="card-body mobile-compact">
-                    <p class="mb-2"><strong>Date:</strong> {{ workout[2] }}</p>
-                    <div class="mb-3">
-                        <label for="workout-notes" class="form-label">Notes</label>
-                        <textarea id="workout-notes" class="form-control" rows="2">{{ workout[3] or '' }}</textarea>
-                        <button class="btn btn-sm btn-primary mt-2 btn-touch" onclick="saveNotes()">Save Notes</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-lg-4 order-1 order-lg-2 mb-3 mb-lg-0">
-            <!-- Summary -->
-            <div class="card position-sticky" style="top: 1rem;">
-                <div class="card-header mobile-compact">
-                    <h5 class="mb-0 h6">Summary</h5>
-                </div>
-                <div class="card-body mobile-compact">
-                    <p class="mb-2">Exercises: <strong id="exercise-count">{{ exercises_data|length }}</strong></p>
-                    <p class="mb-0">Total Sets: <strong id="total-sets">
-                        {% set total = namespace(value=0) %}
-                        {% for exercise in exercises_data.values() %}
-                            {% set total.value = total.value + exercise.sets|length %}
                         {% endfor %}
-                        {{ total.value }}
-                    </strong></p>
+                    </div>
                 </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Workout Info -->
+    <div class="workout-info">
+        <div class="info-header">
+            <h3 class="info-title">📝 Workout Information</h3>
+        </div>
+        <div class="info-body">
+            <div class="workout-meta">
+                <div class="meta-item">
+                    <div class="meta-icon">
+                        <i class="fas fa-calendar"></i>
+                    </div>
+                    <div class="meta-content">
+                        <p class="meta-label">Date</p>
+                        <p class="meta-value">{{ workout[2] }}</p>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-icon">
+                        <i class="fas fa-dumbbell"></i>
+                    </div>
+                    <div class="meta-content">
+                        <p class="meta-label">Exercises</p>
+                        <p class="meta-value" id="exercise-count">{{ exercises_data|length }}</p>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-icon">
+                        <i class="fas fa-list-ol"></i>
+                    </div>
+                    <div class="meta-content">
+                        <p class="meta-label">Total Sets</p>
+                        <p class="meta-value" id="total-sets">
+                            {% set total = namespace(value=0) %}
+                            {% for exercise in exercises_data.values() %}
+                                {% set total.value = total.value + exercise.sets|length %}
+                            {% endfor %}
+                            {{ total.value }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="notes-section">
+                <label for="workout-notes" class="form-label">Notes</label>
+                <textarea id="workout-notes" class="notes-textarea" placeholder="Add workout notes...">{{ workout[3] or '' }}</textarea>
+                <button onclick="saveNotes()" class="save-notes-btn">
+                    <i class="fas fa-save"></i> Save Notes
+                </button>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Mobile Workout Actions (Fixed Bottom) -->
-{% if workout_status == 'in_progress' %}
-<div class="workout-actions-mobile d-md-none">
-    <div class="d-flex gap-2">
-        <form method="POST" action="{{ url_for('gym.complete_workout', workout_id=workout[0]) }}" style="flex: 1;">
-            <button type="submit" class="btn btn-success w-100" onclick="return confirm('Mark this workout as completed?');">
-                <i class="fas fa-check-circle"></i> Finish
+    <!-- Bottom Actions -->
+    {% if workout_status == 'in_progress' %}
+        <div class="bottom-actions">
+            <button onclick="completeWorkout()" class="action-btn btn-complete">
+                <i class="fas fa-check-circle"></i> Finish Workout
             </button>
-        </form>
-        <form method="POST" action="{{ url_for('gym.abandon_workout', workout_id=workout[0]) }}" style="flex: 1;">
-            <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Abandon this workout?');">
+            <button onclick="abandonWorkout()" class="action-btn btn-abandon">
                 <i class="fas fa-times-circle"></i> Abandon
             </button>
-        </form>
-    </div>
-</div>
-{% endif %}
-
-<!-- Desktop Workout Actions -->
-{% if workout_status == 'in_progress' %}
-<div class="card mb-3 border-primary d-none d-md-block">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Workout Actions</h5>
-    </div>
-    <div class="card-body">
-        <div class="d-flex gap-2">
-            <form method="POST" action="{{ url_for('gym.complete_workout', workout_id=workout[0]) }}" style="flex: 1;">
-                <button type="submit" class="btn btn-success w-100" onclick="return confirm('Mark this workout as completed?');">
-                    <i class="fas fa-check-circle"></i> Finish Workout
-                </button>
-            </form>
-            <form method="POST" action="{{ url_for('gym.abandon_workout', workout_id=workout[0]) }}" style="flex: 1;">
-                <button type="submit" class="btn btn-warning w-100" onclick="return confirm('Abandon this workout? You can still view it later.');">
-                    <i class="fas fa-times-circle"></i> Abandon Workout
-                </button>
-            </form>
         </div>
-        <small class="text-muted d-block mt-2">
-            <i class="fas fa-info-circle"></i> Finish when you've completed all exercises, or abandon to save progress and stop.
-        </small>
-    </div>
+    {% endif %}
 </div>
-{% endif %}
 
 <script>
 const workoutId = {{ workout[0] }};
-const sessionId = workoutId;
 let nextSetNumber = {};
 
-// Initialize next set numbers for each exercise
+// Initialize next set numbers
 {% for exercise_id, exercise_info in exercises_data.items() %}
     nextSetNumber[{{ exercise_id }}] = {{ exercise_info.sets|length + 1 }};
 {% endfor %}
-
-// Load progressive overload info for all exercises
-document.addEventListener('DOMContentLoaded', function() {
-    {% for exercise_id, exercise_info in exercises_data.items() %}
-    loadProgressionInfo({{ exercise_id }});
-    loadSetProgressionInfo({{ exercise_id }});
-    {% endfor %}
-});
-
-function loadProgressionInfo(exerciseId) {
-    fetch(`/gym/exercise/${exerciseId}/progression-summary`)
-        .then(response => response.json())
-        .then(data => {
-            const container = document.getElementById(`progression-${exerciseId}`);
-            if (data.last_performance) {
-                let html = '<div class="last-performance">';
-                html += `Last: ${data.last_performance.weight}kg × ${data.last_performance.reps} reps`;
-                if (data.days_ago) {
-                    html += ` (${data.days_ago} days ago)`;
-                }
-                html += '</div>';
-
-                if (data.ready_for_progression) {
-                    html += '<span class="progression-indicator progression-ready">';
-                    html += '<i class="fas fa-arrow-up"></i> Ready to progress!';
-                    html += '</span>';
-                }
-
-                container.innerHTML = html;
-            }
-        })
-        .catch(error => console.error('Error loading progression info:', error));
-}
-
-function loadSetProgressionInfo(exerciseId) {
-    // Load comprehensive progression data
-    fetch(`/gym/exercise/${exerciseId}/comprehensive-progression`)
-        .then(response => response.json())
-        .then(data => {
-            // Display pyramid pattern if detected
-            if (data.pyramid && data.pyramid.confidence > 0.5) {
-                displayPyramidPattern(exerciseId, data.pyramid, data.volume_trend);
-            }
-
-            // Display set-specific progression
-            if (data.sets) {
-                data.sets.forEach(setInfo => {
-                    displaySetProgression(setInfo, data.preferences);
-                });
-            }
-
-            // Display set addition suggestion with enhanced UI
-            if (data.set_addition && data.set_addition.suggest_add_set) {
-                displaySetAdditionSuggestion(exerciseId, data.set_addition);
-            }
-        })
-        .catch(error => console.error('Error loading progression info:', error));
-}
-
-function displayPyramidPattern(exerciseId, pyramidData, volumeTrend) {
-    const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
-    const progressionInfo = exerciseCard.querySelector('.progression-info');
-
-    // Create pyramid pattern display
-    const pyramidDiv = document.createElement('div');
-    pyramidDiv.className = 'pyramid-pattern-display mt-2';
-
-    let pyramidIcon = '';
-    if (pyramidData.pattern === 'ascending') {
-        pyramidIcon = '📈';
-    } else if (pyramidData.pattern === 'descending') {
-        pyramidIcon = '📉';
-    } else if (pyramidData.pattern === 'straight') {
-        pyramidIcon = '➡️';
-    } else {
-        pyramidIcon = '🔄';
-    }
-
-    let trendHtml = '';
-    if (volumeTrend && volumeTrend.trend) {
-        const trendClass = volumeTrend.trend === 'increasing' ? 'trend-up' :
-                          volumeTrend.trend === 'decreasing' ? 'trend-down' : 'trend-stable';
-        const trendIcon = volumeTrend.trend === 'increasing' ? '↗️' :
-                         volumeTrend.trend === 'decreasing' ? '↘️' : '→';
-        const trendPercent = volumeTrend.volume_change_percent || 0;
-
-        trendHtml = `
-            <div class="volume-trend-indicator ${trendClass}">
-                ${trendIcon} Volume ${trendPercent > 0 ? '+' : ''}${trendPercent}% (30d)
-            </div>
-        `;
-    }
-
-    pyramidDiv.innerHTML = `
-        <div class="pyramid-pattern-header">
-            <span class="pyramid-pattern-icon">${pyramidIcon}</span>
-            <div>
-                <p class="pyramid-pattern-title">Your Pattern: ${pyramidData.pattern.charAt(0).toUpperCase() + pyramidData.pattern.slice(1)}</p>
-                <p class="pyramid-pattern-description">${pyramidData.description}</p>
-            </div>
-        </div>
-        <div class="d-flex justify-content-between align-items-center">
-            <span class="pyramid-confidence">
-                <i class="fas fa-chart-bar"></i> ${Math.round(pyramidData.confidence * 100)}% confidence
-            </span>
-            ${trendHtml}
-        </div>
-    `;
-
-    progressionInfo.appendChild(pyramidDiv);
-}
-
-function displaySetProgression(setInfo, preferences) {
-    const container = document.getElementById(`set-progression-${setInfo.set_id}`);
-    if (!container) return;
-
-    let html = '<div class="set-progression-detail">';
-
-    // Show progression status badge
-    if (setInfo.progression.ready) {
-        html += `<span class="progression-badge-ready">
-                    <i class="fas fa-arrow-up"></i> Ready!
-                 </span>`;
-        html += `<span class="progression-suggestion">
-                    ${setInfo.progression.suggested_weight}kg × ${setInfo.progression.suggested_reps}
-                 </span>`;
-    } else if (setInfo.progression.confidence > 0.5) {
-        html += `<span class="progression-badge-close">
-                    <i class="fas fa-chart-line"></i> Close
-                 </span>`;
-        html += `<span class="text-muted">
-                    ${setInfo.progression.reps_to_go} reps to ${preferences.max_reps}
-                 </span>`;
-    } else {
-        html += `<span class="progression-badge-building">
-                    <i class="fas fa-dumbbell"></i> Building
-                 </span>`;
-        if (setInfo.progression.current_avg_reps) {
-            html += `<span class="text-muted">
-                        Avg: ${setInfo.progression.current_avg_reps} reps
-                     </span>`;
-        }
-    }
-
-    // Show historical context if available
-    if (setInfo.history && setInfo.history.length > 0) {
-        const lastPerf = setInfo.history[0];
-        html += `<span class="set-history-hint">
-                    (Last: ${lastPerf.weight}kg × ${lastPerf.reps})
-                 </span>`;
-    }
-
-    html += '</div>';
-
-    container.innerHTML = html;
-}
-
-function displaySetAdditionSuggestion(exerciseId, suggestionData) {
-    const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
-    const cardBody = exerciseCard.querySelector('.card-body');
-
-    // Check if suggestion already exists
-    if (cardBody.querySelector('.set-addition-suggestion')) {
-        return;
-    }
-
-    const suggestionDiv = document.createElement('div');
-    suggestionDiv.className = 'set-addition-suggestion';
-
-    suggestionDiv.innerHTML = `
-        <h6><i class="fas fa-trophy"></i> Level Up! Ready for Set ${suggestionData.new_set_number}</h6>
-        <p class="mb-2">${suggestionData.reason}</p>
-        <div class="d-flex justify-content-between align-items-center">
-            <small>
-                <i class="fas fa-weight"></i> Suggested: ${suggestionData.suggested_weight}kg × ${suggestionData.suggested_reps} reps
-                ${suggestionData.pattern ? `<br><i class="fas fa-info-circle"></i> Based on your ${suggestionData.pattern} pattern` : ''}
-            </small>
-            <button class="btn btn-sm" onclick="addSuggestedSetEnhanced(${exerciseId}, ${suggestionData.new_set_number}, ${suggestionData.suggested_weight}, ${suggestionData.suggested_reps})">
-                <i class="fas fa-plus"></i> Add Set
-            </button>
-        </div>
-    `;
-
-    cardBody.appendChild(suggestionDiv);
-}
-
-function addSuggestedSetEnhanced(exerciseId, setNumber, suggestedWeight, suggestedReps) {
-    // Add the suggested set with pre-filled values and enhanced UI feedback
-    const tempId = `new-${exerciseId}-${setNumber}`;
-    const tbody = document.getElementById(`sets-${exerciseId}`);
-
-    const row = document.createElement('tr');
-    row.id = `set-row-${tempId}`;
-    row.className = 'table-success'; // Highlight new row
-    row.innerHTML = `
-        <td data-label="Set">
-            <div class="d-flex align-items-center">
-                <span class="fw-bold">${setNumber}</span>
-                <div class="set-progression-info ms-2">
-                    <span class="badge bg-success">
-                        <i class="fas fa-sparkles"></i> New Set
-                    </span>
-                </div>
-            </div>
-        </td>
-        <td data-label="Weight">
-            <div class="input-group-compact">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustWeight('${tempId}', -0.5)">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <input type="number" class="form-control form-control-sm"
-                       id="weight-${tempId}" value="${suggestedWeight}"
-                       step="0.5" min="0">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustWeight('${tempId}', 0.5)">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-        </td>
-        <td data-label="Reps">
-            <div class="input-group-compact">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustReps('${tempId}', -1)">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <input type="number" class="form-control form-control-sm"
-                       id="reps-${tempId}" value="${suggestedReps}"
-                       min="1">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustReps('${tempId}', 1)">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-        </td>
-        <td data-label="Actions">
-            <div class="btn-group" role="group">
-                <button class="btn btn-sm btn-success btn-mobile-action"
-                        onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})" title="Save">
-                    <i class="fas fa-check"></i>
-                </button>
-                <button class="btn btn-sm btn-danger btn-mobile-action"
-                        onclick="removeNewSet('${tempId}')" title="Remove">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </td>
-    `;
-
-    tbody.appendChild(row);
-
-    // Update next set number
-    nextSetNumber[exerciseId] = setNumber + 1;
-
-    // Remove the suggestion card
-    const suggestionCard = event.target.closest('.set-addition-suggestion');
-    if (suggestionCard) {
-        // Fade out animation
-        suggestionCard.style.transition = 'opacity 0.3s';
-        suggestionCard.style.opacity = '0';
-        setTimeout(() => suggestionCard.remove(), 300);
-    }
-}
-
-function removeNewSet(tempId) {
-    const row = document.getElementById(`set-row-${tempId}`);
-    if (row) {
-        row.style.transition = 'opacity 0.3s';
-        row.style.opacity = '0';
-        setTimeout(() => row.remove(), 300);
-    }
-}
 
 function adjustWeight(setId, increment) {
     const input = document.getElementById(`weight-${setId}`);
@@ -811,6 +772,209 @@ function adjustReps(setId, increment) {
     const currentValue = parseInt(input.value) || 0;
     const newValue = Math.max(1, currentValue + increment);
     input.value = newValue;
+}
+
+function editSet(setId) {
+    const row = document.getElementById(`set-row-${setId}`);
+    row.classList.add('editing');
+
+    // Enable inputs and buttons
+    document.getElementById(`weight-${setId}`).disabled = false;
+    document.getElementById(`reps-${setId}`).disabled = false;
+
+    const incrementBtns = row.querySelectorAll('.increment-btn');
+    incrementBtns.forEach(btn => btn.disabled = false);
+
+    // Toggle action buttons
+    row.querySelector('.btn-edit').classList.add('d-none');
+    row.querySelector('.btn-save').classList.remove('d-none');
+
+    document.getElementById(`weight-${setId}`).focus();
+}
+
+function saveSet(setId) {
+    const weight = document.getElementById(`weight-${setId}`).value;
+    const reps = document.getElementById(`reps-${setId}`).value;
+
+    if (!weight || !reps) {
+        showToast('Please enter both weight and reps', 'warning');
+        return;
+    }
+
+    fetch('/gym/workout/update-set', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            set_id: setId,
+            weight: parseFloat(weight),
+            reps: parseInt(reps)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.getElementById(`set-row-${setId}`);
+            row.classList.remove('editing');
+
+            // Disable inputs and buttons
+            document.getElementById(`weight-${setId}`).disabled = true;
+            document.getElementById(`reps-${setId}`).disabled = true;
+
+            const incrementBtns = row.querySelectorAll('.increment-btn');
+            incrementBtns.forEach(btn => btn.disabled = true);
+
+            // Toggle action buttons
+            row.querySelector('.btn-edit').classList.remove('d-none');
+            row.querySelector('.btn-save').classList.add('d-none');
+
+            showToast('Set updated successfully!', 'success');
+        } else {
+            showToast('Error updating set', 'error');
+        }
+    });
+}
+
+function deleteSet(setId) {
+    if (!confirm('Delete this set?')) return;
+
+    fetch('/gym/workout/delete-set', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ set_id: setId })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById(`set-row-${setId}`).remove();
+            updateSummary();
+            showToast('Set deleted', 'info');
+        } else {
+            showToast('Error deleting set', 'error');
+        }
+    });
+}
+
+function addNewExercise() {
+    const select = document.getElementById('exercise-select');
+    const exerciseId = select.value;
+
+    if (!exerciseId) {
+        showToast('Please select an exercise', 'warning');
+        return;
+    }
+
+    if (document.getElementById(`exercise-${exerciseId}`)) {
+        showToast('This exercise already exists in the workout', 'warning');
+        return;
+    }
+
+    const exerciseName = select.options[select.selectedIndex].text;
+
+    // Create exercise card (simplified for brevity)
+    const exerciseCard = document.createElement('div');
+    exerciseCard.className = 'exercise-card';
+    exerciseCard.id = `exercise-${exerciseId}`;
+    exerciseCard.innerHTML = `
+        <div class="exercise-header">
+            <div class="exercise-info">
+                <h4 class="exercise-name">${exerciseName}</h4>
+            </div>
+            <button class="add-set-btn" onclick="addSetToExercise(${exerciseId})">
+                <i class="fas fa-plus"></i> Add Set
+            </button>
+        </div>
+        <div class="sets-container">
+            <div class="sets-grid" id="sets-${exerciseId}"></div>
+        </div>
+    `;
+
+    document.getElementById('exercises-container').appendChild(exerciseCard);
+    nextSetNumber[exerciseId] = 1;
+    addSetToExercise(exerciseId);
+    select.value = '';
+    updateSummary();
+}
+
+function addSetToExercise(exerciseId) {
+    const setNumber = nextSetNumber[exerciseId] || 1;
+    const tempId = `new-${exerciseId}-${setNumber}`;
+
+    const setDiv = document.createElement('div');
+    setDiv.className = 'set-row editing';
+    setDiv.id = `set-row-${tempId}`;
+    setDiv.innerHTML = `
+        <div class="set-header">
+            <span class="set-number">${setNumber}</span>
+            <div class="set-actions">
+                <button class="set-btn btn-save" onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="set-btn btn-delete" onclick="document.getElementById('set-row-${tempId}').remove()">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="set-inputs">
+            <div class="input-group">
+                <label class="input-label">Weight (kg)</label>
+                <input type="number" class="set-input" id="weight-${tempId}" placeholder="0" step="0.5" min="0">
+                <div class="increment-controls">
+                    <button class="increment-btn" onclick="adjustWeight('${tempId}', -0.5)">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="increment-btn" onclick="adjustWeight('${tempId}', 0.5)">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Reps</label>
+                <input type="number" class="set-input" id="reps-${tempId}" placeholder="0" min="1">
+                <div class="increment-controls">
+                    <button class="increment-btn" onclick="adjustReps('${tempId}', -1)">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <button class="increment-btn" onclick="adjustReps('${tempId}', 1)">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.getElementById(`sets-${exerciseId}`).appendChild(setDiv);
+    document.getElementById(`weight-${tempId}`).focus();
+    nextSetNumber[exerciseId] = setNumber + 1;
+}
+
+function saveNewSet(tempId, exerciseId, setNumber) {
+    const weight = document.getElementById(`weight-${tempId}`).value;
+    const reps = document.getElementById(`reps-${tempId}`).value;
+
+    if (!weight || !reps) {
+        showToast('Please enter both weight and reps', 'warning');
+        return;
+    }
+
+    fetch('/gym/workout/log', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            session_id: workoutId,
+            exercise_id: exerciseId,
+            set_number: setNumber,
+            weight: parseFloat(weight),
+            reps: parseInt(reps)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            showToast('Error saving set', 'error');
+        }
+    });
 }
 
 function saveNotes() {
@@ -827,255 +991,128 @@ function saveNotes() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Notes saved successfully');
+            showToast('Notes saved successfully!', 'success');
         } else {
-            alert('Error saving notes');
+            showToast('Error saving notes', 'error');
         }
     });
 }
 
-function editSet(setId) {
-    // Enable inputs and increment/decrement buttons
-    document.getElementById(`weight-${setId}`).disabled = false;
-    document.getElementById(`reps-${setId}`).disabled = false;
-    document.getElementById(`weight-dec-${setId}`).disabled = false;
-    document.getElementById(`weight-inc-${setId}`).disabled = false;
-    document.getElementById(`reps-dec-${setId}`).disabled = false;
-    document.getElementById(`reps-inc-${setId}`).disabled = false;
+function completeWorkout() {
+    if (!confirm('Mark this workout as completed?')) return;
 
-    // Toggle buttons
-    document.getElementById(`edit-btn-${setId}`).classList.add('d-none');
-    document.getElementById(`save-btn-${setId}`).classList.remove('d-none');
-
-    // Focus on weight input
-    document.getElementById(`weight-${setId}`).focus();
-}
-
-function saveSet(setId) {
-    const weight = document.getElementById(`weight-${setId}`).value;
-    const reps = document.getElementById(`reps-${setId}`).value;
-
-    if (!weight || !reps) {
-        alert('Please enter both weight and reps');
-        return;
-    }
-
-    fetch('/gym/workout/update-set', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            set_id: setId,
-            weight: parseFloat(weight),
-            reps: parseInt(reps)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Disable inputs and increment/decrement buttons
-            document.getElementById(`weight-${setId}`).disabled = true;
-            document.getElementById(`reps-${setId}`).disabled = true;
-            document.getElementById(`weight-dec-${setId}`).disabled = true;
-            document.getElementById(`weight-inc-${setId}`).disabled = true;
-            document.getElementById(`reps-dec-${setId}`).disabled = true;
-            document.getElementById(`reps-inc-${setId}`).disabled = true;
-
-            // Toggle buttons
-            document.getElementById(`edit-btn-${setId}`).classList.remove('d-none');
-            document.getElementById(`save-btn-${setId}`).classList.add('d-none');
-        } else {
-            alert('Error updating set');
-        }
+    fetch(`/gym/workout/${workoutId}/complete`, {
+        method: 'POST'
+    }).then(() => {
+        showToast('🎉 Workout completed!', 'success');
+        setTimeout(() => {
+            window.location.href = `/gym/history/${workoutId}`;
+        }, 1500);
     });
 }
 
-function deleteSet(setId) {
-    if (!confirm('Delete this set?')) {
-        return;
-    }
+function abandonWorkout() {
+    if (!confirm('Abandon this workout? You can still view it later.')) return;
 
-    fetch('/gym/workout/delete-set', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            set_id: setId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            document.getElementById(`set-row-${setId}`).remove();
-            updateSummary();
-        } else {
-            alert('Error deleting set');
-        }
+    fetch(`/gym/workout/${workoutId}/abandon`, {
+        method: 'POST'
+    }).then(() => {
+        showToast('Workout abandoned', 'warning');
+        setTimeout(() => {
+            window.location.href = '/gym/history';
+        }, 1500);
     });
 }
 
-function addNewExercise() {
-    const select = document.getElementById('exercise-select');
-    const exerciseId = select.value;
+function deleteWorkout() {
+    if (!confirm('Are you sure you want to delete this workout? This cannot be undone.')) return;
 
-    if (!exerciseId) {
-        alert('Please select an exercise');
-        return;
-    }
-
-    const exerciseName = select.options[select.selectedIndex].text;
-
-    // Check if exercise already exists
-    if (document.getElementById(`exercise-${exerciseId}`)) {
-        alert('This exercise already exists in the workout');
-        return;
-    }
-
-    // Create exercise card
-    const exerciseCard = document.createElement('div');
-    exerciseCard.className = 'card mb-3';
-    exerciseCard.id = `exercise-${exerciseId}`;
-    exerciseCard.innerHTML = `
-        <div class="card-header d-flex justify-content-between align-items-center mobile-compact">
-            <div>
-                <h6 class="mb-0 text-break">${exerciseName}</h6>
-                <div class="progression-info" id="progression-${exerciseId}">
-                    <!-- Progressive overload info will be loaded here -->
-                </div>
-            </div>
-            <button class="btn btn-sm btn-primary btn-touch ms-2" onclick="addSetToExercise(${exerciseId}, '${exerciseName}')">
-                <i class="fas fa-plus"></i> <span class="d-none d-sm-inline">Add Set</span>
-            </button>
-        </div>
-        <div class="card-body mobile-compact">
-            <div class="table-responsive">
-                <table class="table table-sm mobile-sets-table">
-                    <thead>
-                        <tr>
-                            <th>Set</th>
-                            <th>Weight (kg)</th>
-                            <th>Reps</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sets-${exerciseId}">
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-
-    document.getElementById('exercises-container').appendChild(exerciseCard);
-
-    // Initialize next set number
-    nextSetNumber[exerciseId] = 1;
-
-    // Load progression info for new exercise
-    loadProgressionInfo(exerciseId);
-
-    // Add first set
-    addSetToExercise(exerciseId, exerciseName);
-
-    // Reset selection
-    select.value = '';
-    updateSummary();
-}
-
-function addSetToExercise(button) {
-    const exerciseId = button ? button.dataset.exerciseId : arguments[0];
-    const exerciseName = button ? button.dataset.exerciseName : arguments[1];
-    const setNumber = nextSetNumber[exerciseId] || 1;
-    const tempId = `new-${exerciseId}-${setNumber}`;
-
-    const row = document.createElement('tr');
-    row.id = `set-row-${tempId}`;
-    row.innerHTML = `
-        <td data-label="Set">${setNumber}</td>
-        <td data-label="Weight">
-            <div class="input-group-compact">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustWeight('${tempId}', -0.5)">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <input type="number" class="form-control form-control-sm"
-                       id="weight-${tempId}" placeholder="0"
-                       step="0.5" min="0">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustWeight('${tempId}', 0.5)">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-        </td>
-        <td data-label="Reps">
-            <div class="input-group-compact">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustReps('${tempId}', -1)">
-                    <i class="fas fa-minus"></i>
-                </button>
-                <input type="number" class="form-control form-control-sm"
-                       id="reps-${tempId}" placeholder="0"
-                       min="1">
-                <button class="btn btn-sm btn-outline-secondary btn-increment"
-                        onclick="adjustReps('${tempId}', 1)">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
-        </td>
-        <td data-label="Actions">
-            <div class="btn-group" role="group">
-                <button class="btn btn-sm btn-success btn-mobile-action"
-                        onclick="saveNewSet('${tempId}', ${exerciseId}, ${setNumber})" title="Save">
-                    <i class="fas fa-check"></i>
-                </button>
-                <button class="btn btn-sm btn-danger btn-mobile-action"
-                        onclick="document.getElementById('set-row-${tempId}').remove()" title="Delete">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </td>
-    `;
-
-    document.getElementById(`sets-${exerciseId}`).appendChild(row);
-    document.getElementById(`weight-${tempId}`).focus();
-
-    nextSetNumber[exerciseId] = setNumber + 1;
-}
-
-function saveNewSet(tempId, exerciseId, setNumber) {
-    const weight = document.getElementById(`weight-${tempId}`).value;
-    const reps = document.getElementById(`reps-${tempId}`).value;
-
-    if (!weight || !reps) {
-        alert('Please enter both weight and reps');
-        return;
-    }
-
-    fetch('/gym/workout/log', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            session_id: sessionId,
-            exercise_id: exerciseId,
-            set_number: setNumber,
-            weight: parseFloat(weight),
-            reps: parseInt(reps)
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Reload page to show updated data
-            location.reload();
-        } else {
-            alert('Error saving set');
-        }
+    fetch(`/gym/workout/${workoutId}/delete`, {
+        method: 'POST'
+    }).then(() => {
+        showToast('Workout deleted', 'info');
+        setTimeout(() => {
+            window.location.href = '/gym/history';
+        }, 1500);
     });
 }
 
 function updateSummary() {
-    const exerciseCount = document.querySelectorAll('#exercises-container .card').length;
-    const setCount = document.querySelectorAll('#exercises-container tbody tr').length;
+    const exerciseCount = document.querySelectorAll('#exercises-container .exercise-card').length;
+    const setCount = document.querySelectorAll('#exercises-container .set-row').length;
 
     document.getElementById('exercise-count').textContent = exerciseCount;
     document.getElementById('total-sets').textContent = setCount;
+}
+
+// Toast notification system
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-message">${message}</span>
+            <button class="toast-close">&times;</button>
+        </div>
+    `;
+
+    if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+            .toast-notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 8px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                z-index: 1000;
+                animation: slideInRight 0.3s ease;
+                max-width: 300px;
+            }
+            .toast-content {
+                padding: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .toast-message {
+                flex: 1;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+            .toast-close {
+                background: none;
+                border: none;
+                font-size: 1.2rem;
+                cursor: pointer;
+                opacity: 0.7;
+            }
+            .toast-success { border-left: 4px solid var(--success-color); }
+            .toast-error { border-left: 4px solid var(--danger-color); }
+            .toast-warning { border-left: 4px solid var(--warning-color); }
+            .toast-info { border-left: 4px solid var(--primary-color); }
+            @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 3000);
+
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+        toast.remove();
+    });
 }
 </script>
 {% endblock %}
