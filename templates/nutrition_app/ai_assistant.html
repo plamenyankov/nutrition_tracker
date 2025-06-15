@@ -1,104 +1,544 @@
 {% extends 'layout.html' %}
 
-{% block content %}
+{% block title %}AI Assistant - VitaSync{% endblock %}
+
+{% block head %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
-    .pulse-animation {
-        animation: pulse 1.5s infinite;
+/* Modern AI Assistant Design */
+:root {
+    --primary-color: #6f42c1;
+    --secondary-color: #e83e8c;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --info-color: #17a2b8;
+    --dark-color: #343a40;
+    --light-color: #f8f9fa;
+    --border-radius: 16px;
+    --shadow: 0 4px 20px rgba(0,0,0,0.1);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.ai-container {
+    padding: 0;
+    max-width: 100%;
+}
+
+/* Hero Section */
+.hero-section {
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
+    padding: 2rem 1rem;
+    text-align: center;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--dark-color);
+    margin: 0 0 0.5rem 0;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 0;
+}
+
+/* Flash Messages - Only show AI-related messages */
+.flash-messages {
+    padding: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.alert {
+    border-radius: 12px;
+    border: none;
+    box-shadow: var(--shadow);
+}
+
+/* Main Content */
+.main-content {
+    padding: 2rem 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.analysis-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.card-header-modern {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 1.5rem;
+    border: none;
+}
+
+.card-title-modern {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-body-modern {
+    padding: 2rem;
+}
+
+/* Method Selection */
+.method-selection {
+    margin-bottom: 2rem;
+}
+
+.method-option {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.method-option:hover {
+    background: rgba(111, 66, 193, 0.05);
+    border-color: var(--primary-color);
+}
+
+.method-option.active {
+    background: rgba(111, 66, 193, 0.1);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
+}
+
+.method-radio {
+    margin-right: 0.75rem;
+}
+
+.method-title {
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 0.25rem;
+}
+
+.method-description {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Input Sections */
+.analysis-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-label-modern {
+    font-weight: 600;
+    color: var(--dark-color);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: between;
+}
+
+.form-control-modern {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control-modern:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(111, 66, 193, 0.1);
+}
+
+/* Voice Button */
+.voice-button {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.voice-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.voice-button.recording {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #fd7e14 100%);
+    animation: recording-pulse 2s infinite;
+}
+
+@keyframes recording-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.pulse-animation {
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Analyze Button */
+.analyze-button {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    border: none;
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+    width: 100%;
+}
+
+.analyze-button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    color: white;
+}
+
+.analyze-button:disabled {
+    opacity: 0.7;
+    transform: none;
+}
+
+/* Progress Bar */
+.progress-modern {
+    height: 8px;
+    border-radius: 4px;
+    background: #e9ecef;
+    overflow: hidden;
+    margin-top: 1rem;
+}
+
+.progress-bar-modern {
+    background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Results Section */
+.results-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.results-header {
+    background: linear-gradient(135deg, var(--success-color) 0%, #20c997 100%);
+    color: white;
+    padding: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.results-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.results-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.action-btn-warning {
+    background: rgba(255,255,255,0.2);
+    color: white;
+}
+
+.action-btn-primary {
+    background: rgba(255,255,255,0.2);
+    color: white;
+}
+
+.action-btn-success {
+    background: rgba(255,255,255,0.2);
+    color: white;
+}
+
+.action-btn:hover {
+    background: rgba(255,255,255,0.3);
+    transform: translateY(-1px);
+    color: white;
+    text-decoration: none;
+}
+
+/* Table Styling */
+.table-modern {
+    margin: 0;
+}
+
+.table-modern th {
+    background: #f8f9fa;
+    border: none;
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--dark-color);
+}
+
+.table-modern td {
+    border: none;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.table-modern tbody tr:hover {
+    background: rgba(111, 66, 193, 0.05);
+}
+
+/* Tips Section */
+.tips-section {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.tips-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.tips-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.tips-list li {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.tips-list li:last-child {
+    border-bottom: none;
+}
+
+.tip-category {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2rem;
     }
 
-    @keyframes pulse {
-        0% {
-            opacity: 1;
-        }
-        50% {
-            opacity: 0.5;
-        }
-        100% {
-            opacity: 1;
-        }
+    .main-content {
+        padding: 1rem;
     }
 
-    #voiceButton.btn-danger {
-        animation: recording-pulse 2s infinite;
+    .card-body-modern {
+        padding: 1.5rem;
     }
 
-    @keyframes recording-pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.4);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
-        }
+    .results-header {
+        flex-direction: column;
+        align-items: stretch;
     }
+
+    .results-actions {
+        justify-content: center;
+    }
+}
+
+/* File Upload Styling */
+.file-upload-area {
+    border: 2px dashed #e9ecef;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+}
+
+.file-upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(111, 66, 193, 0.05);
+}
+
+.file-upload-icon {
+    font-size: 2rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.file-upload-text {
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.file-input-hidden {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
 </style>
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <h1 class="text-center mt-4 mb-4">AI Nutrition Assistant</h1>
+{% endblock %}
 
-        <!-- Flash Messages -->
+{% block content %}
+<div class="ai-container">
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <h1 class="hero-title">🤖 AI Nutrition Assistant</h1>
+        <p class="hero-subtitle">Analyze your food with advanced AI technology</p>
+    </div>
+
+    <!-- Flash Messages - Only show relevant ones -->
+    <div class="flash-messages">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    {% if 'workout' not in message.lower() and 'gym' not in message.lower() %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endif %}
                 {% endfor %}
             {% endif %}
         {% endwith %}
+    </div>
 
-        <!-- AI Input Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Analyze Food Nutrition</h5>
+    <!-- Main Content -->
+    <div class="main-content">
+
+        <!-- Analysis Card -->
+        <div class="analysis-card">
+            <div class="card-header-modern">
+                <h2 class="card-title-modern">
+                    <i class="fas fa-brain"></i>
+                    Analyze Food Nutrition
+                </h2>
             </div>
-            <div class="card-body">
+            <div class="card-body-modern">
                 <form action="{{ url_for('ai_bp.ai_assistant') }}" method="post" enctype="multipart/form-data">
                     <!-- Analysis Method Selection -->
-                    <div class="mb-4">
-                        <label class="form-label">Choose analysis method:</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="analysis_method" id="method_text" value="text" checked>
-                            <label class="form-check-label" for="method_text">
-                                <strong>Text Input</strong> - Enter foods manually
-                            </label>
+                    <div class="method-selection">
+                        <label class="form-label-modern">Choose analysis method:</label>
+
+                        <div class="method-option active" data-method="text">
+                            <input class="method-radio" type="radio" name="analysis_method" id="method_text" value="text" checked>
+                            <div>
+                                <div class="method-title">📝 Text Input</div>
+                                <p class="method-description">Enter foods manually with voice support</p>
+                            </div>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="analysis_method" id="method_meal_photo" value="meal_photo">
-                            <label class="form-check-label" for="method_meal_photo">
-                                <strong>Meal Photo</strong> - AI analyzes photo of your meal
-                            </label>
+
+                        <div class="method-option" data-method="meal_photo">
+                            <input class="method-radio" type="radio" name="analysis_method" id="method_meal_photo" value="meal_photo">
+                            <div>
+                                <div class="method-title">📸 Meal Photo</div>
+                                <p class="method-description">AI analyzes photo of your meal</p>
+                            </div>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="analysis_method" id="method_label_manual" value="label_manual">
-                            <label class="form-check-label" for="method_label_manual">
-                                <strong>Nutrition Label + Manual Name</strong> - Photo of nutrition facts + enter food name
-                            </label>
+
+                        <div class="method-option" data-method="label_manual">
+                            <input class="method-radio" type="radio" name="analysis_method" id="method_label_manual" value="label_manual">
+                            <div>
+                                <div class="method-title">🏷️ Nutrition Label + Manual Name</div>
+                                <p class="method-description">Photo of nutrition facts + enter food name</p>
+                            </div>
                         </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="analysis_method" id="method_label_auto" value="label_auto">
-                            <label class="form-check-label" for="method_label_auto">
-                                <strong>Full Product Photos</strong> - Photos of nutrition label + product front
-                            </label>
+
+                        <div class="method-option" data-method="label_auto">
+                            <input class="method-radio" type="radio" name="analysis_method" id="method_label_auto" value="label_auto">
+                            <div>
+                                <div class="method-title">📦 Full Product Photos</div>
+                                <p class="method-description">Photos of nutrition label + product front</p>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Text Input Section -->
                     <div id="text_input_section" class="analysis-section">
                         <div class="mb-3">
-                            <label for="foods" class="form-label d-flex align-items-center justify-content-between">
-                                <span>Enter foods to analyze:</span>
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="voiceButton" title="Click to start voice input">
-                                    <i class="bi bi-mic-fill"></i> <span id="voiceButtonText" class="d-none d-sm-inline">Voice Input</span>
+                            <label for="foods" class="form-label-modern">
+                                <span><i class="fas fa-keyboard"></i> Enter foods to analyze:</span>
+                                <button type="button" class="voice-button" id="voiceButton" title="Click to start voice input">
+                                    <i class="fas fa-microphone"></i> <span id="voiceButtonText" class="d-none d-sm-inline">Voice Input</span>
                                 </button>
                             </label>
-                            <textarea class="form-control" id="foods" name="foods" rows="4"
+                            <textarea class="form-control form-control-modern" id="foods" name="foods" rows="4"
                                       placeholder="Example: 2 apples, 100g chicken breast, 1 cup rice"></textarea>
-                            <small class="form-text text-muted">
-                                Enter foods in natural language. You can include quantities and multiple items.
+                            <small class="form-text text-muted mt-2">
+                                <i class="fas fa-lightbulb"></i> Enter foods in natural language. You can include quantities and multiple items.
                                 <span id="voiceStatus" class="text-info" style="display: none;"></span>
                             </small>
                         </div>
@@ -107,11 +547,21 @@
                     <!-- Meal Photo Section -->
                     <div id="meal_photo_section" class="analysis-section" style="display: none;">
                         <div class="mb-3">
-                            <label for="meal_photo" class="form-label">Upload meal photo:</label>
-                            <input type="file" class="form-control" id="meal_photo" name="meal_photo" accept="image/*">
-                            <small class="form-text text-muted">
-                                Take a clear photo of your meal. AI will identify foods and estimate portions.
-                                <br>Images are automatically compressed for faster upload.
+                            <label for="meal_photo" class="form-label-modern">
+                                <i class="fas fa-camera"></i> Upload meal photo:
+                            </label>
+                            <div class="file-upload-area">
+                                <div class="file-upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div class="file-upload-text">
+                                    Click to upload or drag and drop your meal photo
+                                </div>
+                                <input type="file" class="form-control file-input-hidden" id="meal_photo" name="meal_photo" accept="image/*">
+                            </div>
+                            <small class="form-text text-muted mt-2">
+                                <i class="fas fa-info-circle"></i> Take a clear photo of your meal. AI will identify foods and estimate portions.
+                                Images are automatically compressed for faster upload.
                             </small>
                         </div>
                     </div>
@@ -119,16 +569,28 @@
                     <!-- Label Manual Section -->
                     <div id="label_manual_section" class="analysis-section" style="display: none;">
                         <div class="mb-3">
-                            <label for="label_photo_manual" class="form-label">Upload nutrition facts photo:</label>
-                            <input type="file" class="form-control" id="label_photo_manual" name="label_photo" accept="image/*">
-                            <small class="form-text text-muted">
-                                Take a clear photo of the nutrition facts label.
-                                <br>Images are automatically compressed for faster upload.
+                            <label for="label_photo_manual" class="form-label-modern">
+                                <i class="fas fa-tag"></i> Upload nutrition facts photo:
+                            </label>
+                            <div class="file-upload-area">
+                                <div class="file-upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div class="file-upload-text">
+                                    Click to upload nutrition facts label
+                                </div>
+                                <input type="file" class="form-control file-input-hidden" id="label_photo_manual" name="label_photo" accept="image/*">
+                            </div>
+                            <small class="form-text text-muted mt-2">
+                                <i class="fas fa-info-circle"></i> Take a clear photo of the nutrition facts label.
+                                Images are automatically compressed for faster upload.
                             </small>
                         </div>
                         <div class="mb-3">
-                            <label for="food_name" class="form-label">Food name:</label>
-                            <input type="text" class="form-control" id="food_name" name="food_name"
+                            <label for="food_name" class="form-label-modern">
+                                <i class="fas fa-edit"></i> Food name:
+                            </label>
+                            <input type="text" class="form-control form-control-modern" id="food_name" name="food_name"
                                    placeholder="Enter product name (e.g., Organic Whole Wheat Bread)">
                         </div>
                     </div>
@@ -136,28 +598,48 @@
                     <!-- Label Auto Section -->
                     <div id="label_auto_section" class="analysis-section" style="display: none;">
                         <div class="mb-3">
-                            <label for="label_photo_auto" class="form-label">Upload nutrition facts photo:</label>
-                            <input type="file" class="form-control" id="label_photo_auto" name="nutrition_photo" accept="image/*">
-                            <small class="form-text text-muted">
-                                Take a clear photo of the nutrition facts label.
-                                <br>Images are automatically compressed for faster upload.
+                            <label for="label_photo_auto" class="form-label-modern">
+                                <i class="fas fa-tag"></i> Upload nutrition facts photo:
+                            </label>
+                            <div class="file-upload-area">
+                                <div class="file-upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div class="file-upload-text">
+                                    Click to upload nutrition facts label
+                                </div>
+                                <input type="file" class="form-control file-input-hidden" id="label_photo_auto" name="nutrition_photo" accept="image/*">
+                            </div>
+                            <small class="form-text text-muted mt-2">
+                                <i class="fas fa-info-circle"></i> Take a clear photo of the nutrition facts label.
+                                Images are automatically compressed for faster upload.
                             </small>
                         </div>
                         <div class="mb-3">
-                            <label for="front_photo" class="form-label">Upload product front photo:</label>
-                            <input type="file" class="form-control" id="front_photo" name="front_photo" accept="image/*">
-                            <small class="form-text text-muted">
-                                Take a clear photo of the product front showing name and brand.
-                                <br>Images are automatically compressed for faster upload.
+                            <label for="front_photo" class="form-label-modern">
+                                <i class="fas fa-image"></i> Upload product front photo:
+                            </label>
+                            <div class="file-upload-area">
+                                <div class="file-upload-icon">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </div>
+                                <div class="file-upload-text">
+                                    Click to upload product front photo
+                                </div>
+                                <input type="file" class="form-control file-input-hidden" id="front_photo" name="front_photo" accept="image/*">
+                            </div>
+                            <small class="form-text text-muted mt-2">
+                                <i class="fas fa-info-circle"></i> Take a clear photo of the product front showing name and brand.
+                                Images are automatically compressed for faster upload.
                             </small>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" id="analyzeButton">
-                        <i class="bi bi-search"></i> <span id="buttonText">Analyze Nutrition</span>
+                    <button type="submit" class="analyze-button" id="analyzeButton">
+                        <i class="fas fa-magic"></i> <span id="buttonText">Analyze Nutrition</span>
                     </button>
-                    <div class="progress mt-3" id="uploadProgress" style="display: none;">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    <div class="progress-modern" id="uploadProgress" style="display: none;">
+                        <div class="progress-bar-modern progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                     </div>
                 </form>
             </div>
@@ -165,28 +647,31 @@
 
         <!-- Results Section -->
         {% if results %}
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Analysis Results</h5>
-                <div>
-                    <form action="{{ url_for('ai_bp.clear_results') }}" method="post" class="d-inline me-2">
-                        <button type="submit" class="btn btn-warning btn-sm" title="Clear current analysis and start fresh">
-                            <i class="bi bi-x-circle"></i> Clear
+        <div class="results-card">
+            <div class="results-header">
+                <h2 class="results-title">
+                    <i class="fas fa-chart-bar"></i>
+                    Analysis Results
+                </h2>
+                <div class="results-actions">
+                    <form action="{{ url_for('ai_bp.clear_results') }}" method="post" class="d-inline">
+                        <button type="submit" class="action-btn action-btn-warning" title="Clear current analysis and start fresh">
+                            <i class="fas fa-times-circle"></i> Clear
                         </button>
                     </form>
-                    <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
-                        <i class="bi bi-book"></i> Create Recipe
+                    <button type="button" class="action-btn action-btn-primary" data-bs-toggle="modal" data-bs-target="#createRecipeModal">
+                        <i class="fas fa-book"></i> Create Recipe
                     </button>
                     <form action="{{ url_for('ai_bp.save_ai_results') }}" method="post" class="d-inline">
-                        <button type="submit" class="btn btn-success btn-sm">
-                            <i class="bi bi-save"></i> Save to Database
+                        <button type="submit" class="action-btn action-btn-success">
+                            <i class="fas fa-save"></i> Save to Database
                         </button>
                     </form>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body-modern">
                 <div class="table-responsive">
-                    <table class="table table-striped">
+                    <table class="table table-modern">
                         <thead>
                             <tr>
                                 {% for column in columns %}
@@ -210,15 +695,18 @@
         {% endif %}
 
         <!-- Tips Section -->
-        <div class="mt-4">
-            <h6>Tips for best results:</h6>
-            <ul class="small text-muted">
-                <li><strong>Text Input:</strong> Be specific with quantities (e.g., "2 medium apples"). Use voice input for hands-free entry!</li>
-                <li><strong>Voice Input:</strong> Speak clearly and naturally. Say quantities like "two apples" or "100 grams chicken"</li>
-                <li><strong>Meal Photo:</strong> Take photo from above with good lighting, include something for scale</li>
-                <li><strong>Nutrition Labels:</strong> Ensure text is clear and readable, avoid glare</li>
-                <li><strong>Product Photos:</strong> Include full product name and brand visible on front</li>
-                <li><strong>Important:</strong> Each new analysis automatically clears previous results. Use the "Clear" button if you want to start fresh without analyzing new foods.</li>
+        <div class="tips-section">
+            <h3 class="tips-title">
+                <i class="fas fa-lightbulb"></i>
+                Tips for Best Results
+            </h3>
+            <ul class="tips-list">
+                <li><span class="tip-category">Text Input:</span> Be specific with quantities (e.g., "2 medium apples"). Use voice input for hands-free entry!</li>
+                <li><span class="tip-category">Voice Input:</span> Speak clearly and naturally. Say quantities like "two apples" or "100 grams chicken"</li>
+                <li><span class="tip-category">Meal Photo:</span> Take photo from above with good lighting, include something for scale</li>
+                <li><span class="tip-category">Nutrition Labels:</span> Ensure text is clear and readable, avoid glare</li>
+                <li><span class="tip-category">Product Photos:</span> Include full product name and brand visible on front</li>
+                <li><span class="tip-category">Important:</span> Each new analysis automatically clears previous results. Use the "Clear" button if you want to start fresh without analyzing new foods.</li>
             </ul>
         </div>
     </div>
@@ -242,14 +730,13 @@ if (!isIOS && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in win
 
     let finalTranscript = '';
 
-            recognition.onstart = function() {
+    recognition.onstart = function() {
         isRecording = true;
         const voiceButton = document.getElementById('voiceButton');
         const voiceButtonText = document.getElementById('voiceButtonText');
         const voiceStatus = document.getElementById('voiceStatus');
 
-        voiceButton.classList.remove('btn-outline-primary');
-        voiceButton.classList.add('btn-danger');
+        voiceButton.classList.add('recording');
         voiceButton.title = 'Click to stop recording';
 
         // Update button text and ensure visibility on mobile
@@ -366,8 +853,7 @@ function stopRecording() {
     const voiceButton = document.getElementById('voiceButton');
     const voiceButtonText = document.getElementById('voiceButtonText');
 
-    voiceButton.classList.remove('btn-danger');
-    voiceButton.classList.add('btn-outline-primary');
+    voiceButton.classList.remove('recording');
     voiceButton.title = 'Click to start voice input';
 
     // Update button text and restore visibility classes
@@ -427,6 +913,7 @@ function compressImage(file, maxWidth, maxHeight, quality) {
 
 // Show/hide sections based on selected method
 document.addEventListener('DOMContentLoaded', function() {
+    const methodOptions = document.querySelectorAll('.method-option');
     const radioButtons = document.querySelectorAll('input[name="analysis_method"]');
     const sections = {
         'text': document.getElementById('text_input_section'),
@@ -435,14 +922,45 @@ document.addEventListener('DOMContentLoaded', function() {
         'label_auto': document.getElementById('label_auto_section')
     };
 
-    radioButtons.forEach(radio => {
-        radio.addEventListener('change', function() {
-            // Hide all sections
+    // Handle method option clicks
+    methodOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            const method = this.dataset.method;
+            const radio = this.querySelector('input[type="radio"]');
+
+            // Update radio button
+            radio.checked = true;
+
+            // Update visual state
+            methodOptions.forEach(opt => opt.classList.remove('active'));
+            this.classList.add('active');
+
+            // Show/hide sections
             Object.values(sections).forEach(section => {
                 section.style.display = 'none';
             });
 
-            // Show selected section
+            if (sections[method]) {
+                sections[method].style.display = 'block';
+            }
+        });
+    });
+
+    // Handle radio button changes
+    radioButtons.forEach(radio => {
+        radio.addEventListener('change', function() {
+            // Update method options
+            methodOptions.forEach(opt => opt.classList.remove('active'));
+            const methodOption = document.querySelector(`[data-method="${this.value}"]`);
+            if (methodOption) {
+                methodOption.classList.add('active');
+            }
+
+            // Show/hide sections
+            Object.values(sections).forEach(section => {
+                section.style.display = 'none';
+            });
+
             if (sections[this.value]) {
                 sections[this.value].style.display = 'block';
             }
@@ -479,12 +997,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!file) return;
 
             // Show loading indicator
+            const uploadArea = this.closest('.file-upload-area');
             const loadingText = document.createElement('small');
-            loadingText.className = 'text-info d-block mt-1';
+            loadingText.className = 'text-info d-block mt-2';
             loadingText.textContent = 'Compressing image...';
-            this.parentElement.appendChild(loadingText);
+            uploadArea.appendChild(loadingText);
 
-                        try {
+            try {
                 let compressedBlob;
                 let quality = 0.85;
                 let maxDimension = 1920;
@@ -519,21 +1038,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const originalSize = (file.size / 1024 / 1024).toFixed(2);
                 const compressedSize = (compressedFile.size / 1024 / 1024).toFixed(2);
                 const compressionRatio = ((1 - compressedFile.size / file.size) * 100).toFixed(0);
-                loadingText.className = 'text-success d-block mt-1';
-                loadingText.textContent = `Compressed: ${originalSize}MB → ${compressedSize}MB (${compressionRatio}% reduction)`;
+                loadingText.className = 'text-success d-block mt-2';
+                loadingText.textContent = `✅ Compressed: ${originalSize}MB → ${compressedSize}MB (${compressionRatio}% reduction)`;
+
+                // Update upload area text
+                const uploadText = uploadArea.querySelector('.file-upload-text');
+                uploadText.textContent = `📁 ${file.name} selected and compressed`;
 
                 // Remove message after 3 seconds
                 setTimeout(() => loadingText.remove(), 3000);
 
             } catch (error) {
                 console.error('Compression error:', error);
-                loadingText.className = 'text-danger d-block mt-1';
+                loadingText.className = 'text-danger d-block mt-2';
                 loadingText.textContent = 'Error compressing image. Please try again.';
             }
         });
     });
 
-        // Override form submission to use compressed files
+    // Override form submission to use compressed files
     const form = document.querySelector('form');
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
@@ -541,7 +1064,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const analyzeButton = document.getElementById('analyzeButton');
         const buttonText = document.getElementById('buttonText');
         const uploadProgress = document.getElementById('uploadProgress');
-        const progressBar = uploadProgress.querySelector('.progress-bar');
+        const progressBar = uploadProgress.querySelector('.progress-bar-modern');
 
         // Disable button and show loading state
         analyzeButton.disabled = true;
@@ -609,6 +1132,41 @@ document.addEventListener('DOMContentLoaded', function() {
             progressBar.style.width = '0%';
         }
     });
+
+    // Add smooth animations on page load
+    const analysisCard = document.querySelector('.analysis-card');
+    const resultsCard = document.querySelector('.results-card');
+    const tipsSection = document.querySelector('.tips-section');
+
+    if (analysisCard) {
+        analysisCard.style.opacity = '0';
+        analysisCard.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            analysisCard.style.transition = 'all 0.6s ease';
+            analysisCard.style.opacity = '1';
+            analysisCard.style.transform = 'translateY(0)';
+        }, 200);
+    }
+
+    if (resultsCard) {
+        resultsCard.style.opacity = '0';
+        resultsCard.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            resultsCard.style.transition = 'all 0.6s ease';
+            resultsCard.style.opacity = '1';
+            resultsCard.style.transform = 'translateY(0)';
+        }, 400);
+    }
+
+    if (tipsSection) {
+        tipsSection.style.opacity = '0';
+        tipsSection.style.transform = 'translateY(30px)';
+        setTimeout(() => {
+            tipsSection.style.transition = 'all 0.6s ease';
+            tipsSection.style.opacity = '1';
+            tipsSection.style.transform = 'translateY(0)';
+        }, 600);
+    }
 });
 </script>
 
@@ -616,30 +1174,39 @@ document.addEventListener('DOMContentLoaded', function() {
 {% if results %}
 <div class="modal fade" id="createRecipeModal" tabindex="-1" aria-labelledby="createRecipeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 8px 30px rgba(0,0,0,0.15);">
             <form action="{{ url_for('ai_bp.create_recipe_from_results') }}" method="post">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="createRecipeModalLabel">Create Recipe from Results</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="modal-header" style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); color: white; border: none; border-radius: 16px 16px 0 0;">
+                    <h5 class="modal-title" id="createRecipeModalLabel">
+                        <i class="fas fa-book"></i> Create Recipe from Results
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="padding: 2rem;">
                     <div class="mb-3">
-                        <label for="recipe_name" class="form-label">Recipe Name</label>
+                        <label for="recipe_name" class="form-label" style="font-weight: 600; color: #343a40;">
+                            <i class="fas fa-utensils"></i> Recipe Name
+                        </label>
                         <input type="text" class="form-control" id="recipe_name" name="recipe_name" required
-                               placeholder="e.g., Grilled Chicken Salad">
+                               placeholder="e.g., Grilled Chicken Salad" style="border-radius: 12px; border: 2px solid #e9ecef; padding: 0.75rem;">
                     </div>
                     <div class="mb-3">
-                        <label for="servings" class="form-label">Number of Servings</label>
-                        <input type="number" class="form-control" id="servings" name="servings" min="1" value="1" required>
+                        <label for="servings" class="form-label" style="font-weight: 600; color: #343a40;">
+                            <i class="fas fa-users"></i> Number of Servings
+                        </label>
+                        <input type="number" class="form-control" id="servings" name="servings" min="1" value="1" required
+                               style="border-radius: 12px; border: 2px solid #e9ecef; padding: 0.75rem;">
                         <small class="form-text text-muted">How many servings does this recipe make?</small>
                     </div>
 
                     <!-- Preview of ingredients -->
                     <div class="mb-3">
-                        <label class="form-label">Ingredients to include:</label>
-                        <div class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                        <label class="form-label" style="font-weight: 600; color: #343a40;">
+                            <i class="fas fa-list"></i> Ingredients to include:
+                        </label>
+                        <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto; border-radius: 12px; background: #f8f9fa;">
                             {% for row in results %}
-                            <div class="form-check">
+                            <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" name="include_ingredient"
                                        value="{{ loop.index0 }}" id="ing_{{ loop.index0 }}" checked>
                                 <label class="form-check-label" for="ing_{{ loop.index0 }}">
@@ -650,9 +1217,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create Recipe</button>
+                <div class="modal-footer" style="border: none; padding: 1rem 2rem 2rem 2rem;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 20px; padding: 0.5rem 1.5rem;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); border: none; border-radius: 20px; padding: 0.5rem 1.5rem;">
+                        <i class="fas fa-plus"></i> Create Recipe
+                    </button>
                 </div>
             </form>
         </div>
