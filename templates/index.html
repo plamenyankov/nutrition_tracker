@@ -1,125 +1,212 @@
 {% extends 'layout.html' %}
 
-{% block title %}Dashboard - VitaSync{% endblock %}
+{% block title %}Dashboard - Zyra{% endblock %}
 
 {% block head %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-/* Modern Dashboard Design */
+/* Zyra Brand Variables */
 :root {
-    --primary-color: #007bff;
-    --success-color: #28a745;
-    --warning-color: #ffc107;
-    --danger-color: #dc3545;
-    --info-color: #17a2b8;
-    --dark-color: #343a40;
-    --light-color: #f8f9fa;
-    --border-radius: 16px;
-    --shadow: 0 4px 20px rgba(0,0,0,0.1);
-    --shadow-lg: 0 8px 30px rgba(0,0,0,0.15);
+    --zyra-blue: #0077FF;
+    --jet-black: #1A1A1A;
+    --glow-teal: #00FFC6;
+    --soft-gray: #EAEAEA;
+    --dark-bg: #0F0F0F;
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --border-radius: 20px;
+    --shadow: 0 8px 32px rgba(0, 119, 255, 0.1);
+    --shadow-lg: 0 16px 48px rgba(0, 119, 255, 0.2);
+    --glow-shadow: 0 0 20px rgba(0, 255, 198, 0.3);
 }
 
 body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #0F0F0F 0%, #1A1A1A 50%, #0077FF 100%);
     min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: white;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Animated Background Elements */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background:
+        radial-gradient(circle at 20% 80%, rgba(0, 255, 198, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(0, 119, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(0, 255, 198, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
 }
 
 .dashboard-container {
     padding: 0;
     max-width: 100%;
+    position: relative;
 }
 
 /* Hero Section */
 .hero-section {
-    background: rgba(255,255,255,0.95);
-    backdrop-filter: blur(10px);
-    padding: 2rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3rem 1rem;
     text-align: center;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
+    margin: 1rem;
+    border-radius: var(--border-radius);
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--zyra-blue), var(--glow-teal));
 }
 
 .hero-title {
-    font-size: 2.5rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 3.5rem;
     font-weight: 800;
-    color: var(--dark-color);
     margin: 0 0 0.5rem 0;
-    background: linear-gradient(135deg, var(--primary-color) 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--zyra-blue) 0%, var(--glow-teal) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    text-shadow: 0 0 30px rgba(0, 255, 198, 0.3);
+    position: relative;
 }
 
 .hero-subtitle {
-    font-size: 1.1rem;
-    color: #6c757d;
-    margin-bottom: 2rem;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 2.5rem;
+    font-weight: 500;
+}
+
+.hero-tagline {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
+    color: var(--glow-teal);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
 }
 
 .hero-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 1rem;
-    max-width: 600px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1.5rem;
+    max-width: 700px;
     margin: 0 auto;
 }
 
 .hero-stat {
-    background: white;
-    padding: 1rem;
-    border-radius: 12px;
-    box-shadow: var(--shadow);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem;
+    border-radius: 16px;
     transition: all 0.3s ease;
+    position: relative;
 }
 
 .hero-stat:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+    box-shadow: var(--glow-shadow);
+    border-color: var(--glow-teal);
 }
 
 .stat-number {
-    font-size: 1.8rem;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--glow-teal);
     display: block;
+    text-shadow: 0 0 10px rgba(0, 255, 198, 0.5);
 }
 
 .stat-label {
     font-size: 0.8rem;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.7);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 0.25rem;
+    letter-spacing: 1px;
+    margin-top: 0.5rem;
+    font-weight: 500;
 }
 
-/* Quick Actions */
-.quick-actions {
-    padding: 2rem 1rem;
+/* AI-Powered Section */
+.ai-section {
+    padding: 3rem 1rem;
+    text-align: center;
 }
 
 .section-title {
-    font-size: 1.5rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 2rem;
     font-weight: 700;
     color: white;
-    text-align: center;
-    margin-bottom: 1.5rem;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    margin-bottom: 0.5rem;
 }
 
+.section-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.1rem;
+    margin-bottom: 2.5rem;
+}
+
+.ai-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--zyra-blue), var(--glow-teal));
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    box-shadow: var(--glow-shadow);
+}
+
+.ai-badge i {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Action Cards */
 .actions-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-    max-width: 1200px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 2rem;
+    max-width: 1400px;
     margin: 0 auto;
+    padding: 0 1rem;
 }
 
 .action-card {
-    background: white;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: var(--border-radius);
-    padding: 2rem;
-    box-shadow: var(--shadow);
-    transition: all 0.3s ease;
+    padding: 2.5rem;
+    transition: all 0.4s ease;
     text-decoration: none;
     color: inherit;
     position: relative;
@@ -132,72 +219,92 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
+    height: 3px;
 }
 
 .action-card.nutrition::before {
-    background: linear-gradient(90deg, #28a745, #20c997);
+    background: linear-gradient(90deg, #00FFC6, #00CC9F);
 }
 
 .action-card.gym::before {
-    background: linear-gradient(90deg, #dc3545, #fd7e14);
+    background: linear-gradient(90deg, #FF6B6B, #FF8E53);
 }
 
 .action-card.ai::before {
-    background: linear-gradient(90deg, #6f42c1, #e83e8c);
+    background: linear-gradient(90deg, #0077FF, #00FFC6);
 }
 
 .action-card.analytics::before {
-    background: linear-gradient(90deg, #007bff, #6610f2);
+    background: linear-gradient(90deg, #667eea, #764ba2);
 }
 
 .action-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-8px);
     box-shadow: var(--shadow-lg);
+    border-color: rgba(255, 255, 255, 0.2);
     color: inherit;
     text-decoration: none;
 }
 
 .action-icon {
-    width: 60px;
-    height: 60px;
+    width: 70px;
+    height: 70px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
+    font-size: 2rem;
     color: white;
-    margin: 0 auto 1rem auto;
+    margin: 0 auto 1.5rem auto;
+    position: relative;
+}
+
+.action-icon::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    padding: 2px;
+    background: linear-gradient(135deg, var(--zyra-blue), var(--glow-teal));
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: xor;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.action-card:hover .action-icon::after {
+    opacity: 1;
 }
 
 .action-icon.nutrition {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    background: linear-gradient(135deg, #00FFC6 0%, #00CC9F 100%);
 }
 
 .action-icon.gym {
-    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
 }
 
 .action-icon.ai {
-    background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+    background: linear-gradient(135deg, #0077FF 0%, #00FFC6 100%);
 }
 
 .action-icon.analytics {
-    background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .action-title {
-    font-size: 1.3rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.4rem;
     font-weight: 700;
-    color: var(--dark-color);
-    margin: 0 0 0.75rem 0;
+    color: white;
+    margin: 0 0 1rem 0;
     text-align: center;
 }
 
 .action-description {
-    font-size: 0.95rem;
-    color: #6c757d;
-    line-height: 1.5;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
     margin-bottom: 1.5rem;
     text-align: center;
 }
@@ -209,141 +316,164 @@ body {
 }
 
 .action-features li {
-    padding: 0.5rem 0;
+    padding: 0.6rem 0;
     font-size: 0.9rem;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.7);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
 }
 
 .action-features li i {
-    color: var(--success-color);
+    color: var(--glow-teal);
     width: 16px;
+    text-shadow: 0 0 5px rgba(0, 255, 198, 0.5);
 }
 
-/* Recent Activity */
-.recent-activity {
-    background: white;
-    margin: 1rem;
+/* Intelligence Overview */
+.intelligence-overview {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 2rem 1rem;
     border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
     overflow: hidden;
+    position: relative;
 }
 
-.activity-header {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 1.5rem;
-    border-bottom: 1px solid #dee2e6;
+.intelligence-overview::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--zyra-blue), var(--glow-teal));
+}
+
+.overview-header {
+    padding: 2rem;
     text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.activity-title {
-    font-size: 1.3rem;
+.overview-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
     font-weight: 700;
-    color: var(--dark-color);
+    color: white;
     margin: 0;
 }
 
-.activity-body {
-    padding: 1.5rem;
+.overview-body {
+    padding: 2rem;
 }
 
-.activity-grid {
+.overview-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
+    gap: 2rem;
 }
 
-.activity-item {
-    background: #f8f9fa;
-    border-radius: 12px;
-    padding: 1.5rem;
+.overview-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2rem;
     text-align: center;
     transition: all 0.3s ease;
 }
 
-.activity-item:hover {
-    background: rgba(0,123,255,0.05);
-    transform: translateY(-2px);
+.overview-item:hover {
+    transform: translateY(-4px);
+    border-color: var(--glow-teal);
+    box-shadow: var(--glow-shadow);
 }
 
-.activity-item-icon {
-    width: 50px;
-    height: 50px;
+.overview-item-icon {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    background: linear-gradient(135deg, var(--zyra-blue) 0%, var(--glow-teal) 100%);
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.2rem;
-    margin: 0 auto 1rem auto;
+    font-size: 1.5rem;
+    margin: 0 auto 1.5rem auto;
+    box-shadow: 0 0 20px rgba(0, 255, 198, 0.3);
 }
 
-.activity-item-title {
-    font-size: 1rem;
+.overview-item-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.1rem;
     font-weight: 600;
-    color: var(--dark-color);
+    color: white;
     margin: 0 0 0.5rem 0;
 }
 
-.activity-item-value {
-    font-size: 1.5rem;
+.overview-item-value {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-color);
-    margin: 0 0 0.25rem 0;
+    color: var(--glow-teal);
+    margin: 0 0 0.5rem 0;
+    text-shadow: 0 0 10px rgba(0, 255, 198, 0.5);
 }
 
-.activity-item-label {
+.overview-item-label {
     font-size: 0.8rem;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.6);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
 }
 
 /* Empty State */
 .empty-state {
     text-align: center;
-    padding: 3rem 1rem;
-    color: #6c757d;
+    padding: 4rem 2rem;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .empty-icon {
-    font-size: 4rem;
-    margin-bottom: 1rem;
-    opacity: 0.5;
+    font-size: 5rem;
+    margin-bottom: 2rem;
+    color: var(--zyra-blue);
+    opacity: 0.6;
 }
 
 .empty-title {
-    font-size: 1.25rem;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--dark-color);
+    margin-bottom: 1rem;
+    color: white;
 }
 
 .empty-text {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
+    font-size: 1.1rem;
 }
 
 .empty-action {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+    background: linear-gradient(135deg, var(--zyra-blue) 0%, var(--glow-teal) 100%);
     border: none;
     color: white;
-    padding: 1rem 2rem;
-    border-radius: 25px;
+    padding: 1.2rem 2.5rem;
+    border-radius: 30px;
     font-weight: 600;
     text-decoration: none;
     transition: all 0.3s ease;
     box-shadow: var(--shadow);
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    font-size: 1.1rem;
 }
 
 .empty-action:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-3px);
+    box-shadow: var(--glow-shadow);
     color: white;
     text-decoration: none;
 }
@@ -351,7 +481,7 @@ body {
 /* Responsive Design */
 @media (min-width: 768px) {
     .dashboard-container {
-        max-width: 1200px;
+        max-width: 1400px;
         margin: 0 auto;
     }
 
@@ -364,7 +494,7 @@ body {
     }
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1200px) {
     .actions-grid {
         grid-template-columns: repeat(4, 1fr);
     }
@@ -372,22 +502,44 @@ body {
 
 @media (max-width: 768px) {
     .hero-title {
-        font-size: 2rem;
+        font-size: 2.5rem;
     }
 
     .actions-grid {
         grid-template-columns: 1fr;
+        padding: 0 0.5rem;
     }
 
-    .activity-grid {
+    .overview-grid {
         grid-template-columns: 1fr;
+    }
+
+    .hero-section,
+    .intelligence-overview {
+        margin: 1rem 0.5rem;
     }
 }
 
-/* Heartbeat Animation */
-@keyframes heartbeat {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+/* Loading Animation */
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.loading-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 198, 0.1), transparent);
+    animation: shimmer 2s infinite;
 }
 </style>
 {% endblock %}
@@ -396,11 +548,12 @@ body {
 <div class="dashboard-container">
     <!-- Hero Section -->
     <div class="hero-section">
+        <div class="hero-tagline">Smarter Body. Sharper Mind. Powered by AI.</div>
         <h1 class="hero-title">
-            <i class="fas fa-heartbeat text-danger me-2" style="animation: heartbeat 2s ease-in-out infinite;"></i>
-            Welcome to VitaSync
+            <i class="fas fa-brain" style="color: var(--glow-teal); margin-right: 1rem;"></i>
+            Welcome to Zyra
         </h1>
-        <p class="hero-subtitle">Your complete health and fitness companion</p>
+        <p class="hero-subtitle">Your AI-powered fitness & nutrition analytics companion</p>
 
         <div class="hero-stats">
             <div class="hero-stat">
@@ -422,126 +575,131 @@ body {
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-        <h2 class="section-title">🚀 Quick Actions</h2>
+    <!-- AI-Powered Actions -->
+    <div class="ai-section">
+        <div class="ai-badge">
+            <i class="fas fa-robot"></i>
+            AI-Powered Intelligence
+        </div>
+        <h2 class="section-title">Train. Eat. Analyze. Thrive.</h2>
+        <p class="section-subtitle">Every suggestion is based on real data and machine learning</p>
 
         <div class="actions-grid">
-            <!-- Nutrition Card -->
+            <!-- Zyra Fuel (Nutrition) -->
             <a href="/meals" class="action-card nutrition">
                 <div class="action-icon nutrition">
-                    <i class="fas fa-apple-alt"></i>
+                    <i class="fas fa-leaf"></i>
                 </div>
-                <h3 class="action-title">Nutrition Tracking</h3>
-                <p class="action-description">Track your daily meals, calories, and macronutrients for optimal health.</p>
+                <h3 class="action-title">Zyra Fuel</h3>
+                <p class="action-description">AI-powered macro tracking with intelligent meal suggestions and nutritional insights.</p>
                 <ul class="action-features">
-                    <li><i class="fas fa-check"></i> Log meals and snacks</li>
-                    <li><i class="fas fa-check"></i> Track macronutrients</li>
-                    <li><i class="fas fa-check"></i> Food database search</li>
-                    <li><i class="fas fa-check"></i> Recipe management</li>
+                    <li><i class="fas fa-check"></i> Smart meal logging</li>
+                    <li><i class="fas fa-check"></i> AI macro optimization</li>
+                    <li><i class="fas fa-check"></i> Intelligent food database</li>
+                    <li><i class="fas fa-check"></i> Personalized nutrition</li>
                 </ul>
             </a>
 
-            <!-- Gym Card -->
+            <!-- Zyra Form (Workout) -->
             <a href="/gym/workout/choose" class="action-card gym">
                 <div class="action-icon gym">
                     <i class="fas fa-dumbbell"></i>
                 </div>
-                <h3 class="action-title">Workout Tracking</h3>
-                <p class="action-description">Log workouts, track progress, and achieve your fitness goals.</p>
+                <h3 class="action-title">Zyra Form</h3>
+                <p class="action-description">Intelligent workout tracking with AI-driven progression suggestions and form analysis.</p>
                 <ul class="action-features">
-                    <li><i class="fas fa-check"></i> Start workout sessions</li>
-                    <li><i class="fas fa-check"></i> Track sets and reps</li>
-                    <li><i class="fas fa-check"></i> Progression analysis</li>
-                    <li><i class="fas fa-check"></i> Workout templates</li>
+                    <li><i class="fas fa-check"></i> Smart workout sessions</li>
+                    <li><i class="fas fa-check"></i> AI progression tracking</li>
+                    <li><i class="fas fa-check"></i> Intelligent rest periods</li>
+                    <li><i class="fas fa-check"></i> Adaptive workout plans</li>
                 </ul>
             </a>
 
-            <!-- AI Assistant Card -->
+            <!-- Zyra Core (AI Assistant) -->
             <a href="/ai/assistant" class="action-card ai">
                 <div class="action-icon ai">
-                    <i class="fas fa-robot"></i>
+                    <i class="fas fa-brain"></i>
                 </div>
-                <h3 class="action-title">AI Assistant</h3>
-                <p class="action-description">Get personalized nutrition and fitness advice from our AI.</p>
+                <h3 class="action-title">Zyra Core</h3>
+                <p class="action-description">Your conversational AI coach providing personalized insights and recommendations.</p>
                 <ul class="action-features">
-                    <li><i class="fas fa-check"></i> Nutrition guidance</li>
-                    <li><i class="fas fa-check"></i> Workout suggestions</li>
-                    <li><i class="fas fa-check"></i> Health insights</li>
-                    <li><i class="fas fa-check"></i> Goal planning</li>
+                    <li><i class="fas fa-check"></i> Conversational AI coach</li>
+                    <li><i class="fas fa-check"></i> Personalized insights</li>
+                    <li><i class="fas fa-check"></i> Smart recommendations</li>
+                    <li><i class="fas fa-check"></i> Goal optimization</li>
                 </ul>
             </a>
 
-            <!-- Analytics Card -->
+            <!-- Zyra Intel (Analytics) -->
             <a href="/analytics" class="action-card analytics">
                 <div class="action-icon analytics">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="fas fa-chart-network"></i>
                 </div>
-                <h3 class="action-title">Analytics & Reports</h3>
-                <p class="action-description">Analyze your progress with detailed charts and insights.</p>
+                <h3 class="action-title">Zyra Intel</h3>
+                <p class="action-description">Advanced analytics dashboard with predictive insights and trend analysis.</p>
                 <ul class="action-features">
-                    <li><i class="fas fa-check"></i> Progress charts</li>
+                    <li><i class="fas fa-check"></i> Predictive analytics</li>
                     <li><i class="fas fa-check"></i> Trend analysis</li>
-                    <li><i class="fas fa-check"></i> Goal tracking</li>
-                    <li><i class="fas fa-check"></i> Health reports</li>
+                    <li><i class="fas fa-check"></i> Performance insights</li>
+                    <li><i class="fas fa-check"></i> Goal predictions</li>
                 </ul>
             </a>
         </div>
     </div>
 
-    <!-- Recent Activity Overview -->
-    <div class="recent-activity">
-        <div class="activity-header">
-            <h2 class="activity-title">📊 Your Health Overview</h2>
+    <!-- Intelligence Overview -->
+    <div class="intelligence-overview">
+        <div class="overview-header">
+            <h2 class="overview-title">🧠 Your Intelligence Dashboard</h2>
         </div>
-        <div class="activity-body">
+        <div class="overview-body">
             {% if avg_consumed.cnt and avg_consumed.cnt > 0 %}
-            <div class="activity-grid">
-                <div class="activity-item">
-                    <div class="activity-item-icon">
+            <div class="overview-grid">
+                <div class="overview-item">
+                    <div class="overview-item-icon">
                         <i class="fas fa-fire"></i>
                     </div>
-                    <div class="activity-item-title">Daily Calories</div>
-                    <div class="activity-item-value">{{ (avg_consumed.kcal or 0)|round }}</div>
-                    <div class="activity-item-label">Average</div>
+                    <div class="overview-item-title">Energy Intake</div>
+                    <div class="overview-item-value">{{ (avg_consumed.kcal or 0)|round }}</div>
+                    <div class="overview-item-label">Daily Average</div>
                 </div>
 
-                <div class="activity-item">
-                    <div class="activity-item-icon">
-                        <i class="fas fa-drumstick-bite"></i>
+                <div class="overview-item">
+                    <div class="overview-item-icon">
+                        <i class="fas fa-dna"></i>
                     </div>
-                    <div class="activity-item-title">Protein Intake</div>
-                    <div class="activity-item-value">{{ (avg_consumed.protein or 0)|round }}g</div>
-                    <div class="activity-item-label">Average</div>
+                    <div class="overview-item-title">Protein Synthesis</div>
+                    <div class="overview-item-value">{{ (avg_consumed.protein or 0)|round }}g</div>
+                    <div class="overview-item-label">Daily Average</div>
                 </div>
 
-                <div class="activity-item">
-                    <div class="activity-item-icon">
+                <div class="overview-item">
+                    <div class="overview-item-icon">
                         <i class="fas fa-weight"></i>
                     </div>
-                    <div class="activity-item-title">Body Weight</div>
-                    <div class="activity-item-value">{{ average_weight or 0 }}kg</div>
-                    <div class="activity-item-label">Current</div>
+                    <div class="overview-item-title">Body Mass</div>
+                    <div class="overview-item-value">{{ average_weight or 0 }}kg</div>
+                    <div class="overview-item-label">Current</div>
                 </div>
 
-                <div class="activity-item">
-                    <div class="activity-item-icon">
+                <div class="overview-item">
+                    <div class="overview-item-icon">
                         <i class="fas fa-calculator"></i>
                     </div>
-                    <div class="activity-item-title">Protein/Weight</div>
-                    <div class="activity-item-value">{{ ((avg_consumed.protein or 0)/(average_weight or 1))|round(1) }}</div>
-                    <div class="activity-item-label">Ratio</div>
+                    <div class="overview-item-title">Efficiency Ratio</div>
+                    <div class="overview-item-value">{{ ((avg_consumed.protein or 0)/(average_weight or 1))|round(1) }}</div>
+                    <div class="overview-item-label">Protein/Weight</div>
                 </div>
             </div>
             {% else %}
             <div class="empty-state">
                 <div class="empty-icon">
-                    <i class="fas fa-chart-bar"></i>
+                    <i class="fas fa-rocket"></i>
                 </div>
-                <h3 class="empty-title">Start Your Health Journey</h3>
-                <p class="empty-text">Begin tracking your nutrition and workouts to see your progress here.</p>
+                <h3 class="empty-title">Initialize Your AI Journey</h3>
+                <p class="empty-text">Begin tracking your nutrition and workouts to unlock Zyra's intelligent insights and personalized recommendations.</p>
                 <a href="/meals" class="empty-action">
-                    <i class="fas fa-utensils"></i> Log Your First Meal
+                    <i class="fas fa-play"></i> Start Your Journey
                 </a>
             </div>
             {% endif %}
@@ -550,55 +708,94 @@ body {
 </div>
 
 <script>
-// Add smooth animations on page load
+// Enhanced animations with Zyra branding
 document.addEventListener('DOMContentLoaded', function() {
-    // Animate hero stats
+    // Animate hero stats with stagger effect
     const heroStats = document.querySelectorAll('.hero-stat');
     heroStats.forEach((stat, index) => {
         stat.style.opacity = '0';
-        stat.style.transform = 'translateY(20px)';
+        stat.style.transform = 'translateY(30px) scale(0.9)';
         setTimeout(() => {
-            stat.style.transition = 'all 0.6s ease';
+            stat.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
             stat.style.opacity = '1';
-            stat.style.transform = 'translateY(0)';
-        }, index * 100);
+            stat.style.transform = 'translateY(0) scale(1)';
+        }, index * 150);
     });
 
-    // Animate action cards
+    // Animate action cards with enhanced effects
     const actionCards = document.querySelectorAll('.action-card');
     actionCards.forEach((card, index) => {
         card.style.opacity = '0';
-        card.style.transform = 'translateY(30px)';
+        card.style.transform = 'translateY(40px) rotateX(10deg)';
         setTimeout(() => {
-            card.style.transition = 'all 0.6s ease';
+            card.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
             card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, 200 + (index * 150));
+            card.style.transform = 'translateY(0) rotateX(0deg)';
+        }, 300 + (index * 200));
     });
 
-    // Animate activity items
-    const activityItems = document.querySelectorAll('.activity-item');
-    activityItems.forEach((item, index) => {
+    // Animate overview items
+    const overviewItems = document.querySelectorAll('.overview-item');
+    overviewItems.forEach((item, index) => {
         item.style.opacity = '0';
-        item.style.transform = 'scale(0.9)';
+        item.style.transform = 'scale(0.8) translateY(20px)';
         setTimeout(() => {
-            item.style.transition = 'all 0.5s ease';
+            item.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
             item.style.opacity = '1';
-            item.style.transform = 'scale(1)';
-        }, 800 + (index * 100));
+            item.style.transform = 'scale(1) translateY(0)';
+        }, 1000 + (index * 150));
+    });
+
+    // Add hover effects for enhanced interactivity
+    actionCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-12px) scale(1.02)';
+        });
+
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // AI-powered click tracking
+    document.querySelectorAll('.action-card').forEach(card => {
+        card.addEventListener('click', function() {
+            const cardType = this.classList.contains('nutrition') ? 'zyra-fuel' :
+                            this.classList.contains('gym') ? 'zyra-form' :
+                            this.classList.contains('ai') ? 'zyra-core' : 'zyra-intel';
+
+            // Enhanced analytics tracking
+            console.log(`Zyra module accessed: ${cardType}`);
+
+            // Add click animation
+            this.style.transform = 'scale(0.98)';
+            setTimeout(() => {
+                this.style.transform = '';
+            }, 150);
+        });
+    });
+
+    // Add subtle parallax effect to background elements
+    window.addEventListener('scroll', function() {
+        const scrolled = window.pageYOffset;
+        const parallax = document.querySelector('body::before');
+        if (parallax) {
+            const speed = scrolled * 0.5;
+            parallax.style.transform = `translateY(${speed}px)`;
+        }
     });
 });
 
-// Add click tracking for analytics
-document.querySelectorAll('.action-card').forEach(card => {
-    card.addEventListener('click', function() {
-        const cardType = this.classList.contains('nutrition') ? 'nutrition' :
-                        this.classList.contains('gym') ? 'gym' :
-                        this.classList.contains('ai') ? 'ai' : 'analytics';
+// Add loading states for better UX
+function showLoadingState(element) {
+    element.classList.add('loading-shimmer');
+    setTimeout(() => {
+        element.classList.remove('loading-shimmer');
+    }, 1000);
+}
 
-        // Could send analytics data here
-        console.log(`Dashboard action clicked: ${cardType}`);
-    });
-});
+// Initialize Zyra AI features
+console.log('🧠 Zyra AI System Initialized');
+console.log('💡 Smarter Body. Sharper Mind. Powered by AI.');
 </script>
 {% endblock %}
