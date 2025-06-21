@@ -291,6 +291,62 @@ body {
     font-weight: 700;
     color: var(--dark-color);
     font-size: 1rem;
+    min-width: 60px;
+}
+
+/* Set Progression Styles */
+.set-progression-info {
+    flex: 1;
+    margin: 0 1rem;
+    font-size: 0.85rem;
+}
+
+.progression-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.progression-ready {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.progression-close {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.progression-maintain {
+    background: linear-gradient(135deg, #e2e3e5, #d6d8db);
+    color: #383d41;
+    border: 1px solid #d6d8db;
+}
+
+.progression-new {
+    background: linear-gradient(135deg, #cce5ff, #b3d9ff);
+    color: #004085;
+    border: 1px solid #b3d9ff;
+}
+
+.progression-error {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.progression-details {
+    font-size: 0.75rem;
+    margin-top: 0.2rem;
+    opacity: 0.8;
+}
+
+.loading-progression {
+    color: #6c757d;
+    font-style: italic;
 }
 
 .set-actions {
@@ -785,6 +841,9 @@ function addSetRow(exerciseId) {
     setDiv.innerHTML = `
         <div class="set-header">
             <span class="set-number">Set ${setNumber}</span>
+            <div class="set-progression-info" id="progression-${setId}">
+                <span class="loading-progression">Loading suggestions...</span>
+            </div>
             <div class="set-actions">
                 <button class="set-btn btn-save" data-set-id="${setId}" data-exercise-id="${exerciseId}">
                     <i class="fas fa-check"></i> Save
@@ -815,27 +874,8 @@ function addSetRow(exerciseId) {
     const addSetBtn = document.querySelector(`#sets-${exerciseId} .add-set-btn`);
     addSetBtn.parentNode.insertBefore(setDiv, addSetBtn);
 
-    // Fetch progression suggestions for first set
-    if (setNumber === 1) {
-        fetch(`/gym/exercise/${exerciseId}/quick-progression`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.has_history) {
-                    const weightInput = document.getElementById(`weight-${setId}`);
-                    const repsInput = document.getElementById(`reps-${setId}`);
-
-                    if (weightInput) {
-                        weightInput.value = data.suggested_weight;
-                        weightInput.placeholder = `Last: ${data.last_weight}kg`;
-                    }
-                    if (repsInput) {
-                        repsInput.value = data.suggested_reps;
-                        repsInput.placeholder = `Last: ${data.last_reps} reps`;
-                    }
-                }
-            })
-            .catch(error => console.error('Error fetching progression data:', error));
-    }
+    // Fetch set-specific progression suggestions
+    fetchSetProgression(exerciseId, setNumber, setId);
 
     // Add event listeners
     setDiv.querySelector('.btn-save').addEventListener('click', function() {
@@ -852,6 +892,129 @@ function addSetRow(exerciseId) {
 
     // Focus on weight input
     setDiv.querySelector('.weight-input').focus();
+}
+
+function fetchSetProgression(exerciseId, setNumber, setId) {
+    fetch(`/gym/exercise/${exerciseId}/set-specific-progression/${setNumber}`)
+        .then(response => response.json())
+        .then(data => {
+            const progressionDiv = document.getElementById(`progression-${setId}`);
+            const weightInput = document.getElementById(`weight-${setId}`);
+            const repsInput = document.getElementById(`reps-${setId}`);
+
+            if (data.has_history) {
+                // Update input values with suggestions
+                if (weightInput && data.current_weight) {
+                    weightInput.value = data.current_weight;
+                    if (data.suggested_weight && data.ready) {
+                        weightInput.value = data.suggested_weight;
+                    }
+                }
+                if (repsInput) {
+                    if (data.suggested_reps) {
+                        repsInput.value = data.suggested_reps;
+                    } else if (data.target_reps) {
+                        repsInput.value = data.target_reps;
+                    }
+                }
+
+                // Create progression info display based on suggestion type
+                let progressionHTML = '';
+                let statusClass = '';
+                let statusIcon = '';
+
+                if (data.ready && data.suggestion === 'increase_weight') {
+                    statusClass = 'progression-ready';
+                    statusIcon = '🔥';
+                    progressionHTML = `
+                        <div class="progression-status ${statusClass}">
+                            ${statusIcon} Ready to progress!
+                            <div class="progression-details">
+                                Current: ${data.current_weight}kg × ${data.current_avg_reps} → Try: ${data.suggested_weight}kg × ${data.suggested_reps}
+                            </div>
+                        </div>
+                    `;
+                } else if (data.suggestion === 'build_strength') {
+                    statusClass = 'progression-close';
+                    statusIcon = '📈';
+                    progressionHTML = `
+                        <div class="progression-status ${statusClass}">
+                            ${statusIcon} Building strength!
+                            <div class="progression-details">
+                                Current: ${data.current_weight}kg × ${data.current_avg_reps} |
+                                Target: ${data.target_reps} reps (${data.reps_to_go} to go)
+                            </div>
+                        </div>
+                    `;
+                } else if (data.suggestion === 'almost_ready') {
+                    statusClass = 'progression-close';
+                    statusIcon = '📈';
+                    progressionHTML = `
+                        <div class="progression-status ${statusClass}">
+                            ${statusIcon} Almost there!
+                            <div class="progression-details">
+                                Current: ${data.current_weight}kg |
+                                Need ${data.reps_to_go} more reps for progression
+                            </div>
+                        </div>
+                    `;
+                } else if (data.suggestion === 'build_reps') {
+                    statusClass = 'progression-maintain';
+                    statusIcon = '💪';
+                    progressionHTML = `
+                        <div class="progression-status ${statusClass}">
+                            ${statusIcon} Focus on reps
+                            <div class="progression-details">
+                                Current: ${data.current_weight}kg × ${data.current_avg_reps} |
+                                Target: ${data.target_reps} reps
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    statusClass = 'progression-maintain';
+                    statusIcon = '💪';
+                    progressionHTML = `
+                        <div class="progression-status ${statusClass}">
+                            ${statusIcon} Keep building
+                            <div class="progression-details">
+                                Current: ${data.current_weight}kg × ${data.current_avg_reps || 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                progressionDiv.innerHTML = progressionHTML;
+            } else {
+                // No history available
+                progressionDiv.innerHTML = `
+                    <div class="progression-status progression-new">
+                        ✨ First time doing set ${setNumber}
+                    </div>
+                `;
+
+                // Set default values
+                if (weightInput && setNumber > 1) {
+                    // For subsequent sets, try to get weight from previous set
+                    const prevSetId = `${exerciseId}-${setNumber - 1}`;
+                    const prevWeightInput = document.getElementById(`weight-${prevSetId}`);
+                    if (prevWeightInput && prevWeightInput.value) {
+                        weightInput.value = prevWeightInput.value;
+                    }
+                }
+                if (repsInput) {
+                    repsInput.value = 10; // Default reps
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching set progression data:', error);
+            const progressionDiv = document.getElementById(`progression-${setId}`);
+            progressionDiv.innerHTML = `
+                <div class="progression-status progression-error">
+                    ⚠️ Unable to load suggestions
+                </div>
+            `;
+        });
 }
 
 function saveSet(exerciseId, setId, setNumber) {
