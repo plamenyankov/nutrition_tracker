@@ -659,6 +659,88 @@ def exercise_progression_summary(exercise_id):
         'ready_for_progression': ready_for_progression
     })
 
+@gym_bp.route('/exercise/<int:exercise_id>/set-specific-progression/<int:set_number>')
+@login_required
+def get_set_specific_progression(exercise_id, set_number):
+    """Get progression suggestion for a specific set number"""
+    from models.services.advanced_progression_service import AdvancedProgressionService
+    from models.services.progression_service import ProgressionService
+
+    adv_service = AdvancedProgressionService()
+    prog_service = ProgressionService()
+    user_id = gym_service.user_id
+
+    # Get historical data for this specific set
+    set_history = adv_service.get_set_history(user_id, exercise_id, set_number, limit=3)
+
+    if not set_history:
+        return jsonify({
+            'has_history': False,
+            'set_number': set_number,
+            'suggested_weight': 0,
+            'suggested_reps': 10,
+            'message': f'No history for set {set_number}'
+        })
+
+    # Get the most recent performance for this set
+    last_set_performance = set_history[0]
+
+    # Analyze progression readiness for this specific set
+    try:
+        progression_analysis = adv_service.analyze_set_progression(user_id, exercise_id, set_number)
+    except Exception as e:
+        # Fallback: Simple progression analysis using current data
+        progression_analysis = _simple_set_progression_analysis(
+            user_id, exercise_id, set_number, set_history
+        )
+
+    # Ensure progression_analysis is not None
+    if not progression_analysis:
+        progression_analysis = {
+            'ready': False,
+            'suggestion': 'maintain',
+            'suggested_weight': last_set_performance['weight'],
+            'suggested_reps': last_set_performance['reps'],
+            'confidence': 0.0,
+            'reps_to_go': 0,
+            'target_reps': 15
+        }
+
+    # Determine suggested values based on progression analysis
+    if progression_analysis.get('ready'):
+        suggested_weight = progression_analysis.get('suggested_weight', last_set_performance['weight'])
+        suggested_reps = progression_analysis.get('suggested_reps', last_set_performance['reps'])
+    else:
+        # Use last performance as baseline
+        suggested_weight = last_set_performance['weight']
+        suggested_reps = last_set_performance['reps']
+
+        # If close to progression, suggest slight rep increase
+        if progression_analysis.get('suggestion') == 'almost_ready':
+            suggested_reps = min(suggested_reps + 1, 15)  # Cap at 15 reps
+
+    return jsonify({
+        'has_history': True,
+        'set_number': set_number,
+        # Backend data that frontend expects
+        'current_weight': last_set_performance['weight'],
+        'current_avg_reps': last_set_performance['reps'],
+        'last_date': last_set_performance['date'],
+        'suggested_weight': suggested_weight,
+        'suggested_reps': suggested_reps,
+        'suggestion': progression_analysis.get('suggestion', 'maintain'),
+        'ready': progression_analysis.get('ready', False),
+        'confidence': progression_analysis.get('confidence', 0.0),
+        'reps_to_go': progression_analysis.get('reps_to_go', 0),
+        'target_reps': progression_analysis.get('target_reps', 15),
+        'history_count': len(set_history),
+        # Legacy fields for backward compatibility
+        'last_weight': last_set_performance['weight'],
+        'last_reps': last_set_performance['reps'],
+        'progression_status': progression_analysis.get('suggestion', 'maintain'),
+        'ready_for_progression': progression_analysis.get('ready', False)
+    })
+
 @gym_bp.route('/exercise/<int:exercise_id>/comprehensive-progression')
 @login_required
 def exercise_comprehensive_progression(exercise_id):
@@ -756,6 +838,88 @@ def _get_pyramid_description(pattern):
         'unknown': 'Pattern not yet established'
     }
     return descriptions.get(pattern, 'Custom pattern')
+
+def _simple_set_progression_analysis(user_id, exercise_id, set_number, set_history):
+    """Simple fallback progression analysis when AdvancedProgressionService fails"""
+    if len(set_history) < 2:
+        return {
+            'ready': False,
+            'confidence': 0.0,
+            'suggestion': 'maintain',
+            'current_weight': set_history[0]['weight'] if set_history else 0,
+            'suggested_weight': set_history[0]['weight'] if set_history else 0,
+            'suggested_reps': 10,
+            'reps_to_go': 5,
+            'target_reps': 15
+        }
+
+    current = set_history[0]
+    current_weight = current['weight']
+    current_reps = current['reps']
+
+    # Check if recently progressed by comparing with older data
+    recently_progressed = False
+    for i in range(1, min(len(set_history), 4)):
+        if set_history[i]['weight'] < current_weight:
+            recently_progressed = True
+            break
+
+    # Simple progression logic
+    if recently_progressed:
+        if current_reps >= 15:  # max_reps
+            return {
+                'ready': True,
+                'confidence': 0.9,
+                'suggestion': 'increase_weight',
+                'current_weight': current_weight,
+                'suggested_weight': current_weight + 2.5,
+                'suggested_reps': 10,
+                'reps_to_go': 0,
+                'target_reps': 15
+            }
+        elif current_reps >= 10:  # min_reps
+            return {
+                'ready': False,
+                'confidence': 0.7,
+                'suggestion': 'build_strength',
+                'current_weight': current_weight,
+                'current_avg_reps': current_reps,
+                'reps_to_go': max(1, 15 - current_reps),
+                'target_reps': 15
+            }
+        else:
+            return {
+                'ready': False,
+                'confidence': 0.4,
+                'suggestion': 'build_reps',
+                'current_weight': current_weight,
+                'current_avg_reps': current_reps,
+                'reps_to_go': max(1, 10 - current_reps),
+                'target_reps': 10
+            }
+    else:
+        # Standard progression logic
+        if current_reps >= 15:
+            return {
+                'ready': True,
+                'confidence': 0.9,
+                'suggestion': 'increase_weight',
+                'current_weight': current_weight,
+                'suggested_weight': current_weight + 2.5,
+                'suggested_reps': 10,
+                'reps_to_go': 0,
+                'target_reps': 15
+            }
+        else:
+            return {
+                'ready': False,
+                'confidence': 0.5,
+                'suggestion': 'increase_reps',
+                'current_weight': current_weight,
+                'current_avg_reps': current_reps,
+                'reps_to_go': max(1, 15 - current_reps),
+                'target_reps': 15
+            }
 
 @gym_bp.route('/exercise/<int:exercise_id>/set-progression-analysis')
 @login_required

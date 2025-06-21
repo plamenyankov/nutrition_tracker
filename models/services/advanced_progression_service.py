@@ -58,6 +58,11 @@ class SmartSuggestion:
 
 class AdvancedProgressionService:
     def __init__(self, db_path=None):
+        # Use the same connection manager as GymService
+        from models.database.connection_manager import DatabaseConnectionManager
+        self.connection_manager = DatabaseConnectionManager(use_mysql=True)
+
+        # Keep db_path for backward compatibility but prefer connection manager
         if db_path is None:
             db_path = os.getenv('DATABASE_PATH', 'database.db')
         self.db_path = db_path
@@ -76,10 +81,14 @@ class AdvancedProgressionService:
         }
 
     def _get_connection(self):
-        """Get a database connection with WAL mode enabled"""
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA journal_mode=WAL")
-        return conn
+        """Get a database connection using the same connection manager as GymService"""
+        if hasattr(self, 'connection_manager') and self.connection_manager.use_mysql:
+            return self.connection_manager.get_connection()
+        else:
+            # Fallback to SQLite for backward compatibility
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("PRAGMA journal_mode=WAL")
+            return conn
 
     def analyze_set_progression(self, user_id: int, exercise_id: int, set_number: int) -> Dict:
         """Analyze progression readiness for a specific set"""
@@ -95,16 +104,27 @@ class AdvancedProgressionService:
             }
 
         # Get user preferences
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT min_reps_target, max_reps_target, weight_increment_upper, weight_increment_lower
-            FROM user_gym_preferences
-            WHERE user_id = ?
-        ''', (user_id,))
-
-        prefs = cursor.fetchone()
-        conn.close()
+        if hasattr(self, 'connection_manager') and self.connection_manager.use_mysql:
+            with self.connection_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT min_reps_target, max_reps_target, weight_increment_upper, weight_increment_lower
+                    FROM user_gym_preferences
+                    WHERE user_id = %s
+                ''', (user_id,))
+                prefs = cursor.fetchone()
+                cursor.close()
+        else:
+            # SQLite fallback
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT min_reps_target, max_reps_target, weight_increment_upper, weight_increment_lower
+                FROM user_gym_preferences
+                WHERE user_id = ?
+            ''', (user_id,))
+            prefs = cursor.fetchone()
+            conn.close()
 
         if not prefs:
             min_reps, max_reps, inc_upper, inc_lower = 10, 15, 2.5, 5.0
@@ -115,65 +135,138 @@ class AdvancedProgressionService:
         recent_weights = [h['weight'] for h in history[:3]]
         recent_reps = [h['reps'] for h in history[:3]]
 
-        # Check if consistently hitting max reps
-        hitting_max_reps = all(r >= max_reps for r in recent_reps[:2])
-        avg_reps = statistics.mean(recent_reps[:2])
+        current_weight = recent_weights[0]
+        current_reps = recent_reps[0]
 
         # Determine if upper or lower body exercise
         is_upper = self._is_upper_body_exercise(exercise_id)
         weight_increment = inc_upper if is_upper else inc_lower
 
-        if hitting_max_reps:
-            # Ready to progress in weight
+        # Check if user recently progressed in weight
+        recently_progressed = False
+        if len(history) >= 2:
+            # Look for weight progression in recent history (not just last 2 workouts)
             current_weight = recent_weights[0]
-            return {
-                'ready': True,
-                'confidence': 0.9,
-                'suggestion': 'increase_weight',
-                'current_weight': current_weight,
-                'suggested_weight': current_weight + weight_increment,
-                'suggested_reps': min_reps,
-                'reps_to_go': 0
-            }
-        elif avg_reps >= max_reps - 1:
-            # Close to progression
-            return {
-                'ready': False,
-                'confidence': 0.6,
-                'suggestion': 'almost_ready',
-                'current_weight': recent_weights[0],
-                'reps_to_go': max(1, int(max_reps - avg_reps)),
-                'target_reps': max_reps
-            }
+
+            # Check if any of the recent weights are different from current
+            for i in range(1, min(len(recent_weights), 4)):  # Check up to 4 recent workouts
+                if recent_weights[i] < current_weight:
+                    recently_progressed = True
+                    break
+
+            # Alternative: check if current weight is higher than the oldest in our sample
+            if not recently_progressed and len(history) >= 3:
+                oldest_weight = history[-1]['weight']  # Last item in history
+                if current_weight > oldest_weight:
+                    recently_progressed = True
+
+        # Improved progression logic
+        if recently_progressed:
+            # User recently progressed, check if they're adapting well
+            if current_reps >= max_reps:
+                # Already hitting max reps with new weight - ready for another progression!
+                return {
+                    'ready': True,
+                    'confidence': 0.95,
+                    'suggestion': 'increase_weight',
+                    'current_weight': current_weight,
+                    'suggested_weight': current_weight + weight_increment,
+                    'suggested_reps': min_reps,
+                    'reps_to_go': 0
+                }
+            elif current_reps >= min_reps:
+                # Adapting well to new weight, but not ready for next progression yet
+                target_reps_for_progression = max_reps
+                return {
+                    'ready': False,
+                    'confidence': 0.7,
+                    'suggestion': 'build_strength',
+                    'current_weight': current_weight,
+                    'current_avg_reps': current_reps,
+                    'reps_to_go': max(1, int(target_reps_for_progression - current_reps)),
+                    'target_reps': target_reps_for_progression
+                }
+            else:
+                # Struggling with new weight, focus on building reps
+                return {
+                    'ready': False,
+                    'confidence': 0.4,
+                    'suggestion': 'build_reps',
+                    'current_weight': current_weight,
+                    'current_avg_reps': current_reps,
+                    'reps_to_go': max(1, int(min_reps - current_reps)),
+                    'target_reps': min_reps
+                }
         else:
-            # Focus on increasing reps
-            return {
-                'ready': False,
-                'confidence': 0.3,
-                'suggestion': 'increase_reps',
-                'current_weight': recent_weights[0],
-                'current_avg_reps': round(avg_reps, 1),
-                'reps_to_go': int(max_reps - avg_reps),
-                'target_reps': max_reps
-            }
+            # No recent weight progression, use standard logic
+            # Check if consistently hitting max reps
+            hitting_max_reps = all(r >= max_reps for r in recent_reps[:2])
+            avg_reps = statistics.mean(recent_reps[:2])
+
+            if hitting_max_reps:
+                # Ready to progress in weight
+                return {
+                    'ready': True,
+                    'confidence': 0.9,
+                    'suggestion': 'increase_weight',
+                    'current_weight': current_weight,
+                    'suggested_weight': current_weight + weight_increment,
+                    'suggested_reps': min_reps,
+                    'reps_to_go': 0
+                }
+            elif avg_reps >= max_reps - 1:
+                # Close to progression
+                return {
+                    'ready': False,
+                    'confidence': 0.6,
+                    'suggestion': 'almost_ready',
+                    'current_weight': current_weight,
+                    'reps_to_go': max(1, int(max_reps - avg_reps)),
+                    'target_reps': max_reps
+                }
+            else:
+                # Focus on increasing reps
+                return {
+                    'ready': False,
+                    'confidence': 0.3,
+                    'suggestion': 'increase_reps',
+                    'current_weight': current_weight,
+                    'current_avg_reps': round(avg_reps, 1),
+                    'reps_to_go': int(max_reps - avg_reps),
+                    'target_reps': max_reps
+                }
 
     def get_set_history(self, user_id: int, exercise_id: int, set_number: int, limit: int = 5) -> List[Dict]:
         """Get history for a specific set number"""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            SELECT ws.date, wset.weight, wset.reps, wset.rpe, wset.form_quality
-            FROM workout_sets wset
-            JOIN workout_sessions ws ON wset.session_id = ws.id
-            WHERE ws.user_id = ? AND wset.exercise_id = ? AND wset.set_number = ?
-                  AND ws.status = 'completed'
-            ORDER BY ws.date DESC
-            LIMIT ?
-        ''', (user_id, exercise_id, set_number, limit))
-
-        rows = cursor.fetchall()
-        conn.close()
+        if hasattr(self, 'connection_manager') and self.connection_manager.use_mysql:
+            with self.connection_manager.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT ws.date, wset.weight, wset.reps, wset.rpe, wset.form_quality
+                    FROM workout_sets wset
+                    JOIN workout_sessions ws ON wset.session_id = ws.id
+                    WHERE ws.user_id = %s AND wset.exercise_id = %s AND wset.set_number = %s
+                          AND ws.status = 'completed'
+                    ORDER BY ws.date DESC
+                    LIMIT %s
+                ''', (user_id, exercise_id, set_number, limit))
+                rows = cursor.fetchall()
+                cursor.close()
+        else:
+            # SQLite fallback
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT ws.date, wset.weight, wset.reps, wset.rpe, wset.form_quality
+                FROM workout_sets wset
+                JOIN workout_sessions ws ON wset.session_id = ws.id
+                WHERE ws.user_id = ? AND wset.exercise_id = ? AND wset.set_number = ?
+                      AND ws.status = 'completed'
+                ORDER BY ws.date DESC
+                LIMIT ?
+            ''', (user_id, exercise_id, set_number, limit))
+            rows = cursor.fetchall()
+            conn.close()
 
         return [{
             'date': row[0],
