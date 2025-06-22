@@ -199,6 +199,61 @@ body {
     .form-select option[hidden] {
         display: none !important;
     }
+
+    /* Improved mobile layout for sets */
+    .set-header {
+        flex-wrap: wrap;
+    }
+
+    .set-progression-info {
+        width: 100%;
+        order: 3;
+        margin: 0.5rem 0 0 0;
+    }
+
+    .set-actions {
+        order: 2;
+    }
+
+    .progression-status {
+        display: block;
+        width: 100%;
+    }
+
+    .set-inputs {
+        gap: 0.5rem;
+    }
+
+    .set-input {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 0.6rem;
+    }
+
+    .set-btn {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.75rem;
+        min-width: 48px;
+        height: 30px;
+    }
+
+    .btn-delete {
+        width: 30px;
+        height: 30px;
+        min-width: 30px;
+    }
+
+    .exercise-card {
+        margin: 0.75rem;
+    }
+
+    .sets-container {
+        padding: 0.5rem;
+    }
+
+    .set-row {
+        padding: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
 }
 
 .form-floating > label {
@@ -249,11 +304,12 @@ body {
 
 .exercise-header {
     background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    padding: 1rem;
+    padding: 0.75rem;
     border-bottom: 1px solid #dee2e6;
     display: flex;
-    justify-content: between;
-    align-items: center;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
 }
 
 .exercise-info {
@@ -261,48 +317,61 @@ body {
 }
 
 .exercise-name {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--dark-color);
-    margin: 0 0 0.25rem 0;
+    margin: 0 0 0.2rem 0;
+    line-height: 1.3;
 }
 
 .exercise-history {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #6c757d;
     margin: 0;
+    line-height: 1.2;
+}
+
+.progress-badge {
+    color: var(--success-color);
+    font-weight: 600;
 }
 
 .remove-exercise-btn {
     background: var(--danger-color);
     border: none;
     color: white;
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.remove-exercise-btn i {
+    font-size: 0.75rem;
 }
 
 .remove-exercise-btn:hover {
     background: #c82333;
-    transform: scale(1.1);
+    transform: scale(1.05);
 }
 
 /* Set Rows */
 .sets-container {
-    padding: 1rem;
+    padding: 0.75rem;
 }
 
 .set-row {
     background: #f8f9fa;
     border-radius: 10px;
-    padding: 1rem;
+    padding: 0.75rem;
     margin-bottom: 0.75rem;
     transition: all 0.3s ease;
     border: 2px solid transparent;
+    position: relative;
 }
 
 .set-row.logged {
@@ -312,30 +381,33 @@ body {
 
 .set-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     margin-bottom: 0.75rem;
+    gap: 0.5rem;
 }
 
 .set-number {
     font-weight: 700;
     color: var(--dark-color);
-    font-size: 1rem;
-    min-width: 60px;
+    font-size: 0.9rem;
+    min-width: 45px;
 }
 
-/* Set Progression Styles */
+/* Improved Set Progression Styles for Mobile */
 .set-progression-info {
     flex: 1;
-    margin: 0 1rem;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    line-height: 1.3;
+    overflow: hidden;
 }
 
 .progression-status {
-    padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
     font-weight: 500;
-    text-align: center;
+    text-align: left;
+    display: inline-block;
+    max-width: 100%;
 }
 
 .progression-ready {
@@ -369,26 +441,31 @@ body {
 }
 
 .progression-details {
-    font-size: 0.75rem;
-    margin-top: 0.2rem;
-    opacity: 0.8;
+    font-size: 0.65rem;
+    margin-top: 0.15rem;
+    opacity: 0.85;
+    line-height: 1.2;
+    word-break: break-word;
 }
 
 .loading-progression {
     color: #6c757d;
     font-style: italic;
+    font-size: 0.75rem;
 }
 
 .set-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.25rem;
+    margin-left: auto;
+    flex-shrink: 0;
 }
 
 .set-inputs {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.75rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .input-group {
@@ -397,13 +474,16 @@ body {
 
 .set-input {
     width: 100%;
-    padding: 0.75rem;
+    padding: 0.6rem;
     border: 2px solid #e9ecef;
     border-radius: 8px;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     text-align: center;
     transition: all 0.3s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 .set-input:focus {
@@ -415,27 +495,33 @@ body {
 .set-input:disabled {
     background: transparent;
     color: var(--dark-color);
+    opacity: 0.8;
 }
 
 .input-label {
     position: absolute;
     top: -8px;
-    left: 12px;
-    background: white;
+    left: 10px;
+    background: #f8f9fa;
     padding: 0 4px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: #6c757d;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: 0.3px;
 }
 
 .set-btn {
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
     border: none;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     transition: all 0.3s ease;
-    min-width: 70px;
+    min-width: 55px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .btn-save {
@@ -451,18 +537,20 @@ body {
 .btn-delete {
     background: var(--danger-color);
     color: white;
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding: 0;
+    min-width: 32px;
+}
+
+.btn-delete i {
+    font-size: 0.75rem;
 }
 
 .set-btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
 .add-set-btn {
@@ -900,10 +988,12 @@ function addSetRow(exerciseId) {
             </div>
             <div class="set-actions">
                 <button class="set-btn btn-save" data-set-id="${setId}" data-exercise-id="${exerciseId}">
-                    <i class="fas fa-check"></i> Save
+                    <i class="fas fa-check"></i>
+                    <span class="d-none d-sm-inline">Save</span>
                 </button>
                 <button class="set-btn btn-edit d-none" data-set-id="${setId}">
-                    <i class="fas fa-edit"></i> Edit
+                    <i class="fas fa-edit"></i>
+                    <span class="d-none d-sm-inline">Edit</span>
                 </button>
                 <button class="set-btn btn-delete" data-set-id="${setId}" data-exercise-id="${exerciseId}">
                     <i class="fas fa-trash"></i>
@@ -982,21 +1072,20 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '🔥';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Ready to progress!
+                            ${statusIcon} Ready!
                             <div class="progression-details">
-                                Current: ${data.current_weight}kg × ${data.current_avg_reps} → Try: ${data.suggested_weight}kg × ${data.suggested_reps}
+                                Try: ${data.suggested_weight}kg × ${data.suggested_reps}
                             </div>
                         </div>
                     `;
                 } else if (data.suggestion === 'build_strength') {
                     statusClass = 'progression-close';
-                    statusIcon = '📈';
+                    statusIcon = '💪';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Building strength!
+                            ${statusIcon} Keep building
                             <div class="progression-details">
-                                Current: ${data.current_weight}kg × ${data.current_avg_reps} |
-                                Target: ${data.target_reps} reps (${data.reps_to_go} to go)
+                                Current: ${data.current_weight}kg × ${data.current_avg_reps}
                             </div>
                         </div>
                     `;
@@ -1005,10 +1094,9 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '📈';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Almost there!
+                            ${statusIcon} Almost ready
                             <div class="progression-details">
-                                Current: ${data.current_weight}kg |
-                                Need ${data.reps_to_go} more reps for progression
+                                ${data.reps_to_go} more reps to go
                             </div>
                         </div>
                     `;
@@ -1017,9 +1105,8 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '💪';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Focus on reps
+                            ${statusIcon} Build reps
                             <div class="progression-details">
-                                Current: ${data.current_weight}kg × ${data.current_avg_reps} |
                                 Target: ${data.target_reps} reps
                             </div>
                         </div>
@@ -1029,9 +1116,9 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '💪';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Keep building
+                            ${statusIcon} Keep going
                             <div class="progression-details">
-                                Current: ${data.current_weight}kg × ${data.current_avg_reps || 'N/A'}
+                                Current: ${data.current_weight}kg × ${data.current_avg_reps || '—'}
                             </div>
                         </div>
                     `;
