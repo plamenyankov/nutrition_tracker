@@ -9,6 +9,7 @@
 .env
 .env.local
 .env.*.local
+.env.backup.*
 
 # Python cache and compiled files
 __pycache__/
