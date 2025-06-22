@@ -163,12 +163,42 @@ body {
     padding: 1rem 0.75rem 0.5rem;
     height: auto;
     font-size: 1rem;
+    min-height: 56px; /* Ensure good touch target size on mobile */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 .form-floating > .form-select:focus,
 .form-floating > .form-control:focus {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    outline: none;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+    .form-floating > .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 1.2rem 0.75rem 0.6rem;
+        min-height: 60px;
+    }
+
+    .form-floating > label {
+        font-size: 0.85rem;
+        padding: 1.2rem 0.75rem;
+    }
+
+    /* Ensure dropdown options are visible */
+    .form-select option {
+        padding: 0.5rem;
+        font-size: 16px;
+    }
+
+    /* Force refresh select rendering on mobile */
+    .form-select option[hidden] {
+        display: none !important;
+    }
 }
 
 .form-floating > label {
@@ -647,13 +677,15 @@ body {
             <div class="form-floating">
                 <select id="muscle-group-filter" class="form-select">
                     <option value="">All Muscle Groups</option>
-                    <option value="Back">🏋️ Back</option>
-                    <option value="Biceps">💪 Biceps</option>
-                    <option value="Chest">💪 Chest</option>
-                    <option value="Core">🔥 Core</option>
-                    <option value="Legs">🦵 Legs</option>
-                    <option value="Shoulders">🤲 Shoulders</option>
-                    <option value="Triceps">💪 Triceps</option>
+                    {% set muscle_groups = [] %}
+                    {% for exercise in exercises %}
+                        {% if exercise[2] and exercise[2] not in muscle_groups %}
+                            {% set _ = muscle_groups.append(exercise[2]) %}
+                        {% endif %}
+                    {% endfor %}
+                    {% for muscle_group in muscle_groups|sort %}
+                        <option value="{{ muscle_group }}">{{ muscle_group }}</option>
+                    {% endfor %}
                 </select>
                 <label for="muscle-group-filter">Filter by Muscle Group</label>
             </div>
@@ -717,24 +749,46 @@ let lastSetTime = null;
 // Set today's date
 document.getElementById('workout-date').textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
-// Muscle group filter
+// Muscle group filter with improved mobile support
 document.getElementById('muscle-group-filter').addEventListener('change', function() {
-    const selectedGroup = this.value.toLowerCase();
+    const selectedGroup = this.value.trim();
     const exerciseSelect = document.getElementById('exercise-select');
     const options = exerciseSelect.querySelectorAll('option[data-muscle-group]');
 
+    // Clear current selection if it will be hidden
+    if (exerciseSelect.value && exerciseSelect.selectedOptions[0]) {
+        const currentOptionGroup = (exerciseSelect.selectedOptions[0].dataset.muscleGroup || '').trim();
+        if (selectedGroup !== '' && currentOptionGroup !== selectedGroup) {
+            exerciseSelect.value = '';
+        }
+    }
+
+    // Filter options
+    let visibleCount = 0;
     options.forEach(option => {
-        const optionGroup = (option.dataset.muscleGroup || '').toLowerCase();
-        if (selectedGroup === '' || optionGroup === selectedGroup) {
+        const optionGroup = (option.dataset.muscleGroup || '').trim();
+        const shouldShow = selectedGroup === '' || optionGroup === selectedGroup;
+
+        if (shouldShow) {
             option.style.display = '';
+            option.hidden = false;
+            visibleCount++;
         } else {
             option.style.display = 'none';
+            option.hidden = true;
         }
     });
 
-    if (exerciseSelect.value && exerciseSelect.selectedOptions[0].style.display === 'none') {
-        exerciseSelect.value = '';
+    // Force refresh of select element for mobile devices
+    if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        // Create a small delay to ensure DOM updates are processed
+        setTimeout(() => {
+            exerciseSelect.blur();
+            exerciseSelect.focus();
+        }, 10);
     }
+
+    console.log(`Filtered exercises: ${visibleCount} visible out of ${options.length} total`);
 });
 
 // Add exercise button click

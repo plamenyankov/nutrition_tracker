@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import os
 from dotenv import load_dotenv
+from flasgger import Swagger
+from config.swagger_config import swagger_config, swagger_template
 from models.food import FoodDatabase
 from models.foods.food_blueprint import food_blueprint
 # from models.nutrition_app.routes import nutrition_app  # Commented out - replaced by new blueprints
@@ -12,7 +14,7 @@ from models.blueprints.meal_bp import meal_bp
 from models.blueprints.recipe_bp import recipe_bp
 from models.blueprints.ai_bp import ai_bp
 from models.blueprints.analytics_bp import analytics_bp
-from models.blueprints.gym_bp import gym_bp
+from models.blueprints.gym import gym_bp
 from routes.timer_routes import timer_bp
 from models.calorie_weight import CalorieWeight
 from datetime import datetime
@@ -24,6 +26,9 @@ app = Flask(__name__)
 
 # Use environment variable for secret key, fallback to default for development
 app.secret_key = os.getenv('SECRET_KEY', 'secret')
+
+# Initialize Swagger UI
+swagger = Swagger(app, config=swagger_config, template=swagger_template)
 
 # Configure debug mode based on environment
 app.config['DEBUG'] = os.getenv('DEBUG', 'False').lower() == 'true'
@@ -59,6 +64,28 @@ def load_user(user_id):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    """
+    User login endpoint
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - name: username
+        in: formData
+        type: string
+        required: true
+        description: Username
+      - name: password
+        in: formData
+        type: string
+        required: true
+        description: Password
+    responses:
+      302:
+        description: Redirect to home page on success
+      200:
+        description: Login page with error message
+    """
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -109,6 +136,23 @@ def transform_date_format(date_str):
 @app.route('/', methods=["GET", "POST"])
 @login_required
 def home():
+    """
+    Home dashboard with nutrition overview
+    ---
+    tags:
+      - Dashboard
+    security:
+      - LoginRequired: []
+    responses:
+      200:
+        description: Home dashboard page
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "success"
+    """
     consumption = food_db.fetch_all_consumption()
     calories = calorie_weight.fetch_calories()
     weights = calorie_weight.fetch_weights()

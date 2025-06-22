@@ -17,8 +17,8 @@ class DatabaseConfig:
     password: str
     charset: str = 'utf8mb4'
     ssl_disabled: bool = True
-    pool_size: int = 1
-    max_overflow: int = 0
+    pool_size: int = 10
+    max_overflow: int = 5
     pool_timeout: int = 30
     pool_recycle: int = 3600
     autocommit: bool = False

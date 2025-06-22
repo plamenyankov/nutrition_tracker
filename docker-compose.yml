@@ -1,24 +1,21 @@
 version: '3.8'
 
 services:
-  nutrition_tracker:
+  nutrition-tracker:
     build: .
     container_name: nutrition_tracker_app
     ports:
-      - "5000:5000"
+      - "8080:8080"
     environment:
-      - FLASK_ENV=${FLASK_ENV:-development}
       - USE_MYSQL=true
-      - DB_HOST=192.168.11.1
-      - DB_PORT=3306
-      - DB_USER=remote_user
-      - DB_PASS=BuGr@d@N4@loB6!
-      - DB_NAME_DEV=nutri_tracker_dev
-      - DB_NAME_PROD=nutri_tracker_prod
-      # For Docker network bridge - this allows the container to reach the host MySQL
-      - DOCKER_DB_HOST=host.docker.internal
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USERNAME=${MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=false
     volumes:
-      - ./database.db:/app/database.db  # Mount local SQLite for migration
       - ./logs:/app/logs
     # Network configuration options:
 

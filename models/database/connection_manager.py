@@ -1,6 +1,5 @@
 import mysql.connector
 from mysql.connector import pooling
-import sqlite3
 import os
 import logging
 from contextlib import contextmanager
@@ -12,22 +11,18 @@ from config.database import get_database_config, DatabaseConfig, ensure_database
 logger = logging.getLogger(__name__)
 
 class DatabaseConnectionManager:
-    """Unified database connection manager supporting both SQLite and MySQL"""
+    """MySQL-only database connection manager"""
 
-    def __init__(self, use_mysql: bool = None, sqlite_path: str = None):
-        self.use_mysql = use_mysql if use_mysql is not None else os.getenv('USE_MYSQL', 'false').lower() == 'true'
-        self.sqlite_path = sqlite_path or os.getenv('DATABASE_PATH', 'database.db')
-        self.config = None
+    def __init__(self):
+        self.config = get_database_config()
         self.connection_pool = None
 
-        if self.use_mysql:
-            self.config = get_database_config()
-            # Ensure database exists before creating pool
-            if ensure_database_exists(self.config):
-                self._init_mysql_pool()
-            else:
-                logger.error("Failed to ensure database exists, falling back to SQLite")
-                self.use_mysql = False
+        # Ensure database exists before creating pool
+        if ensure_database_exists(self.config):
+            self._init_mysql_pool()
+        else:
+            logger.error("Failed to ensure database exists")
+            raise Exception("Cannot connect to MySQL database")
 
     def _init_mysql_pool(self):
         """Initialize MySQL connection pool"""
@@ -56,63 +51,47 @@ class DatabaseConnectionManager:
 
     @contextmanager
     def get_connection(self):
-        """Get database connection (context manager)"""
-        if self.use_mysql:
-            connection = None
-            try:
-                connection = self.connection_pool.get_connection()
-                # Ensure connection is in a clean state
-                if connection.is_connected():
-                    connection.autocommit = False
-                yield connection
-            except mysql.connector.Error as e:
-                if connection and connection.is_connected():
+        """Get MySQL database connection (context manager)"""
+        connection = None
+        try:
+            if self.connection_pool is None:
+                raise Exception("Connection pool not initialized")
+            connection = self.connection_pool.get_connection()
+            # Ensure connection is in a clean state
+            if connection.is_connected():
+                pass  # Connection autocommit is handled by pool config
+            yield connection
+        except mysql.connector.Error as e:
+            if connection and connection.is_connected():
+                try:
+                    connection.rollback()
+                except:
+                    pass
+            logger.error(f"MySQL connection error: {e}")
+            raise
+        finally:
+            if connection and connection.is_connected():
+                try:
+                    # Ensure all pending results are consumed
                     try:
-                        connection.rollback()
+                        # Try to get any unread results
+                        connection.get_warnings()
                     except:
                         pass
-                logger.error(f"MySQL connection error: {e}")
-                raise
-            finally:
-                if connection and connection.is_connected():
-                    try:
-                        # Ensure all pending results are consumed
-                        try:
-                            # Try to get any unread results
-                            connection.get_warnings()
-                        except:
-                            pass
-                        # Commit any pending transactions
-                        connection.commit()
-                    except:
-                        pass
-                    finally:
-                        connection.close()
-        else:
-            # SQLite fallback
-            connection = sqlite3.connect(self.sqlite_path)
-            connection.row_factory = sqlite3.Row  # Enable column access by name
-            try:
-                connection.execute("PRAGMA journal_mode=WAL")
-                connection.execute("PRAGMA foreign_keys=ON")
-                yield connection
-            except sqlite3.Error as e:
-                connection.rollback()
-                logger.error(f"SQLite connection error: {e}")
-                raise
-            finally:
-                connection.close()
+                    # Commit any pending transactions
+                    connection.commit()
+                except:
+                    pass
+                finally:
+                    connection.close()
 
-    def execute_query(self, query: str, params: tuple = None, fetch_one: bool = False, fetch_all: bool = False):
+    def execute_query(self, query: str, params: Optional[tuple] = None, fetch_one: bool = False, fetch_all: bool = False):
         """Execute query with automatic connection management"""
         with self.get_connection() as conn:
-            if self.use_mysql:
-                cursor = conn.cursor(dictionary=True)
-            else:
-                cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
 
             try:
-                if params:
+                if params is not None:
                     cursor.execute(query, params)
                 else:
                     cursor.execute(query)
@@ -158,29 +137,19 @@ class DatabaseConnectionManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            if self.use_mysql:
-                # MySQL table info
-                cursor.execute("""
-                    SELECT TABLE_NAME, TABLE_ROWS, DATA_LENGTH, INDEX_LENGTH
-                    FROM information_schema.TABLES
-                    WHERE TABLE_SCHEMA = %s
-                """, (self.config.database,))
+            # MySQL table info
+            cursor.execute("""
+                SELECT TABLE_NAME, TABLE_ROWS, DATA_LENGTH, INDEX_LENGTH
+                FROM information_schema.TABLES
+                WHERE TABLE_SCHEMA = %s
+            """, (self.config.database,))
 
-                for row in cursor.fetchall():
-                    tables[row[0]] = {
-                        'row_count': row[1],
-                        'data_size': row[2],
-                        'index_size': row[3]
-                    }
-            else:
-                # SQLite table info
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
-                table_names = [row[0] for row in cursor.fetchall()]
-
-                for table_name in table_names:
-                    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-                    row_count = cursor.fetchone()[0]
-                    tables[table_name] = {'row_count': row_count}
+            for row in cursor.fetchall():
+                tables[row[0]] = {
+                    'row_count': row[1],
+                    'data_size': row[2],
+                    'index_size': row[3]
+                }
 
             cursor.close()
 
@@ -191,10 +160,7 @@ class DatabaseConnectionManager:
         try:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
-                if self.use_mysql:
-                    cursor.execute("SELECT 1")
-                else:
-                    cursor.execute("SELECT 1")
+                cursor.execute("SELECT 1")
                 result = cursor.fetchone()
                 cursor.close()
                 return result is not None
@@ -202,35 +168,38 @@ class DatabaseConnectionManager:
             logger.error(f"Connection test failed: {e}")
             return False
 
+    def get_connection_info(self) -> Dict[str, Any]:
+        """Get database connection information"""
+        return {
+            'type': 'MySQL',
+            'host': self.config.host,
+            'port': self.config.port,
+            'database': self.config.database,
+            'pool_size': self.config.pool_size
+        }
+
     def cleanup_connections(self):
-        """Cleanup and reset connection pool"""
-        if self.use_mysql and self.connection_pool:
+        """Clean up connection pool"""
+        if self.connection_pool:
             try:
-                # Close all connections in the pool
-                while True:
-                    try:
-                        conn = self.connection_pool.get_connection(timeout=1)
-                        if conn.is_connected():
-                            conn.close()
-                    except:
-                        break
-                logger.info("Connection pool cleaned up")
+                # MySQL connector doesn't have explicit pool cleanup
+                logger.info("Connection pool cleanup requested")
             except Exception as e:
-                logger.error(f"Error cleaning up connections: {e}")
+                logger.error(f"Error during connection cleanup: {e}")
 
     def __del__(self):
-        """Cleanup when manager is destroyed"""
+        """Cleanup on destruction"""
         try:
             self.cleanup_connections()
         except:
             pass
 
-# Global connection manager instance (will be initialized when needed)
+# Global instance
 _db_manager = None
 
-def get_db_manager(use_mysql: bool = None, sqlite_path: str = None) -> DatabaseConnectionManager:
-    """Get or create database connection manager"""
+def get_db_manager() -> DatabaseConnectionManager:
+    """Get singleton database manager instance"""
     global _db_manager
     if _db_manager is None:
-        _db_manager = DatabaseConnectionManager(use_mysql=use_mysql, sqlite_path=sqlite_path)
+        _db_manager = DatabaseConnectionManager()
     return _db_manager

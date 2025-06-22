@@ -2,6 +2,7 @@
 Environment configuration for development and production
 """
 import os
+from typing import Dict, Any
 
 # Environment detection
 FLASK_ENV = os.getenv('FLASK_ENV', 'development')
@@ -22,21 +23,37 @@ DB_CONFIG = {
 # If running in Docker, this should be the IP/hostname accessible from inside the container
 DOCKER_DB_HOST = os.getenv('DOCKER_DB_HOST', 'host.docker.internal')
 
-# SQLite Configuration (for migration source)
-SQLITE_CONFIG = {
-    'local_path': os.getenv('LOCAL_SQLITE_PATH', 'database.db'),
-    'production_path': os.getenv('PROD_SQLITE_PATH', '/root/nutrition_tracker_data/database.db'),
-}
-
 # Feature Flags
 USE_MYSQL = os.getenv('USE_MYSQL', 'true').lower() == 'true'
 
-# Application Configuration
-APP_CONFIG = {
-    'secret_key': os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production'),
-    'debug': os.getenv('DEBUG', 'true' if IS_DEVELOPMENT else 'false').lower() == 'true',
-    'session_timeout': int(os.getenv('SESSION_TIMEOUT', '30')),
-}
+def get_environment_config() -> Dict[str, Any]:
+    """Get environment-specific configuration"""
+
+    # MySQL-only configuration
+    config = {
+        'mysql': {
+            'host': os.getenv('MYSQL_HOST', 'localhost'),
+            'port': int(os.getenv('MYSQL_PORT', 3306)),
+            'database': os.getenv('MYSQL_DATABASE', 'nutrition_tracker'),
+            'username': os.getenv('MYSQL_USERNAME', 'root'),
+            'password': os.getenv('MYSQL_PASSWORD', ''),
+            'charset': os.getenv('MYSQL_CHARSET', 'utf8mb4'),
+            'autocommit': os.getenv('MYSQL_AUTOCOMMIT', 'false').lower() == 'true',
+            'pool_size': int(os.getenv('MYSQL_POOL_SIZE', 10)),
+            'ssl_disabled': os.getenv('MYSQL_SSL_DISABLED', 'true').lower() == 'true'
+        },
+        'app': {
+            'secret_key': os.getenv('SECRET_KEY', 'dev-key-change-in-production'),
+            'debug': os.getenv('DEBUG', 'false').lower() == 'true',
+            'flask_env': os.getenv('FLASK_ENV', 'production')
+        }
+    }
+
+    return config
+
+def get_database_environment():
+    """Get database environment (always MySQL now)"""
+    return 'mysql'
 
 def get_current_database_name():
     """Get the current database name based on environment"""
@@ -44,10 +61,3 @@ def get_current_database_name():
         return DB_CONFIG['prod_database']
     else:
         return DB_CONFIG['dev_database']
-
-def get_sqlite_source_path():
-    """Get the SQLite database path to migrate from"""
-    if IS_PRODUCTION:
-        return SQLITE_CONFIG['production_path']
-    else:
-        return SQLITE_CONFIG['local_path']

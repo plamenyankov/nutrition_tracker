@@ -420,17 +420,23 @@ body {
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">
-                        {% set total_exercises = 0 %}
+                        {% set total_sets = 0 %}
                         {% for workout in workouts %}
-                            {% set total_exercises = total_exercises + (workout[5] or 0) %}
+                            {% set total_sets = total_sets + (workout[7]|int if workout[7] else 0) %}
                         {% endfor %}
-                        {{ total_exercises }}
+                        {{ total_sets }}
                     </span>
-                    <span class="stat-label">Total Exercises</span>
+                    <span class="stat-label">Total Sets</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-number">0</span>
-                    <span class="stat-label">Total Sets</span>
+                    <span class="stat-number">
+                        {% set total_volume = 0 %}
+                        {% for workout in workouts %}
+                            {% set total_volume = total_volume + (workout[8]|float if workout[8] else 0) %}
+                        {% endfor %}
+                        {{ "{:,.0f}".format(total_volume) }}kg
+                    </span>
+                    <span class="stat-label">Total Volume</span>
                 </div>
             </div>
         </div>
@@ -450,8 +456,8 @@ body {
                     <select class="filter-input" id="sort-by">
                         <option value="date-desc">Newest First</option>
                         <option value="date-asc">Oldest First</option>
-                        <option value="exercises-desc">Most Exercises</option>
-                        <option value="exercises-asc">Least Exercises</option>
+                        <option value="exercises-desc">Most Sets</option>
+                        <option value="exercises-asc">Least Sets</option>
                     </select>
                 </div>
             </div>
@@ -460,22 +466,28 @@ body {
         <!-- Workouts Grid -->
         <div class="workouts-grid" id="workouts-container">
             {% for workout in workouts %}
-                <div class="workout-card" data-date="{{ workout[2] }}" data-exercises="{{ workout[5] or 0 }}" data-notes="{{ workout[3] or '' }}">
+                <div class="workout-card" data-date="{{ workout[2] }}" data-sets="{{ workout[7] or 0 }}" data-notes="{{ workout[6] or '' }}">
                     <div class="workout-header">
-                        <h4 class="workout-date">{{ workout[2] }}</h4>
-                        <span class="workout-time">{{ workout[4].strftime('%H:%M') if workout[4] else 'No time recorded' }}</span>
+                        <h4 class="workout-date">{{ workout[2].strftime('%b %d, %Y') if workout[2] else 'No date' }}</h4>
+                        <span class="workout-time">{{ workout[4].strftime('%H:%M') if workout[4] else (workout[3].strftime('%H:%M') if workout[3] else 'No time recorded') }}</span>
                     </div>
                     <div class="workout-body">
                         <div class="workout-stats">
                             <div class="workout-stat">
                                 <i class="fas fa-dumbbell"></i>
-                                <span>{{ workout[5] or 0 }} exercise{{ 's' if (workout[5] or 0) != 1 else '' }}</span>
+                                <span>{{ workout[7] or 0 }} set{{ 's' if (workout[7] or 0) != 1 else '' }}</span>
                             </div>
+                            {% if workout[8] %}
+                            <div class="workout-stat">
+                                <i class="fas fa-weight"></i>
+                                <span>{{ "{:,.0f}".format(workout[8]) }}kg</span>
+                            </div>
+                            {% endif %}
                         </div>
 
-                        {% if workout[3] %}
+                        {% if workout[6] %}
                             <div class="workout-notes">
-                                <i class="fas fa-sticky-note"></i> {{ workout[3] }}
+                                <i class="fas fa-sticky-note"></i> {{ workout[6] }}
                             </div>
                         {% endif %}
 
@@ -545,9 +557,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 case 'date-asc':
                     return a.dataset.date.localeCompare(b.dataset.date);
                 case 'exercises-desc':
-                    return parseInt(b.dataset.exercises) - parseInt(a.dataset.exercises);
+                    return parseInt(b.dataset.sets) - parseInt(a.dataset.sets);
                 case 'exercises-asc':
-                    return parseInt(a.dataset.exercises) - parseInt(b.dataset.exercises);
+                    return parseInt(a.dataset.sets) - parseInt(b.dataset.sets);
                 default:
                     return 0;
             }

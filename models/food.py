@@ -1,5 +1,5 @@
 import os
-from models.database.connection_manager import DatabaseConnectionManager
+from models.database.connection_manager import get_db_manager
 from datetime import datetime
 
 # Use environment variable for database path (for backward compatibility)
@@ -14,7 +14,7 @@ DATABASE_PATH = db_path
 class FoodDatabase:
 
     def __init__(self):
-        self.connection_manager = DatabaseConnectionManager(use_mysql=True)
+        self.connection_manager = get_db_manager()
 
     def close(self):
         # DatabaseConnectionManager doesn't need explicit closing
@@ -24,26 +24,23 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if self.connection_manager.use_mysql:
-                    # First check if it exists
-                    cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = %s', (data,))
-                    existing = cursor.fetchone()
-                    # Consume any remaining results
-                    cursor.fetchall()
+                # MySQL-only code:
+                # First check if it exists
+                cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = %s', (data,))
+                existing = cursor.fetchone()
+                # Consume any remaining results
+                cursor.fetchall()
 
-                    if existing:
-                        return existing[0]
+                if existing:
+                    return existing[0]
 
-                    # Insert if it doesn't exist
-                    cursor.execute('INSERT INTO Unit (unit_name) VALUES (%s)', (data,))
-                    conn.commit()
-                    return cursor.lastrowid
-                else:
-                    cursor.execute('INSERT OR IGNORE INTO Unit (unit_name) VALUES (?)', (data,))
-                    cursor.execute('SELECT unit_id FROM Unit WHERE unit_name = ?', (data,))
-                    unit_id = cursor.fetchone()
-                    if unit_id:
-                        return unit_id[0]
+                # Insert if it doesn't exist
+                cursor.execute('INSERT INTO Unit (unit_name) VALUES (%s)', (data,))
+                conn.commit()
+                return cursor.lastrowid
+                unit_id = cursor.fetchone()
+                if unit_id:
+                    return unit_id[0]
             finally:
                 cursor.close()
 
@@ -51,26 +48,23 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if self.connection_manager.use_mysql:
-                    # First check if it exists
-                    cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = %s', (data,))
-                    existing = cursor.fetchone()
-                    # Consume any remaining results
-                    cursor.fetchall()
+                # MySQL-only code:
+                # First check if it exists
+                cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = %s', (data,))
+                existing = cursor.fetchone()
+                # Consume any remaining results
+                cursor.fetchall()
 
-                    if existing:
-                        return existing[0]
+                if existing:
+                    return existing[0]
 
-                    # Insert if it doesn't exist
-                    cursor.execute('INSERT INTO Ingredient (ingredient_name) VALUES (%s)', (data,))
-                    conn.commit()
-                    return cursor.lastrowid
-                else:
-                    cursor.execute('INSERT OR IGNORE INTO Ingredient (ingredient_name) VALUES (?)', (data,))
-                    cursor.execute('SELECT ingredient_id FROM Ingredient WHERE ingredient_name = ?', (data,))
-                    ingredient_id = cursor.fetchone()
-                    if ingredient_id:
-                        return ingredient_id[0]
+                # Insert if it doesn't exist
+                cursor.execute('INSERT INTO Ingredient (ingredient_name) VALUES (%s)', (data,))
+                conn.commit()
+                return cursor.lastrowid
+                ingredient_id = cursor.fetchone()
+                if ingredient_id:
+                    return ingredient_id[0]
             finally:
                 cursor.close()
 
@@ -81,29 +75,26 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if self.connection_manager.use_mysql:
-                    # First check if it already exists
-                    cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=%s AND unit_id=%s AND quantity=%s', (ingredient_id, unit_id, quantity))
-                    existing = cursor.fetchone()
-                    # Consume any remaining results
-                    cursor.fetchall()
+                # MySQL-only code:
+                # First check if it already exists
+                cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=%s AND unit_id=%s AND quantity=%s', (ingredient_id, unit_id, quantity))
+                existing = cursor.fetchone()
+                # Consume any remaining results
+                cursor.fetchall()
 
-                    if existing:
-                        return existing[0]
+                if existing:
+                    return existing[0]
 
-                    # Insert new record
-                    cursor.execute('INSERT INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (%s,%s,%s)', (quantity, ingredient_id, unit_id,))
-                    conn.commit()
+                # Insert new record
+                cursor.execute('INSERT INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (%s,%s,%s)', (quantity, ingredient_id, unit_id,))
+                conn.commit()
 
-                    # Get the inserted ID using lastrowid
-                    ingredient_quantity_id = cursor.lastrowid
-                    return ingredient_quantity_id
-                else:
-                    cursor.execute('INSERT OR IGNORE INTO Ingredient_Quantity (quantity, ingredient_id, unit_id) VALUES (?,?,?)', (quantity, ingredient_id, unit_id,))
-                    cursor.execute('SELECT ingredient_quantity_id FROM Ingredient_Quantity WHERE ingredient_id=? AND unit_id=? AND quantity=?', (ingredient_id, unit_id, quantity))
-                    ingredient_quantity_id = cursor.fetchone()
-                    if ingredient_quantity_id:
-                        return ingredient_quantity_id[0]
+                # Get the inserted ID using lastrowid
+                ingredient_quantity_id = cursor.lastrowid
+                return ingredient_quantity_id
+                ingredient_quantity_id = cursor.fetchone()
+                if ingredient_quantity_id:
+                    return ingredient_quantity_id[0]
             finally:
                 cursor.close()
 
@@ -111,47 +102,38 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if self.connection_manager.use_mysql:
-                    # First check if it exists
-                    cursor.execute('SELECT ingredient_id FROM Nutrition WHERE ingredient_id=%s AND unit_id=%s', (ingredient_id, unit_id))
-                    existing = cursor.fetchone()
-                    # Consume any remaining results
-                    cursor.fetchall()
+                # MySQL-only code:
+                # First check if it exists
+                cursor.execute('SELECT ingredient_id FROM Nutrition WHERE ingredient_id=%s AND unit_id=%s', (ingredient_id, unit_id))
+                existing = cursor.fetchone()
+                # Consume any remaining results
+                cursor.fetchall()
 
-                    if existing:
-                        return existing[0]
+                if existing:
+                    return existing[0]
 
-                    # Insert if it doesn't exist
-                    cursor.execute('INSERT INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein))
-                    conn.commit()
-                    return ingredient_id  # Return ingredient_id since there's no auto-increment ID
-                else:
-                    cursor.execute('INSERT OR IGNORE INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (?,?,?,?,?,?,?,?)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein))
-                    cursor.execute('SELECT * FROM Nutrition WHERE ingredient_id=? AND unit_id=?', (ingredient_id, unit_id))
-                    nutrition = cursor.fetchone()
-                    if nutrition:
-                        return nutrition[0]
+                # Insert if it doesn't exist
+                cursor.execute('INSERT INTO Nutrition (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', (ingredient_id, unit_id, kcal, fat, carb, fiber, net_carb, protein))
+                conn.commit()
+                return ingredient_id  # Return ingredient_id since there's no auto-increment ID
+                nutrition = cursor.fetchone()
+                if nutrition:
+                    return nutrition[0]
             finally:
                 cursor.close()
 
     def save_consumption(self, date, ingredient_quantity_id, meal_type='other'):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('SELECT COUNT(*) cnt FROM Consumption WHERE ingredient_quantity_id = %s AND consumption_date = %s AND meal_type = %s', (ingredient_quantity_id, date, meal_type))
-                cnt = cursor.fetchone()[0]
-                if cnt:
-                    cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = %s AND consumption_date = %s AND meal_type = %s', (ingredient_quantity_id, date, meal_type))
-                else:
-                    cursor.execute('INSERT INTO Consumption (consumption_date, ingredient_quantity_id, ingredient_quantity_portions, meal_type) VALUES (%s,%s,%s,%s)', (date, ingredient_quantity_id, 1, meal_type))
-                    conn.commit()  # Ensure the transaction is committed
+            # MySQL-only code:
+            cursor.execute('SELECT COUNT(*) cnt FROM Consumption WHERE ingredient_quantity_id = %s AND consumption_date = %s AND meal_type = %s', (ingredient_quantity_id, date, meal_type))
+            cnt = cursor.fetchone()[0]
+            if cnt:
+                cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = %s AND consumption_date = %s AND meal_type = %s', (ingredient_quantity_id, date, meal_type))
+                conn.commit()  # Ensure the transaction is committed
             else:
-                cursor.execute('SELECT COUNT(*) cnt FROM Consumption WHERE ingredient_quantity_id = ? AND consumption_date = ? AND meal_type = ?', (ingredient_quantity_id, date, meal_type))
-                cnt = cursor.fetchone()[0]
-                if cnt:
-                    cursor.execute('UPDATE Consumption SET ingredient_quantity_portions = ingredient_quantity_portions + 1 WHERE ingredient_quantity_id = ? AND consumption_date = ? AND meal_type = ?', (ingredient_quantity_id, date, meal_type))
-                else:
-                    cursor.execute('INSERT INTO Consumption (consumption_date, ingredient_quantity_id, ingredient_quantity_portions, meal_type) VALUES (?,?,?,?)', (date, ingredient_quantity_id, 1, meal_type))
+                cursor.execute('INSERT INTO Consumption (consumption_date, ingredient_quantity_id, ingredient_quantity_portions, meal_type) VALUES (%s,%s,%s,%s)', (date, ingredient_quantity_id, 1, meal_type))
+                conn.commit()  # Ensure the transaction is committed
             return cnt
 
     def delete_consumption(self, ingredient_id):
@@ -160,10 +142,8 @@ class FoodDatabase:
                 cursor = conn.cursor()
 
                 # Delete from ingredient_quantity
-                if self.connection_manager.use_mysql:
-                    cursor.execute('DELETE FROM Consumption WHERE consumption_id= %s', (ingredient_id,))
-                else:
-                    cursor.execute('DELETE FROM Consumption WHERE consumption_id= ?', (ingredient_id,))
+                # MySQL-only code:
+                cursor.execute('DELETE FROM Consumption WHERE consumption_id= %s', (ingredient_id,))
 
                 # Ideally, return a success message or status
                 return "Deletion successful"
@@ -177,20 +157,15 @@ class FoodDatabase:
             with self.connection_manager.get_connection() as conn:
                 cursor = conn.cursor()
 
-                if self.connection_manager.use_mysql:
-                    # Delete from ingredient_quantity
-                    cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_id= %s', (ingredient_id,))
-                    # Delete from ingredient
-                    cursor.execute('DELETE FROM Ingredient WHERE ingredient_id= %s', (ingredient_id,))
-                    # Delete from Nutrition
-                    cursor.execute('DELETE FROM Nutrition WHERE ingredient_id= %s', (ingredient_id,))
-                else:
-                    # Delete from ingredient_quantity
-                    cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_id= ?', (ingredient_id,))
-                    # Delete from ingredient
-                    cursor.execute('DELETE FROM Ingredient WHERE ingredient_id= ?', (ingredient_id,))
-                    # Delete from Nutrition
-                    cursor.execute('DELETE FROM Nutrition WHERE ingredient_id= ?', (ingredient_id,))
+                # MySQL-only code:
+                # Delete from ingredient_quantity
+                cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_id= %s', (ingredient_id,))
+                # Delete from ingredient
+                cursor.execute('DELETE FROM Ingredient WHERE ingredient_id= %s', (ingredient_id,))
+                # Delete from Nutrition
+                cursor.execute('DELETE FROM Nutrition WHERE ingredient_id= %s', (ingredient_id,))
+                # Delete from ingredient
+                # Delete from Nutrition
 
                 # Ideally, return a success message or status
                 return "Deletion successful"
@@ -205,10 +180,8 @@ class FoodDatabase:
                 cursor = conn.cursor()
 
                 # Delete from ingredient_quantity
-                if self.connection_manager.use_mysql:
-                    cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_quantity_id= %s', (ingredient_id,))
-                else:
-                    cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_quantity_id= ?', (ingredient_id,))
+                # MySQL-only code:
+                cursor.execute('DELETE FROM Ingredient_Quantity WHERE ingredient_quantity_id= %s', (ingredient_id,))
 
                 # Ideally, return a success message or status
                 return "Deletion successful"
@@ -221,10 +194,8 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if self.connection_manager.use_mysql:
-                    cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s,%s)', (recipe_id, ingredient_quantity_id,))
-                else:
-                    cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (?,?)', (recipe_id, ingredient_quantity_id,))
+                # MySQL-only code:
+                cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s,%s)', (recipe_id, ingredient_quantity_id,))
 
                 conn.commit()
                 return "Added Ingredient successful"
@@ -280,30 +251,21 @@ class FoodDatabase:
             with self.connection_manager.get_connection() as conn:
                 cursor = conn.cursor()
                 try:
-                    if self.connection_manager.use_mysql:
-                        # Check if recipe already exists
-                        cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=%s', (recipe,))
-                        existing = cursor.fetchone()
-                        # Consume any remaining results
-                        cursor.fetchall()
+                    # MySQL-only code:
+                    # Check if recipe already exists
+                    cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=%s', (recipe,))
+                    existing = cursor.fetchone()
+                    # Consume any remaining results
+                    cursor.fetchall()
 
-                        if existing:
-                            recipe_id = existing[0]
-                        else:
-                            # Insert new recipe
-                            cursor.execute('INSERT INTO Recipe (recipe_name, recipe_date, servings) VALUES (%s,%s,%s)',
-                                           (recipe, date, serv,))
-                            # Get the inserted recipe ID immediately
-                            recipe_id = cursor.lastrowid
-                            conn.commit()
-
+                    if existing:
+                        recipe_id = existing[0]
                     else:
-                        cursor.execute('INSERT OR IGNORE INTO Recipe (recipe_name, recipe_date, servings) VALUES (?,?,?)',
+                        cursor.execute('INSERT INTO Recipe (recipe_name, recipe_date, servings) VALUES (%s,%s,%s)',
                                        (recipe, date, serv,))
-                        cursor.execute('SELECT recipe_id FROM Recipe WHERE recipe_name=?', (recipe,))
-                        recipe_result = cursor.fetchone()
-                        if recipe_result:
-                            recipe_id = recipe_result[0]
+                        # Get the inserted recipe ID immediately
+                        recipe_id = cursor.lastrowid
+                        conn.commit()
 
                     if not recipe_id:
                         raise Exception("Failed to get recipe ID")
@@ -357,33 +319,22 @@ class FoodDatabase:
                 cursor = conn.cursor()
 
                 # First, delete existing recipe ingredients
-                if self.connection_manager.use_mysql:
-                    cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = %s', (recipe_id,))
-                else:
-                    cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = ?', (recipe_id,))
+                # MySQL-only code:
+                cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = %s', (recipe_id,))
 
                 # Update recipe basic info
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        UPDATE Recipe
-                        SET recipe_name = %s, servings = %s, recipe_date = %s
-                        WHERE recipe_id = %s
-                    ''', (recipe_name, servings, datetime.now().strftime('%Y-%m-%d'), recipe_id))
-                else:
-                    cursor.execute('''
-                        UPDATE Recipe
-                        SET recipe_name = ?, servings = ?, recipe_date = ?
-                        WHERE recipe_id = ?
-                    ''', (recipe_name, servings, datetime.now().strftime('%Y-%m-%d'), recipe_id))
+                # MySQL-only code:
+                cursor.execute('''
+                    UPDATE Recipe
+                    SET recipe_name = %s, servings = %s, recipe_date = %s
+                    WHERE recipe_id = %s
+                ''', (recipe_name, servings, datetime.now().strftime('%Y-%m-%d'), recipe_id))
 
                 # Link new ingredients to recipe
                 for iq_id in ingredient_qty_ids:
-                    if self.connection_manager.use_mysql:
-                        cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s, %s)',
-                                     (recipe_id, iq_id))
-                    else:
-                        cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (?, ?)',
-                                     (recipe_id, iq_id))
+                    # MySQL-only code:
+                    cursor.execute('INSERT INTO Recipe_Ingredients (recipe_id, ingredient_quantity_id) VALUES (%s, %s)',
+                                 (recipe_id, iq_id))
 
                 conn.commit()
                 return True
@@ -396,20 +347,13 @@ class FoodDatabase:
         kcal, fats, carbs, fiber, net_carbs, protein = self.converter_base_unit(n['qty'], n['kcal'],n['fat'],n['carb'],n['fiber'],n['net_carb'],n['protein'])
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                query ="""
-                UPDATE Nutrition Set kcal=%s, fat=%s, carb=%s, fiber=%s, net_carb=%s, protein=%s
-                WHERE ingredient_id=(SELECT ingredient_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=%s)
-                AND unit_id=(SELECT unit_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=%s)
-                """
-                cursor.execute(query,(kcal, fats, carbs, fiber, net_carbs, protein,iq_id,iq_id,))
-            else:
-                query ="""
-                UPDATE Nutrition Set kcal=?, fat=?, carb=?, fiber=?, net_carb=?, protein=?
-                WHERE ingredient_id=(SELECT ingredient_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=?)
-                AND unit_id=(SELECT unit_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=?)
-                """
-                cursor.execute(query,(kcal, fats, carbs, fiber, net_carbs, protein,iq_id,iq_id,))
+            # MySQL-only code:
+            query ="""
+            UPDATE Nutrition Set kcal=%s, fat=%s, carb=%s, fiber=%s, net_carb=%s, protein=%s
+            WHERE ingredient_id=(SELECT ingredient_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=%s)
+            AND unit_id=(SELECT unit_id FROM Ingredient_Quantity WHERE ingredient_quantity_id=%s)
+            """
+            cursor.execute(query,(kcal, fats, carbs, fiber, net_carbs, protein,iq_id,iq_id,))
 
     def fetch_all_nutrition(self):
         with self.connection_manager.get_connection() as conn:
@@ -457,42 +401,24 @@ class FoodDatabase:
     def fetch_nutrition(self, iq_id):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                query = """SELECT
-                        iq.ingredient_quantity_id id,
-                        iq.quantity qty,
-                        U.unit_name unit,
-                        I.ingredient_name ingredient,
-                        round(iq.quantity*N.kcal, 2) kcal,
-                        round(iq.quantity*N.fat, 2) fat,
-                        round(iq.quantity*N.carb, 2) carb,
-                        round(iq.quantity*N.fiber, 2) fiber,
-                        round(iq.quantity*N.net_carb, 2) net_carb,
-                        round(iq.quantity*N.protein, 2) protein
-                    FROM Ingredient_Quantity iq
-                        LEFT JOIN Ingredient I ON I.ingredient_id = iq.ingredient_id
-                        LEFT JOIN Unit U ON U.unit_id = iq.unit_id
-                        LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND U.unit_id = N.unit_id
-                        WHERE iq.ingredient_quantity_id=%s"""
-                cursor.execute(query,(iq_id,))
-            else:
-                query = """SELECT
-                        iq.ingredient_quantity_id id,
-                        iq.quantity qty,
-                        U.unit_name unit,
-                        I.ingredient_name ingredient,
-                        round(iq.quantity*N.kcal, 2) kcal,
-                        round(iq.quantity*N.fat, 2) fat,
-                        round(iq.quantity*N.carb, 2) carb,
-                        round(iq.quantity*N.fiber, 2) fiber,
-                        round(iq.quantity*N.net_carb, 2) net_carb,
-                        round(iq.quantity*N.protein, 2) protein
-                    FROM Ingredient_Quantity iq
-                        LEFT JOIN Ingredient I ON I.ingredient_id = iq.ingredient_id
-                        LEFT JOIN Unit U ON U.unit_id = iq.unit_id
-                        LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND U.unit_id = N.unit_id
-                        WHERE iq.ingredient_quantity_id=?"""
-                cursor.execute(query,(iq_id,))
+            # MySQL-only code:
+            query = """SELECT
+                    iq.ingredient_quantity_id id,
+                    iq.quantity qty,
+                    U.unit_name unit,
+                    I.ingredient_name ingredient,
+                    round(iq.quantity*N.kcal, 2) kcal,
+                    round(iq.quantity*N.fat, 2) fat,
+                    round(iq.quantity*N.carb, 2) carb,
+                    round(iq.quantity*N.fiber, 2) fiber,
+                    round(iq.quantity*N.net_carb, 2) net_carb,
+                    round(iq.quantity*N.protein, 2) protein
+                FROM Ingredient_Quantity iq
+                    LEFT JOIN Ingredient I ON I.ingredient_id = iq.ingredient_id
+                    LEFT JOIN Unit U ON U.unit_id = iq.unit_id
+                    LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND U.unit_id = N.unit_id
+                    WHERE iq.ingredient_quantity_id=%s"""
+            cursor.execute(query,(iq_id,))
 
             # Fetch all rows
             nutrition = cursor.fetchall()[0]
@@ -613,22 +539,14 @@ class FoodDatabase:
     def fetch_recipe_ingredients(self, recipe_id):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                query ="""
-                SELECT ri.ingredient_quantity_id iq
-                FROM Recipe r
-                LEFT JOIN Recipe_Ingredients ri ON r.recipe_id = ri.recipe_id
-                WHERE r.recipe_id=%s
-                """
-                cursor.execute(query, (recipe_id,))
-            else:
-                query ="""
-                SELECT ri.ingredient_quantity_id iq
-                FROM Recipe r
-                LEFT JOIN Recipe_Ingredients ri ON r.recipe_id = ri.recipe_id
-                WHERE r.recipe_id=?
-                """
-                cursor.execute(query, (recipe_id,))
+            # MySQL-only code:
+            query ="""
+            SELECT ri.ingredient_quantity_id iq
+            FROM Recipe r
+            LEFT JOIN Recipe_Ingredients ri ON r.recipe_id = ri.recipe_id
+            WHERE r.recipe_id=%s
+            """
+            cursor.execute(query, (recipe_id,))
             ingredient_ids = cursor.fetchall()
             ingredient_ids_list = []
             for ingredient_id in ingredient_ids:
@@ -639,81 +557,46 @@ class FoodDatabase:
     def get_unit_ingredient_from_iq(self, iq_id):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                query ="""
-                SELECT
-                ingredient_id,
-                unit_id
-                FROM Ingredient_Quantity
-                WHERE ingredient_quantity_id=%s
-                """
-                cursor.execute(query, (iq_id,))
-            else:
-                query ="""
-                SELECT
-                ingredient_id,
-                unit_id
-                FROM Ingredient_Quantity
-                WHERE ingredient_quantity_id=?
-                """
-                cursor.execute(query, (iq_id,))
+            # MySQL-only code:
+            query ="""
+            SELECT
+            ingredient_id,
+            unit_id
+            FROM Ingredient_Quantity
+            WHERE ingredient_quantity_id=%s
+            """
+            cursor.execute(query, (iq_id,))
             result = cursor.fetchone()
             return result[0], result[1]
     def get_avg_nutrition_consumed(self):
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                query ="""
-                SELECT
-                    round(sum(kcal)/count(*),0) kcal,
-                    round(sum(fat)/count(*),0) fat,
-                    round(sum(carb)/count(*),0) carb,
-                    round(sum(fiber)/count(*),0) fiber,
-                    round(sum(net_carb)/count(*),0) net_carb,
-                    round(sum(protein)/count(*),0) protein,
-                    COUNT(*) cnt
-                FROM (SELECT
-                    c.consumption_date date,
-                    round(sum(IQ.quantity*N.kcal*c.ingredient_quantity_portions), 0) kcal,
-                    round(sum(IQ.quantity*N.fat*c.ingredient_quantity_portions), 0) fat,
-                    round(sum(IQ.quantity*N.carb*c.ingredient_quantity_portions), 0) carb,
-                    round(sum(IQ.quantity*N.fiber*c.ingredient_quantity_portions), 0) fiber,
-                    round(sum(IQ.quantity*N.net_carb*c.ingredient_quantity_portions), 0) net_carb,
-                    round(sum(IQ.quantity*N.protein*c.ingredient_quantity_portions), 0) protein
-                    FROM Consumption c
-                LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
-                LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
-                LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
-                LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
-                GROUP BY c.consumption_date
-                ORDER BY date DESC) AS daily_nutrition
-                """
-            else:
-                query ="""
-                SELECT
-                    round(sum(kcal)/count(*),0) kcal,
-                    round(sum(fat)/count(*),0) fat,
-                    round(sum(carb)/count(*),0) carb,
-                    round(sum(fiber)/count(*),0) fiber,
-                    round(sum(net_carb)/count(*),0) net_carb,
-                    round(sum(protein)/count(*),0) protein,
-                    COUNT(*) cnt
-                FROM (SELECT
-                    c.consumption_date date,
-                    round(sum(IQ.quantity*N.kcal*c.ingredient_quantity_portions), 0) kcal,
-                    round(sum(IQ.quantity*N.fat*c.ingredient_quantity_portions), 0) fat,
-                    round(sum(IQ.quantity*N.carb*c.ingredient_quantity_portions), 0) carb,
-                    round(sum(IQ.quantity*N.fiber*c.ingredient_quantity_portions), 0) fiber,
-                    round(sum(IQ.quantity*N.net_carb*c.ingredient_quantity_portions), 0) net_carb,
-                    round(sum(IQ.quantity*N.protein*c.ingredient_quantity_portions), 0) protein
-                    FROM Consumption c
-                LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
-                LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
-                LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
-                LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
-                GROUP BY c.consumption_date
-                ORDER BY date DESC)
-                """
+            # MySQL-only code:
+            query ="""
+            SELECT
+                round(sum(kcal)/count(*),0) kcal,
+                round(sum(fat)/count(*),0) fat,
+                round(sum(carb)/count(*),0) carb,
+                round(sum(fiber)/count(*),0) fiber,
+                round(sum(net_carb)/count(*),0) net_carb,
+                round(sum(protein)/count(*),0) protein,
+                COUNT(*) cnt
+            FROM (SELECT
+                c.consumption_date date,
+                round(sum(IQ.quantity*N.kcal*c.ingredient_quantity_portions), 0) kcal,
+                round(sum(IQ.quantity*N.fat*c.ingredient_quantity_portions), 0) fat,
+                round(sum(IQ.quantity*N.carb*c.ingredient_quantity_portions), 0) carb,
+                round(sum(IQ.quantity*N.fiber*c.ingredient_quantity_portions), 0) fiber,
+                round(sum(IQ.quantity*N.net_carb*c.ingredient_quantity_portions), 0) net_carb,
+                round(sum(IQ.quantity*N.protein*c.ingredient_quantity_portions), 0) protein
+                FROM Consumption c
+            LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = c.ingredient_quantity_id
+            LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
+            LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
+            LEFT JOIN Nutrition N ON I.ingredient_id = N.ingredient_id AND N.unit_id = U.unit_id
+            GROUP BY c.consumption_date
+            ORDER BY date DESC) AS daily_nutrition
+            """
             cursor.execute(query)
             result = cursor.fetchone()
             nutrition_data = {
@@ -733,16 +616,12 @@ class FoodDatabase:
             with self.connection_manager.get_connection() as conn:
                 cursor = conn.cursor()
 
-                if self.connection_manager.use_mysql:
-                    # First delete from Recipe_Ingredients
-                    cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = %s', (recipe_id,))
-                    # Then delete from Recipe
-                    cursor.execute('DELETE FROM Recipe WHERE recipe_id = %s', (recipe_id,))
-                else:
-                    # First delete from Recipe_Ingredients
-                    cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = ?', (recipe_id,))
-                    # Then delete from Recipe
-                    cursor.execute('DELETE FROM Recipe WHERE recipe_id = ?', (recipe_id,))
+                # MySQL-only code:
+                # First delete from Recipe_Ingredients
+                cursor.execute('DELETE FROM Recipe_Ingredients WHERE recipe_id = %s', (recipe_id,))
+                # Then delete from Recipe
+                cursor.execute('DELETE FROM Recipe WHERE recipe_id = %s', (recipe_id,))
+                # Then delete from Recipe
 
                 # Commit the changes
                 conn.commit()
@@ -760,30 +639,20 @@ class FoodDatabase:
                 cursor = conn.cursor()
 
                 # Check if already favorited
-                if self.connection_manager.use_mysql:
-                    cursor.execute('SELECT favorite_id FROM Favorites WHERE ingredient_id = %s', (ingredient_id,))
-                    favorite = cursor.fetchone()
+                # MySQL-only code:
+                cursor.execute('SELECT favorite_id FROM Favorites WHERE ingredient_id = %s', (ingredient_id,))
+                favorite = cursor.fetchone()
 
-                    if favorite:
-                        # Remove from favorites
-                        cursor.execute('DELETE FROM Favorites WHERE ingredient_id = %s', (ingredient_id,))
-                        return False  # Unfavorited
-                    else:
-                        # Add to favorites
-                        cursor.execute('INSERT INTO Favorites (ingredient_id) VALUES (%s)', (ingredient_id,))
-                        return True  # Favorited
+                if favorite:
+                    # Remove from favorites
+                    cursor.execute('DELETE FROM Favorites WHERE ingredient_id = %s', (ingredient_id,))
+                    conn.commit()
+                    return False  # Unfavorited
                 else:
-                    cursor.execute('SELECT favorite_id FROM Favorites WHERE ingredient_id = ?', (ingredient_id,))
-                    favorite = cursor.fetchone()
-
-                    if favorite:
-                        # Remove from favorites
-                        cursor.execute('DELETE FROM Favorites WHERE ingredient_id = ?', (ingredient_id,))
-                        return False  # Unfavorited
-                    else:
-                        # Add to favorites
-                        cursor.execute('INSERT INTO Favorites (ingredient_id) VALUES (?)', (ingredient_id,))
-                        return True  # Favorited
+                    # Add to favorites
+                    cursor.execute('INSERT INTO Favorites (ingredient_id) VALUES (%s)', (ingredient_id,))
+                    conn.commit()
+                    return True  # Favorited
 
         except Exception as e:
             print(f"Error toggling favorite: {e}")
@@ -807,19 +676,14 @@ class FoodDatabase:
         with self.connection_manager.get_connection() as conn:
             cursor = conn.cursor()
             try:
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        INSERT INTO recipe_consumption
-                        (recipe_id, consumption_date, meal_type, servings)
-                        VALUES (%s, %s, %s, %s)
-                        ON DUPLICATE KEY UPDATE servings = VALUES(servings)
-                    ''', (recipe_id, date, meal_type, servings))
-                else:
-                    cursor.execute('''
-                        INSERT OR REPLACE INTO recipe_consumption
-                        (recipe_id, consumption_date, meal_type, servings)
-                        VALUES (?, ?, ?, ?)
-                    ''', (recipe_id, date, meal_type, servings))
+                # MySQL-only code:
+                cursor.execute('''
+                    INSERT INTO recipe_consumption
+                    (recipe_id, consumption_date, meal_type, servings)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE servings = VALUES(servings)
+                ''', (recipe_id, date, meal_type, servings))
+                conn.commit()
                 return True
             except Exception as e:
                 print(f"Error saving recipe consumption: {e}")
@@ -846,23 +710,6 @@ class FoodDatabase:
                     LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
                     LEFT JOIN Nutrition N ON IQ.unit_id = N.unit_id AND IQ.ingredient_id = N.ingredient_id
                     WHERE rc.consumption_date = %s
-                    GROUP BY rc.recipe_consumption_id
-                ''' if self.connection_manager.use_mysql else '''
-                    SELECT rc.recipe_consumption_id, rc.recipe_id, rc.consumption_date,
-                           rc.meal_type, rc.servings, r.recipe_name, r.servings as recipe_servings,
-                           r.recipe_id,
-                           round(sum(N.kcal*IQ.quantity*rc.servings/r.servings),0) kcal,
-                           round(sum(N.fat*IQ.quantity*rc.servings/r.servings),0) fat,
-                           round(sum(N.carb*IQ.quantity*rc.servings/r.servings),0) carb,
-                           round(sum(N.protein*IQ.quantity*rc.servings/r.servings),0) protein
-                    FROM recipe_consumption rc
-                    JOIN Recipe r ON rc.recipe_id = r.recipe_id
-                    LEFT JOIN Recipe_Ingredients RI ON r.recipe_id = RI.recipe_id
-                    LEFT JOIN Ingredient_Quantity IQ ON IQ.ingredient_quantity_id = RI.ingredient_quantity_id
-                    LEFT JOIN Unit U ON U.unit_id = IQ.unit_id
-                    LEFT JOIN Ingredient I ON I.ingredient_id = IQ.ingredient_id
-                    LEFT JOIN Nutrition N ON IQ.unit_id = N.unit_id AND IQ.ingredient_id = N.ingredient_id
-                    WHERE rc.consumption_date = ?
                     GROUP BY rc.recipe_consumption_id
                 '''
                 cursor.execute(query, (date,))
@@ -908,12 +755,10 @@ class FoodDatabase:
         try:
             with self.connection_manager.get_connection() as conn:
                 cursor = conn.cursor()
-                if self.connection_manager.use_mysql:
-                    cursor.execute('DELETE FROM recipe_consumption WHERE recipe_consumption_id = %s',
-                                 (recipe_consumption_id,))
-                else:
-                    cursor.execute('DELETE FROM recipe_consumption WHERE recipe_consumption_id = ?',
-                                 (recipe_consumption_id,))
+                # MySQL-only code:
+                cursor.execute('DELETE FROM recipe_consumption WHERE recipe_consumption_id = %s',
+                             (recipe_consumption_id,))
+                conn.commit()
                 return "Deletion successful"
         except Exception as e:
             return f"Error: {e}"
