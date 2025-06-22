@@ -6,7 +6,7 @@ import logging
 from typing import List, Dict, Any, Tuple
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from models.database.connection_manager import DatabaseConnectionManager
-from config.environments import get_sqlite_source_path, IS_PRODUCTION
+from models.database.connection_manager import get_db_manager, IS_PRODUCTION
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +15,7 @@ class SchemaMigrator:
 
     def __init__(self, source_sqlite_path: str = None):
         self.sqlite_path = source_sqlite_path or get_sqlite_source_path()
-        self.mysql_manager = DatabaseConnectionManager(use_mysql=True)
+        self.mysql_manager = get_db_manager()
 
         logger.info(f"Initializing schema migrator")
         logger.info(f"Source SQLite: {self.sqlite_path}")

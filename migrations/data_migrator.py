@@ -17,7 +17,7 @@ class DataMigrator:
 
     def __init__(self, source_sqlite_path: str = None, batch_size: int = 1000):
         self.sqlite_path = source_sqlite_path or get_sqlite_source_path()
-        self.mysql_manager = DatabaseConnectionManager(use_mysql=True)
+        self.mysql_manager = get_db_manager()
         self.batch_size = batch_size
 
         logger.info(f"Initializing data migrator")

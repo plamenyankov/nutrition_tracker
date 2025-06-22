@@ -5,7 +5,46 @@ timer_bp = Blueprint('timer', __name__)
 
 @timer_bp.route('/api/timer/workout/start', methods=['POST'])
 def start_workout_timer():
-    """Start timing a workout session"""
+    """
+    Start timing a workout session
+    ---
+    tags:
+      - Timer
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            session_id:
+              type: integer
+              description: Workout session ID
+              required: true
+            notes:
+              type: string
+              description: Optional workout notes
+    responses:
+      200:
+        description: Timer started successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+            session_id:
+              type: integer
+            started_at:
+              type: string
+              format: date-time
+      400:
+        description: Invalid request
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+    """
     try:
         data = request.get_json()
         session_id = data.get('session_id')

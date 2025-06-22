@@ -1,19 +1,20 @@
 import os
-from datetime import datetime
-from flask_login import current_user
-from models.database.connection_manager import DatabaseConnectionManager
+import json
+from datetime import datetime, timedelta
+from models.database.connection_manager import get_db_manager
+from models.services.progression import ProgressionService
 
 class GymService:
-    def __init__(self):
-        self.connection_manager = DatabaseConnectionManager(use_mysql=True)
-        # Temporary fix: hardcode user_id as 2 until proper user management is implemented
-        self.user_id = 2
+    def __init__(self, user_id, connection_manager=None):
+        self.user_id = user_id
+        self.connection_manager = connection_manager or get_db_manager()
 
     def get_connection(self):
+        """Get database connection"""
         return self.connection_manager.get_connection()
 
     def get_all_exercises(self):
-        """Get all exercises from database"""
+        """Get all exercises"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM exercises ORDER BY name')
@@ -24,186 +25,225 @@ class GymService:
         """Add a new exercise"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute(
-                    'INSERT INTO exercises (name, muscle_group) VALUES (%s, %s)',
-                    (name, muscle_group)
-                )
-            else:
-                cursor.execute(
-                    'INSERT INTO exercises (name, muscle_group) VALUES (?, ?)',
-                    (name, muscle_group)
-                )
+            cursor.execute('INSERT INTO exercises (name, muscle_group) VALUES (%s, %s)', (name, muscle_group))
+            conn.commit()
+            return cursor.lastrowid
 
-    def start_workout_session(self, notes=None):
+    def update_exercise(self, exercise_id, name, muscle_group=None):
+        """Update an exercise"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('UPDATE exercises SET name = %s, muscle_group = %s WHERE id = %s',
+                             (name, muscle_group, exercise_id))
+                conn.commit()
+                return True, "Exercise updated successfully"
+        except Exception as e:
+            return False, f"Error updating exercise: {str(e)}"
+
+    def delete_exercise(self, exercise_id):
+        """Delete an exercise"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # Check if exercise is used in any workouts
+                cursor.execute('SELECT COUNT(*) FROM workout_sets WHERE exercise_id = %s', (exercise_id,))
+                count = cursor.fetchone()[0]
+
+                if count > 0:
+                    return False, "Cannot delete exercise - it's used in workout history"
+
+                cursor.execute('DELETE FROM exercises WHERE id = %s', (exercise_id,))
+                conn.commit()
+                return True, "Exercise deleted successfully"
+        except Exception as e:
+            return False, f"Error deleting exercise: {str(e)}"
+
+    def start_workout_session(self):
         """Start a new workout session"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute(
-                    'INSERT INTO workout_sessions (user_id, date, notes, status) VALUES (%s, %s, %s, %s)',
-                    (self.user_id, datetime.now().date(), notes, 'in_progress')
-                )
-            else:
-                cursor.execute(
-                    'INSERT INTO workout_sessions (user_id, date, notes, status) VALUES (?, ?, ?, ?)',
-                    (self.user_id, datetime.now().date(), notes, 'in_progress')
-                )
-            session_id = cursor.lastrowid
+            now = datetime.now()
+            cursor.execute('INSERT INTO workout_sessions (user_id, date, started_at, status) VALUES (%s, %s, %s, %s)',
+                         (self.user_id, now.date(), now, 'in_progress'))
             conn.commit()
-            return session_id
+            return cursor.lastrowid
 
-    def log_set(self, session_id, exercise_id, set_number, weight, reps, duration_seconds=0, start_timer=True):
-        """Log a single set with optional timing"""
+    def log_set(self, session_id, exercise_id, set_number, weight, reps, duration_seconds=0):
+        """Log a workout set"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-
-            # Insert the set
-            if self.connection_manager.use_mysql:
-                cursor.execute(
-                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at, duration_seconds) VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None, duration_seconds)
-                )
-            else:
-                cursor.execute(
-                    'INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, started_at, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    (session_id, exercise_id, set_number, weight, reps, datetime.now() if start_timer else None, duration_seconds)
-                )
-
-            set_id = cursor.lastrowid
+            cursor.execute('''
+                INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps, duration_seconds, started_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (session_id, exercise_id, set_number, weight, reps, duration_seconds, datetime.now()))
             conn.commit()
-
-            return set_id
+            return cursor.lastrowid
 
     def update_set(self, set_id, weight, reps):
-        """Update an existing set"""
+        """Update a workout set"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute(
-                    'UPDATE workout_sets SET weight = %s, reps = %s WHERE id = %s',
-                    (weight, reps, set_id)
-                )
-            else:
-                cursor.execute(
-                    'UPDATE workout_sets SET weight = ?, reps = ? WHERE id = ?',
-                    (weight, reps, set_id)
-                )
+            cursor.execute('UPDATE workout_sets SET weight = %s, reps = %s WHERE id = %s',
+                         (weight, reps, set_id))
+            conn.commit()
 
     def delete_set(self, set_id):
         """Delete a workout set"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            # Verify the set belongs to the current user
+            cursor.execute('''
+                SELECT ws.id FROM workout_sets ws
+                JOIN workout_sessions wss ON ws.session_id = wss.id
+                WHERE ws.id = %s AND wss.user_id = %s
+            ''', (set_id, self.user_id))
 
-            # Check if the set belongs to the current user
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT ws.id FROM workout_sets ws
-                    JOIN workout_sessions wss ON ws.session_id = wss.id
-                    WHERE ws.id = %s AND wss.user_id = %s
-                ''', (set_id, self.user_id))
+            if cursor.fetchone():
+                cursor.execute('DELETE FROM workout_sets WHERE id = %s', (set_id,))
+                conn.commit()
+                return True
+            return False
 
-                if cursor.fetchone():
-                    cursor.execute('DELETE FROM workout_sets WHERE id = %s', (set_id,))
-                    result = True
-                else:
-                    result = False
-            else:
-                cursor.execute('''
-                    SELECT ws.id FROM workout_sets ws
-                    JOIN workout_sessions wss ON ws.session_id = wss.id
-                    WHERE ws.id = ? AND wss.user_id = ?
-                ''', (set_id, self.user_id))
-
-                if cursor.fetchone():
-                    cursor.execute('DELETE FROM workout_sets WHERE id = ?', (set_id,))
-                    result = True
-                else:
-                    result = False
-
-            return result
-
-    def get_user_workouts(self, limit=10):
-        """Get user's recent workouts"""
+    def get_user_workouts(self, limit=20):
+        """Get user's workout history"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT ws.*, COUNT(DISTINCT wset.exercise_id) as exercise_count
-                    FROM workout_sessions ws
-                    LEFT JOIN workout_sets wset ON ws.id = wset.session_id
-                    WHERE ws.user_id = %s
-                    GROUP BY ws.id
-                    ORDER BY ws.date DESC, ws.created_at DESC
-                    LIMIT %s
-                ''', (self.user_id, limit))
-            else:
-                cursor.execute('''
-                    SELECT ws.*, COUNT(DISTINCT wset.exercise_id) as exercise_count
-                    FROM workout_sessions ws
-                    LEFT JOIN workout_sets wset ON ws.id = wset.session_id
-                    WHERE ws.user_id = ?
-                    GROUP BY ws.id
-                    ORDER BY ws.date DESC, ws.created_at DESC
-                    LIMIT ?
-                ''', (self.user_id, limit))
-            workouts = cursor.fetchall()
-            return workouts
+            cursor.execute('''
+                SELECT ws.id, ws.user_id, ws.date, ws.started_at, ws.completed_at, ws.status, ws.notes,
+                       COUNT(wset.id) as total_sets,
+                       SUM(wset.weight * wset.reps) as total_volume
+                FROM workout_sessions ws
+                LEFT JOIN workout_sets wset ON ws.id = wset.session_id
+                WHERE ws.user_id = %s
+                GROUP BY ws.id, ws.user_id, ws.date, ws.started_at, ws.completed_at, ws.status, ws.notes
+                ORDER BY ws.date DESC, ws.id DESC
+                LIMIT %s
+            ''', (self.user_id, limit))
+            return cursor.fetchall()
 
     def get_workout_details(self, workout_id):
-        """Get detailed information about a specific workout"""
+        """Get detailed workout information"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Get workout session info
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT * FROM workout_sessions WHERE id = %s AND user_id = %s
-                ''', (workout_id, self.user_id))
-                workout = cursor.fetchone()
+            # Get workout session
+            cursor.execute('SELECT * FROM workout_sessions WHERE id = %s AND user_id = %s',
+                         (workout_id, self.user_id))
+            workout = cursor.fetchone()
 
-                if not workout:
-                    return None, []
+            if not workout:
+                return None, []
 
-                # Get all sets for this workout
-                cursor.execute('''
-                    SELECT ws.*, e.name, e.muscle_group
-                    FROM workout_sets ws
-                    JOIN exercises e ON ws.exercise_id = e.id
-                    WHERE ws.session_id = %s
-                    ORDER BY ws.exercise_id, ws.set_number
-                ''', (workout_id,))
-                sets = cursor.fetchall()
-            else:
-                cursor.execute('''
-                    SELECT * FROM workout_sessions WHERE id = ? AND user_id = ?
-                ''', (workout_id, self.user_id))
-                workout = cursor.fetchone()
-
-                if not workout:
-                    return None, []
-
-                # Get all sets for this workout
-                cursor.execute('''
-                    SELECT ws.*, e.name, e.muscle_group
-                    FROM workout_sets ws
-                    JOIN exercises e ON ws.exercise_id = e.id
-                    WHERE ws.session_id = ?
-                    ORDER BY ws.exercise_id, ws.set_number
-                ''', (workout_id,))
-                sets = cursor.fetchall()
+            # Get workout sets with exercise details
+            cursor.execute('''
+                SELECT ws.*, e.name, e.muscle_group
+                FROM workout_sets ws
+                JOIN exercises e ON ws.exercise_id = e.id
+                WHERE ws.session_id = %s
+                ORDER BY ws.exercise_id, ws.set_number
+            ''', (workout_id,))
+            sets = cursor.fetchall()
 
             return workout, sets
+
+    def complete_workout(self, workout_id):
+        """Mark workout as completed"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE workout_sessions
+                    SET completed_at = %s, status = 'completed'
+                    WHERE id = %s AND user_id = %s
+                ''', (datetime.now(), workout_id, self.user_id))
+                conn.commit()
+
+                if cursor.rowcount > 0:
+                    return True, "Workout completed successfully"
+                else:
+                    return False, "Workout not found or unauthorized"
+        except Exception as e:
+            return False, f"Error completing workout: {str(e)}"
+
+    def abandon_workout(self, workout_id):
+        """Abandon a workout"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE workout_sessions
+                    SET status = 'abandoned'
+                    WHERE id = %s AND user_id = %s
+                ''', (workout_id, self.user_id))
+                conn.commit()
+
+                if cursor.rowcount > 0:
+                    return True, "Workout abandoned"
+                else:
+                    return False, "Workout not found or unauthorized"
+        except Exception as e:
+            return False, f"Error abandoning workout: {str(e)}"
+
+    def get_workout_summary(self, workout_id):
+        """Get workout summary statistics"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT
+                    ws.started_at,
+                    ws.completed_at,
+                    COUNT(wset.id) as total_sets,
+                    SUM(wset.weight * wset.reps) as total_volume,
+                    COUNT(DISTINCT wset.exercise_id) as exercises_count
+                FROM workout_sessions ws
+                LEFT JOIN workout_sets wset ON ws.id = wset.session_id
+                WHERE ws.id = %s AND ws.user_id = %s
+                GROUP BY ws.id, ws.started_at, ws.completed_at
+            ''', (workout_id, self.user_id))
+
+            result = cursor.fetchone()
+            if result:
+                duration = 0
+                if result[1] and result[0]:  # completed_at and started_at
+                    duration = (result[1] - result[0]).total_seconds() / 60
+
+                return {
+                    'duration_minutes': int(duration),
+                    'total_sets': result[2] or 0,
+                    'total_volume': result[3] or 0,
+                    'exercises_count': result[4] or 0
+                }
+            return {}
+
+    def delete_workout(self, workout_id):
+        """Delete a workout and all its sets"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+
+                # First delete all sets
+                cursor.execute('''
+                    DELETE ws FROM workout_sets ws
+                    JOIN workout_sessions wss ON ws.session_id = wss.id
+                    WHERE wss.id = %s AND wss.user_id = %s
+                ''', (workout_id, self.user_id))
+
+                # Then delete the session
+                cursor.execute('DELETE FROM workout_sessions WHERE id = %s AND user_id = %s',
+                             (workout_id, self.user_id))
+                conn.commit()
+
+                return cursor.rowcount > 0
+        except Exception as e:
+            return False
 
     def get_exercise_by_muscle_group(self, muscle_group):
         """Get exercises filtered by muscle group"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if muscle_group:
-                if self.connection_manager.use_mysql:
-                    cursor.execute('SELECT * FROM exercises WHERE muscle_group = %s ORDER BY name', (muscle_group,))
-                else:
-                    cursor.execute('SELECT * FROM exercises WHERE muscle_group = ? ORDER BY name', (muscle_group,))
+                cursor.execute('SELECT * FROM exercises WHERE muscle_group = %s ORDER BY name', (muscle_group,))
             else:
                 cursor.execute('SELECT * FROM exercises ORDER BY name')
             exercises = cursor.fetchall()
@@ -213,78 +253,49 @@ class GymService:
         """Get a specific exercise by ID"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('SELECT * FROM exercises WHERE id = %s', (exercise_id,))
-            else:
-                cursor.execute('SELECT * FROM exercises WHERE id = ?', (exercise_id,))
+            cursor.execute('SELECT * FROM exercises WHERE id = %s', (exercise_id,))
             exercise = cursor.fetchone()
             return exercise
 
-    def update_exercise(self, exercise_id, name, muscle_group=None):
-        """Update an exercise"""
+    def update_workout_notes(self, workout_id, notes):
+        """Update workout notes"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    UPDATE exercises
-                    SET name = %s, muscle_group = %s
-                    WHERE id = %s
-                ''', (name, muscle_group, exercise_id))
-            else:
-                cursor.execute('''
-                    UPDATE exercises
-                    SET name = ?, muscle_group = ?
-                    WHERE id = ?
-                ''', (name, muscle_group, exercise_id))
+            cursor.execute('''
+                UPDATE workout_sessions
+                SET notes = %s
+                WHERE id = %s AND user_id = %s
+            ''', (notes, workout_id, self.user_id))
+            conn.commit()
 
-            if cursor.rowcount > 0:
-                conn.commit()
-                return True, "Exercise updated successfully"
-            else:
-                return False, "Exercise not found"
-
-    def delete_exercise(self, exercise_id):
-        """Delete an exercise"""
+    def get_workout_status(self, workout_id):
+        """Get workout status and completion time"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                if self.connection_manager.use_mysql:
-                    cursor.execute('DELETE FROM exercises WHERE id = %s', (exercise_id,))
-                else:
-                    cursor.execute('DELETE FROM exercises WHERE id = ?', (exercise_id,))
+            cursor.execute('''
+                SELECT status, completed_at
+                FROM workout_sessions
+                WHERE id = %s AND user_id = %s
+            ''', (workout_id, self.user_id))
 
-                if cursor.rowcount > 0:
-                    conn.commit()
-                    return True, "Exercise deleted successfully"
-                else:
-                    return False, "Exercise not found"
-            except Exception as e:
-                conn.rollback()
-                return False, f"Cannot delete exercise: {str(e)}"
+            result = cursor.fetchone()
+            if result:
+                return result[0] or 'in_progress', result[1]
+            return None, None
 
     def get_workout_sets_grouped(self, workout_id):
         """Get workout sets grouped by exercise for editing"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT ws.*, e.name, e.muscle_group, e.id as exercise_id
-                    FROM workout_sets ws
-                    JOIN exercises e ON ws.exercise_id = e.id
-                    JOIN workout_sessions wss ON ws.session_id = wss.id
-                    WHERE ws.session_id = %s AND wss.user_id = %s
-                    ORDER BY ws.id
-                ''', (workout_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT ws.*, e.name, e.muscle_group, e.id as exercise_id
-                    FROM workout_sets ws
-                    JOIN exercises e ON ws.exercise_id = e.id
-                    JOIN workout_sessions wss ON ws.session_id = wss.id
-                    WHERE ws.session_id = ? AND wss.user_id = ?
-                    ORDER BY ws.id
-                ''', (workout_id, self.user_id))
+            cursor.execute('''
+                SELECT ws.*, e.name, e.muscle_group, e.id as exercise_id
+                FROM workout_sets ws
+                JOIN exercises e ON ws.exercise_id = e.id
+                JOIN workout_sessions wss ON ws.session_id = wss.id
+                WHERE ws.session_id = %s AND wss.user_id = %s
+                ORDER BY ws.id
+            ''', (workout_id, self.user_id))
 
             sets = cursor.fetchall()
 
@@ -308,690 +319,231 @@ class GymService:
 
         return exercises
 
-    def update_workout_notes(self, workout_id, notes):
-        """Update workout notes"""
+    # Template methods
+    def get_user_templates(self):
+        """Get user's workout templates"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute('''
+                SELECT wt.*, COUNT(wte.id) as exercise_count
+                FROM workout_templates wt
+                LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
+                WHERE wt.user_id = %s AND wt.is_public = FALSE
+                GROUP BY wt.id
+                ORDER BY wt.created_at DESC
+            ''', (self.user_id,))
+            return cursor.fetchall()
 
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    UPDATE workout_sessions
-                    SET notes = %s
-                    WHERE id = %s AND user_id = %s
-                ''', (notes, workout_id, self.user_id))
-            else:
-                cursor.execute('''
-                    UPDATE workout_sessions
-                    SET notes = ?
-                    WHERE id = ? AND user_id = ?
-                ''', (notes, workout_id, self.user_id))
-
-            if cursor.rowcount > 0:
-                conn.commit()
-                return True, "Notes updated successfully"
-            else:
-                return False, "Workout not found or unauthorized"
-
-    def delete_workout(self, workout_id):
-        """Delete a workout session and all its sets"""
+    def get_public_templates(self):
+        """Get public workout templates"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            try:
-                # Verify workout belongs to user
-                if self.connection_manager.use_mysql:
-                    cursor.execute('SELECT id FROM workout_sessions WHERE id = %s AND user_id = %s', (workout_id, self.user_id))
-                else:
-                    cursor.execute('SELECT id FROM workout_sessions WHERE id = ? AND user_id = ?', (workout_id, self.user_id))
+            cursor.execute('''
+                SELECT wt.*, COUNT(wte.id) as exercise_count
+                FROM workout_templates wt
+                LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
+                WHERE wt.is_public = TRUE
+                GROUP BY wt.id
+                ORDER BY wt.created_at DESC
+                LIMIT 10
+            ''', ())
+            return cursor.fetchall()
 
-                if not cursor.fetchone():
-                    return False
-
-                # Delete all sets for this workout
-                if self.connection_manager.use_mysql:
-                    cursor.execute('DELETE FROM workout_sets WHERE session_id = %s', (workout_id,))
-                    cursor.execute('DELETE FROM workout_sessions WHERE id = %s', (workout_id,))
-                else:
-                    cursor.execute('DELETE FROM workout_sets WHERE session_id = ?', (workout_id,))
-                    cursor.execute('DELETE FROM workout_sessions WHERE id = ?', (workout_id,))
-
-                conn.commit()
-                return True
-            except Exception as e:
-                print(f"Error deleting workout: {e}")
-                conn.rollback()
-                return False
-
-    # Template Management Methods
-
-    def create_workout_template(self, name, description=None, is_public=False):
+    def create_template(self, name, description, is_public=False):
         """Create a new workout template"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    INSERT INTO workout_templates (name, description, user_id, is_public)
-                    VALUES (%s, %s, %s, %s)
-                ''', (name, description, self.user_id, is_public))
-            else:
-                cursor.execute('''
-                    INSERT INTO workout_templates (name, description, user_id, is_public)
-                    VALUES (?, ?, ?, ?)
-                ''', (name, description, self.user_id, is_public))
-            template_id = cursor.lastrowid
+            cursor.execute('''
+                INSERT INTO workout_templates (user_id, name, description, is_public, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+            ''', (self.user_id, name, description, is_public, datetime.now()))
             conn.commit()
-            return template_id
+            return cursor.lastrowid
 
-    def get_user_templates(self):
-        """Get all templates for the current user"""
+    def get_template_by_id(self, template_id):
+        """Get template by ID"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT wt.*, COUNT(wte.id) as exercise_count
-                    FROM workout_templates wt
-                    LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
-                    WHERE wt.user_id = %s
-                    GROUP BY wt.id
-                    ORDER BY wt.name
-                ''', (self.user_id,))
-            else:
-                cursor.execute('''
-                    SELECT wt.*, COUNT(wte.id) as exercise_count
-                    FROM workout_templates wt
-                    LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
-                    WHERE wt.user_id = ?
-                    GROUP BY wt.id
-                    ORDER BY wt.name
-                ''', (self.user_id,))
-            templates = cursor.fetchall()
-            return templates
+            cursor.execute('SELECT * FROM workout_templates WHERE id = %s', (template_id,))
+            return cursor.fetchone()
 
-    def get_public_templates(self):
-        """Get all public templates"""
+    def get_template_exercises(self, template_id):
+        """Get exercises for a template"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT wt.*, COUNT(wte.id) as exercise_count
-                    FROM workout_templates wt
-                    LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
-                    WHERE wt.is_public = 1
-                    GROUP BY wt.id
-                    ORDER BY wt.name
-                ''')
-            else:
-                cursor.execute('''
-                    SELECT wt.*, COUNT(wte.id) as exercise_count
-                    FROM workout_templates wt
-                    LEFT JOIN workout_template_exercises wte ON wt.id = wte.template_id
-                    WHERE wt.is_public = 1
-                    GROUP BY wt.id
-                    ORDER BY wt.name
-                ''')
-            templates = cursor.fetchall()
-            return templates
+            cursor.execute('''
+                SELECT wte.*, e.name, e.muscle_group
+                FROM workout_template_exercises wte
+                JOIN exercises e ON wte.exercise_id = e.id
+                WHERE wte.template_id = %s
+                ORDER BY wte.order_index
+            ''', (template_id,))
+            return cursor.fetchall()
 
-    def get_template_details(self, template_id):
-        """Get template details including all exercises"""
+    def add_exercise_to_template(self, template_id, exercise_id, sets, target_reps, target_weight, rest_seconds, notes, order_index):
+        """Add exercise to template"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-
-            # Get template info
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT * FROM workout_templates
-                    WHERE id = %s AND (user_id = %s OR is_public = 1)
-                ''', (template_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT * FROM workout_templates
-                    WHERE id = ? AND (user_id = ? OR is_public = 1)
-                ''', (template_id, self.user_id))
-            template = cursor.fetchone()
-
-            if not template:
-                return None, []
-
-            # Get all exercises in this template
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT wte.*, e.name, e.muscle_group
-                    FROM workout_template_exercises wte
-                    JOIN exercises e ON wte.exercise_id = e.id
-                    WHERE wte.template_id = %s
-                    ORDER BY wte.order_index
-                ''', (template_id,))
-            else:
-                cursor.execute('''
-                    SELECT wte.*, e.name, e.muscle_group
-                    FROM workout_template_exercises wte
-                    JOIN exercises e ON wte.exercise_id = e.id
-                    WHERE wte.template_id = ?
-                    ORDER BY wte.order_index
-                ''', (template_id,))
-            exercises = cursor.fetchall()
-
-            return template, exercises
-
-    def add_exercise_to_template(self, template_id, exercise_id, order_index, sets=3, target_reps=None, target_weight=None, rest_seconds=90, notes=None):
-        """Add an exercise to a workout template"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            # Verify template belongs to user
-            if self.connection_manager.use_mysql:
-                cursor.execute('SELECT id FROM workout_templates WHERE id = %s AND user_id = %s', (template_id, self.user_id))
-            else:
-                cursor.execute('SELECT id FROM workout_templates WHERE id = ? AND user_id = ?', (template_id, self.user_id))
-
-            if not cursor.fetchone():
-                return False, "Template not found or unauthorized"
-
-            try:
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        INSERT INTO workout_template_exercises
-                        (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds, notes)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ''', (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds, notes))
-                else:
-                    cursor.execute('''
-                        INSERT INTO workout_template_exercises
-                        (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds, notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds, notes))
-                conn.commit()
-                return True, "Exercise added to template"
-            except Exception as e:
-                return False, "Order index already exists in template"
+            cursor.execute('''
+                INSERT INTO workout_template_exercises
+                (template_id, exercise_id, sets, target_reps, target_weight, rest_seconds, notes, order_index)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (template_id, exercise_id, sets, target_reps, target_weight, rest_seconds, notes, order_index))
+            conn.commit()
+            return cursor.lastrowid
 
     def update_template_exercise(self, template_exercise_id, sets, target_reps, target_weight, rest_seconds, notes):
-        """Update exercise details in a template"""
+        """Update template exercise"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-
-            # Verify the template exercise belongs to user's template
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT wte.id FROM workout_template_exercises wte
-                    JOIN workout_templates wt ON wte.template_id = wt.id
-                    WHERE wte.id = %s AND wt.user_id = %s
-                ''', (template_exercise_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT wte.id FROM workout_template_exercises wte
-                    JOIN workout_templates wt ON wte.template_id = wt.id
-                    WHERE wte.id = ? AND wt.user_id = ?
-                ''', (template_exercise_id, self.user_id))
-
-            if not cursor.fetchone():
-                return False, "Template exercise not found or unauthorized"
-
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    UPDATE workout_template_exercises
-                    SET sets = %s, target_reps = %s, target_weight = %s, rest_seconds = %s, notes = %s
-                    WHERE id = %s
-                ''', (sets, target_reps, target_weight, rest_seconds, notes, template_exercise_id))
-            else:
-                cursor.execute('''
-                    UPDATE workout_template_exercises
-                    SET sets = ?, target_reps = ?, target_weight = ?, rest_seconds = ?, notes = ?
-                    WHERE id = ?
-                ''', (sets, target_reps, target_weight, rest_seconds, notes, template_exercise_id))
+            cursor.execute('''
+                UPDATE workout_template_exercises
+                SET sets = %s, target_reps = %s, target_weight = %s, rest_seconds = %s, notes = %s
+                WHERE id = %s
+            ''', (sets, target_reps, target_weight, rest_seconds, notes, template_exercise_id))
             conn.commit()
-            return True, "Template exercise updated"
 
     def remove_exercise_from_template(self, template_exercise_id):
-        """Remove an exercise from a template"""
+        """Remove exercise from template"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
-
-            # Verify the template exercise belongs to user's template
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT wte.id FROM workout_template_exercises wte
-                    JOIN workout_templates wt ON wte.template_id = wt.id
-                    WHERE wte.id = %s AND wt.user_id = %s
-                ''', (template_exercise_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT wte.id FROM workout_template_exercises wte
-                    JOIN workout_templates wt ON wte.template_id = wt.id
-                    WHERE wte.id = ? AND wt.user_id = ?
-                ''', (template_exercise_id, self.user_id))
-
-            if not cursor.fetchone():
-                return False, "Template exercise not found or unauthorized"
-
-            if self.connection_manager.use_mysql:
-                cursor.execute('DELETE FROM workout_template_exercises WHERE id = %s', (template_exercise_id,))
-            else:
-                cursor.execute('DELETE FROM workout_template_exercises WHERE id = ?', (template_exercise_id,))
+            cursor.execute('DELETE FROM workout_template_exercises WHERE id = %s', (template_exercise_id,))
             conn.commit()
-            return True, "Exercise removed from template"
-
-    def start_workout_from_template(self, template_id, notes=None):
-        """Start a new workout session from a template"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            # Get template exercises
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT exercise_id, sets, target_weight, target_reps
-                    FROM workout_template_exercises
-                    WHERE template_id = %s
-                    ORDER BY order_index
-                ''', (template_id,))
-            else:
-                cursor.execute('''
-                    SELECT exercise_id, sets, target_weight, target_reps
-                    FROM workout_template_exercises
-                    WHERE template_id = ?
-                    ORDER BY order_index
-                ''', (template_id,))
-            template_exercises = cursor.fetchall()
-
-            if not template_exercises:
-                return None, "Template has no exercises"
-
-            # Create workout session with 'in_progress' status
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    INSERT INTO workout_sessions (user_id, date, notes, template_id, status)
-                    VALUES (%s, %s, %s, %s, %s)
-                ''', (self.user_id, datetime.now().date(), notes, template_id, 'in_progress'))
-            else:
-                cursor.execute('''
-                    INSERT INTO workout_sessions (user_id, date, notes, template_id, status)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (self.user_id, datetime.now().date(), notes, template_id, 'in_progress'))
-            session_id = cursor.lastrowid
-
-            # Import progression service for historical analysis
-            from models.services.progression_service import ProgressionService
-            progression_service = ProgressionService()
-
-            # Pre-populate sets based on historical performance analysis, not template defaults
-            for exercise_id, num_sets, template_weight, template_reps in template_exercises:
-                # Get last performance for this exercise
-                last_performance = self.get_last_exercise_performance(exercise_id)
-
-                # Get progression readiness to determine suggested weights/reps
-                readiness = progression_service.check_progression_readiness(self.user_id, exercise_id)
-
-                # Determine starting weight and reps based on analysis
-                if last_performance:
-                    # Use historical performance as starting point
-                    suggested_weight = last_performance['max_weight']
-                    suggested_reps = last_performance['max_reps']
-
-                    # If ready for progression, use suggested progression values
-                    if readiness.get('ready') and readiness.get('suggestion') == 'increase_weight':
-                        suggested_weight = readiness.get('new_weight', suggested_weight)
-                        suggested_reps = readiness.get('new_reps_target', suggested_reps)
-                    elif readiness.get('current_avg_reps'):
-                        # Use current average reps if available
-                        suggested_reps = int(readiness['current_avg_reps'])
-                else:
-                    # Fallback to template values if no historical data
-                    suggested_weight = template_weight or 0
-                    suggested_reps = template_reps or 0
-
-                # Create sets with analyzed values
-                for set_num in range(1, num_sets + 1):
-                    if self.connection_manager.use_mysql:
-                        cursor.execute('''
-                            INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps)
-                            VALUES (%s, %s, %s, %s, %s)
-                        ''', (session_id, exercise_id, set_num, suggested_weight, suggested_reps))
-                    else:
-                        cursor.execute('''
-                            INSERT INTO workout_sets (session_id, exercise_id, set_number, weight, reps)
-                            VALUES (?, ?, ?, ?, ?)
-                        ''', (session_id, exercise_id, set_num, suggested_weight, suggested_reps))
-
-            conn.commit()
-            return session_id, "Workout started from template with progression analysis"
 
     def delete_template(self, template_id):
-        """Delete a workout template"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
+        """Delete template and its exercises"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
 
-            # Verify template belongs to user
-            if self.connection_manager.use_mysql:
-                cursor.execute('SELECT id FROM workout_templates WHERE id = %s AND user_id = %s', (template_id, self.user_id))
-            else:
-                cursor.execute('SELECT id FROM workout_templates WHERE id = ? AND user_id = ?', (template_id, self.user_id))
+                # First delete template exercises
+                cursor.execute('DELETE FROM workout_template_exercises WHERE template_id = %s', (template_id,))
 
-            if not cursor.fetchone():
-                return False, "Template not found or unauthorized"
+                # Then delete template (only if user owns it)
+                cursor.execute('DELETE FROM workout_templates WHERE id = %s AND user_id = %s',
+                             (template_id, self.user_id))
+                conn.commit()
 
-            # Delete template (cascade will delete template exercises)
-            if self.connection_manager.use_mysql:
-                cursor.execute('DELETE FROM workout_templates WHERE id = %s', (template_id,))
-            else:
-                cursor.execute('DELETE FROM workout_templates WHERE id = ?', (template_id,))
-            conn.commit()
-            return True, "Template deleted successfully"
+                return cursor.rowcount > 0
+        except Exception as e:
+            return False
 
-    def update_template(self, template_id, name, description, is_public):
+    def start_workout_from_template(self, template_id):
+        """Start a new workout from a template"""
+        template = self.get_template_by_id(template_id)
+        if not template:
+            return None
+
+        # Create new workout session
+        session_id = self.start_workout_session()
+        return session_id
+
+    def create_template_from_workout(self, workout_id, name, description):
+        """Create a template from an existing workout"""
+        workout, sets = self.get_workout_details(workout_id)
+        if not workout:
+            return None
+
+        # Create template
+        template_id = self.create_template(name, description)
+
+        # Group sets by exercise and add to template
+        exercises = {}
+        for set_data in sets:
+            exercise_id = set_data[2]  # exercise_id column
+            if exercise_id not in exercises:
+                exercises[exercise_id] = {
+                    'sets': 0,
+                    'weights': [],
+                    'reps': []
+                }
+            exercises[exercise_id]['sets'] += 1
+            exercises[exercise_id]['weights'].append(set_data[4])  # weight
+            exercises[exercise_id]['reps'].append(set_data[5])     # reps
+
+        # Add exercises to template
+        order_index = 1
+        for exercise_id, data in exercises.items():
+            avg_weight = sum(data['weights']) / len(data['weights']) if data['weights'] else 0
+            avg_reps = sum(data['reps']) / len(data['reps']) if data['reps'] else 0
+
+            self.add_exercise_to_template(
+                template_id, exercise_id, data['sets'],
+                int(avg_reps), avg_weight, 90, "", order_index
+            )
+            order_index += 1
+
+        return template_id
+
+    def update_template(self, template_id, name, description):
         """Update template details"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE workout_templates
+                SET name = %s, description = %s
+                WHERE id = %s AND user_id = %s
+            ''', (name, description, template_id, self.user_id))
+            conn.commit()
+            return cursor.rowcount > 0
 
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    UPDATE workout_templates
-                    SET name = %s, description = %s, is_public = %s, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = %s AND user_id = %s
-                ''', (name, description, is_public, template_id, self.user_id))
-            else:
-                cursor.execute('''
-                    UPDATE workout_templates
-                    SET name = ?, description = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND user_id = ?
-                ''', (name, description, is_public, template_id, self.user_id))
-
-            if cursor.rowcount > 0:
-                conn.commit()
-                return True, "Template updated successfully"
-            else:
-                return False, "Template not found or unauthorized"
-
-    # Workout Completion Methods
-
-    def complete_workout(self, workout_id):
-        """Mark a workout as completed"""
+    def get_exercise_history(self, exercise_id, limit=10):
+        """Get recent history for an exercise"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute('''
+                SELECT ws.weight, ws.reps, ws.started_at, wss.started_at, wss.date
+                FROM workout_sets ws
+                JOIN workout_sessions wss ON ws.session_id = wss.id
+                WHERE ws.exercise_id = %s AND wss.user_id = %s
+                ORDER BY wss.date DESC, ws.id DESC
+                LIMIT %s
+            ''', (exercise_id, self.user_id, limit))
+            return cursor.fetchall()
 
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    UPDATE workout_sessions
-                    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-                    WHERE id = %s AND user_id = %s AND status = 'in_progress'
-                ''', (workout_id, self.user_id))
-            else:
-                cursor.execute('''
-                    UPDATE workout_sessions
-                    SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND user_id = ? AND status = 'in_progress'
-                ''', (workout_id, self.user_id))
+    def get_exercise_progression_data(self, exercise_id):
+        """Get progression data for an exercise"""
+        history = self.get_exercise_history(exercise_id, 50)
+        if not history:
+            return None
 
-            if cursor.rowcount > 0:
-                # Get all exercises in this workout before committing
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        SELECT DISTINCT exercise_id
-                        FROM workout_sets
-                        WHERE session_id = %s
-                    ''', (workout_id,))
-                else:
-                    cursor.execute('''
-                        SELECT DISTINCT exercise_id
-                        FROM workout_sets
-                        WHERE session_id = ?
-                    ''', (workout_id,))
+        # Calculate progression metrics
+        weights = [h[0] for h in history if h[0]]
+        if not weights:
+            return None
 
-                exercises = cursor.fetchall()
+        return {
+            'current_max': max(weights),
+            'recent_average': sum(weights[-5:]) / len(weights[-5:]) if len(weights) >= 5 else sum(weights) / len(weights),
+            'total_workouts': len(history),
+            'last_workout': history[0] if history else None
+        }
 
-                # Commit the workout completion first
-                conn.commit()
+    def get_quick_progression_info(self, exercise_id):
+        """Get quick progression info for exercise"""
+        history = self.get_exercise_history(exercise_id, 5)
+        if not history:
+            return {'has_history': False}
 
-                # Calculate volume metrics for each exercise in the workout
-                # This now happens after the connection is closed to avoid locks
-                from models.services.advanced_progression_service import AdvancedProgressionService
-                adv_service = AdvancedProgressionService(self.db_path)
-
-                # Calculate volume for each exercise
-                for (exercise_id,) in exercises:
-                    adv_service.calculate_volume_metrics(workout_id, exercise_id)
-
-                return True, "Workout completed successfully"
-            else:
-                return False, "Workout not found, already completed, or unauthorized"
-
-    def abandon_workout(self, workout_id):
-        """Mark a workout as abandoned"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    UPDATE workout_sessions
-                    SET status = 'abandoned', completed_at = CURRENT_TIMESTAMP
-                    WHERE id = %s AND user_id = %s AND status = 'in_progress'
-                ''', (workout_id, self.user_id))
-            else:
-                cursor.execute('''
-                    UPDATE workout_sessions
-                    SET status = 'abandoned', completed_at = CURRENT_TIMESTAMP
-                    WHERE id = ? AND user_id = ? AND status = 'in_progress'
-                ''', (workout_id, self.user_id))
-
-            if cursor.rowcount > 0:
-                conn.commit()
-                return True, "Workout abandoned"
-            else:
-                return False, "Workout not found, already completed, or unauthorized"
-
-    def get_workout_status(self, workout_id):
-        """Get the status of a workout"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT status, completed_at FROM workout_sessions
-                    WHERE id = %s AND user_id = %s
-                ''', (workout_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT status, completed_at FROM workout_sessions
-                    WHERE id = ? AND user_id = ?
-                ''', (workout_id, self.user_id))
-
-            result = cursor.fetchone()
-
-            if result:
-                return result[0], result[1]
-            return None, None
-
-    def get_workout_summary(self, workout_id):
-        """Get summary statistics for a completed workout"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            # Get workout info
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT date, created_at, completed_at, status
-                    FROM workout_sessions
-                    WHERE id = %s AND user_id = %s
-                ''', (workout_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT date, created_at, completed_at, status
-                    FROM workout_sessions
-                    WHERE id = ? AND user_id = ?
-                ''', (workout_id, self.user_id))
-
-            workout_info = cursor.fetchone()
-            if not workout_info:
-                return None
-
-            # Calculate duration if completed
-            duration = None
-            if workout_info[2]:  # completed_at exists
-                created = datetime.fromisoformat(workout_info[1])
-                completed = datetime.fromisoformat(workout_info[2])
-                duration = int((completed - created).total_seconds() / 60)  # minutes
-
-            # Get statistics
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT
-                        COUNT(DISTINCT exercise_id) as exercise_count,
-                        COUNT(*) as total_sets,
-                        SUM(weight * reps) as total_volume,
-                        SUM(reps) as total_reps
-                    FROM workout_sets
-                    WHERE session_id = %s
-                ''', (workout_id,))
-            else:
-                cursor.execute('''
-                    SELECT
-                        COUNT(DISTINCT exercise_id) as exercise_count,
-                        COUNT(*) as total_sets,
-                        SUM(weight * reps) as total_volume,
-                        SUM(reps) as total_reps
-                    FROM workout_sets
-                    WHERE session_id = ?
-                ''', (workout_id,))
-
-            stats = cursor.fetchone()
-
-            return {
-                'date': workout_info[0],
-                'status': workout_info[3],
-                'duration_minutes': duration,
-                'exercise_count': stats[0] or 0,
-                'total_sets': stats[1] or 0,
-                'total_volume': stats[2] or 0,
-                'total_reps': stats[3] or 0
-            }
-
-    def create_template_from_workout(self, workout_id, name, description=None, is_public=False):
-        """Create a workout template from an existing workout"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            try:
-                # Verify workout belongs to user
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        SELECT id FROM workout_sessions
-                        WHERE id = %s AND user_id = %s
-                    ''', (workout_id, self.user_id))
-                else:
-                    cursor.execute('''
-                        SELECT id FROM workout_sessions
-                        WHERE id = ? AND user_id = ?
-                    ''', (workout_id, self.user_id))
-
-                if not cursor.fetchone():
-                    return None, "Workout not found or unauthorized"
-
-                # Get all exercises from the workout
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        SELECT DISTINCT ws.exercise_id,
-                               COUNT(*) as num_sets,
-                               AVG(ws.weight) as avg_weight,
-                               AVG(ws.reps) as avg_reps,
-                               MIN(ws.set_number) as min_set_num
-                        FROM workout_sets ws
-                        WHERE ws.session_id = %s
-                        GROUP BY ws.exercise_id
-                        ORDER BY MIN(ws.id)
-                    ''', (workout_id,))
-                else:
-                    cursor.execute('''
-                        SELECT DISTINCT ws.exercise_id,
-                               COUNT(*) as num_sets,
-                               AVG(ws.weight) as avg_weight,
-                               AVG(ws.reps) as avg_reps,
-                               MIN(ws.set_number) as min_set_num
-                        FROM workout_sets ws
-                        WHERE ws.session_id = ?
-                        GROUP BY ws.exercise_id
-                        ORDER BY MIN(ws.id)
-                    ''', (workout_id,))
-
-                exercises = cursor.fetchall()
-
-                if not exercises:
-                    return None, "No exercises found in workout"
-
-                # Create the template
-                if self.connection_manager.use_mysql:
-                    cursor.execute('''
-                        INSERT INTO workout_templates (name, description, user_id, is_public)
-                        VALUES (%s, %s, %s, %s)
-                    ''', (name, description, self.user_id, is_public))
-                else:
-                    cursor.execute('''
-                        INSERT INTO workout_templates (name, description, user_id, is_public)
-                        VALUES (?, ?, ?, ?)
-                    ''', (name, description, self.user_id, is_public))
-
-                template_id = cursor.lastrowid
-
-                # Add exercises to template
-                for order, (exercise_id, num_sets, avg_weight, avg_reps, _) in enumerate(exercises, 1):
-                    if self.connection_manager.use_mysql:
-                        cursor.execute('''
-                            INSERT INTO workout_template_exercises
-                            (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ''', (template_id, exercise_id, order, num_sets,
-                              int(round(avg_reps)), round(avg_weight, 1), 90))
-                    else:
-                        cursor.execute('''
-                            INSERT INTO workout_template_exercises
-                            (template_id, exercise_id, order_index, sets, target_reps, target_weight, rest_seconds)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                        ''', (template_id, exercise_id, order, num_sets,
-                              int(round(avg_reps)), round(avg_weight, 1), 90))
-
-                conn.commit()
-                return template_id, "Template created successfully"
-
-            except Exception as e:
-                conn.rollback()
-                return None, f"Error creating template: {str(e)}"
+        last_set = history[0]
+        return {
+            'has_history': True,
+            'last_weight': last_set[0],
+            'last_reps': last_set[1],
+            'ready_for_progression': len(history) >= 3  # Simple progression logic
+        }
 
     def get_last_exercise_performance(self, exercise_id):
-        """Get the last performance for a specific exercise"""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-
-            if self.connection_manager.use_mysql:
-                cursor.execute('''
-                    SELECT
-                        MAX(ws.weight) as max_weight,
-                        MAX(ws.reps) as max_reps,
-                        wss.date
-                    FROM workout_sets ws
-                    JOIN workout_sessions wss ON ws.session_id = wss.id
-                    WHERE ws.exercise_id = %s AND wss.user_id = %s
-                    GROUP BY wss.id
-                    ORDER BY wss.date DESC, wss.id DESC
-                    LIMIT 1
-                ''', (exercise_id, self.user_id))
-            else:
-                cursor.execute('''
-                    SELECT
-                        MAX(ws.weight) as max_weight,
-                        MAX(ws.reps) as max_reps,
-                        wss.date
-                    FROM workout_sets ws
-                    JOIN workout_sessions wss ON ws.session_id = wss.id
-                    WHERE ws.exercise_id = ? AND wss.user_id = ?
-                    GROUP BY wss.id
-                    ORDER BY wss.date DESC, wss.id DESC
-                    LIMIT 1
-                ''', (exercise_id, self.user_id))
-
-            result = cursor.fetchone()
-
-            if result:
-                return {
-                    'max_weight': result[0],
-                    'max_reps': result[1],
-                    'workout_date': result[2]
-                }
+        """Get the last performance for an exercise"""
+        history = self.get_exercise_history(exercise_id, 1)
+        if not history:
             return None
+
+        last_set = history[0]
+        return {
+            'weight': last_set[0],
+            'reps': last_set[1],
+            'logged_at': last_set[2],
+            'started_at': last_set[3] if len(last_set) > 3 else None,
+            'workout_date': last_set[4] if len(last_set) > 4 else None
+        }

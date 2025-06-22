@@ -407,8 +407,8 @@ body {
             <span class="stat-number">
                 {% set total_sets = 0 %}
                 {% for workout in workouts %}
-                    {% if workout[6] and workout[6]|int %}
-                        {% set total_sets = total_sets + workout[6]|int %}
+                    {% if workout[7] and workout[7]|int %}
+                        {% set total_sets = total_sets + workout[7]|int %}
                     {% endif %}
                 {% endfor %}
                 {{ total_sets }}
@@ -460,17 +460,23 @@ body {
                 {% for workout in workouts %}
                     <a href="{{ url_for('gym.workout_detail', workout_id=workout[0]) }}" class="workout-item">
                         <div class="workout-header">
-                            <h4 class="workout-date">{{ workout[2] }}</h4>
-                            <span class="workout-time">{{ workout[4].strftime('%H:%M') if workout[4] else 'No time recorded' }}</span>
+                            <h4 class="workout-date">{{ workout[2].strftime('%b %d, %Y') if workout[2] else 'No date' }}</h4>
+                            <span class="workout-time">{{ workout[4].strftime('%H:%M') if workout[4] else (workout[3].strftime('%H:%M') if workout[3] else 'No time recorded') }}</span>
                         </div>
                         <div class="workout-stats">
                             <div class="workout-stat">
                                 <i class="fas fa-dumbbell"></i>
-                                <span>{{ workout[5] or 0 }} exercises</span>
+                                <span>{{ workout[7] or 0 }} sets</span>
                             </div>
+                            {% if workout[8] %}
+                            <div class="workout-stat">
+                                <i class="fas fa-weight"></i>
+                                <span>{{ "{:,.0f}".format(workout[8]) }}kg volume</span>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% if workout[3] %}
-                            <p class="workout-notes">{{ workout[3] }}</p>
+                        {% if workout[6] %}
+                            <p class="workout-notes">{{ workout[6] }}</p>
                         {% endif %}
                     </a>
                 {% endfor %}

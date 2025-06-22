@@ -22,7 +22,7 @@ RUN mkdir -p /app/data
 
 # Set default environment variables
 ENV DATABASE_PATH=/app/data/database.db
-ENV USE_MYSQL=false
+ENV USE_MYSQL=true
 ENV FLASK_ENV=production
 ENV DEBUG=false
 

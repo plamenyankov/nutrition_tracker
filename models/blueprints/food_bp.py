@@ -16,7 +16,79 @@ def food_database():
 @food_bp.route('/api/paginated')
 @login_required
 def get_foods_paginated():
-    """Get paginated foods with search and filters"""
+    """
+    Get paginated food list with search and filters
+    ---
+    tags:
+      - Food Database
+    security:
+      - LoginRequired: []
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        default: 1
+        description: Page number
+      - name: per_page
+        in: query
+        type: integer
+        default: 24
+        description: Items per page
+      - name: search
+        in: query
+        type: string
+        description: Search term for food names
+      - name: favorites_only
+        in: query
+        type: boolean
+        description: Show only favorite foods
+      - name: min_calories
+        in: query
+        type: number
+        description: Minimum calories filter
+      - name: max_calories
+        in: query
+        type: number
+        description: Maximum calories filter
+    responses:
+      200:
+        description: Paginated food list
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            foods:
+              type: array
+              items:
+                type: object
+                properties:
+                  ingredient_id:
+                    type: integer
+                  name:
+                    type: string
+                  kcal:
+                    type: number
+                  protein:
+                    type: number
+                  carb:
+                    type: number
+                  fat:
+                    type: number
+                  is_favorite:
+                    type: boolean
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                per_page:
+                  type: integer
+                total:
+                  type: integer
+                pages:
+                  type: integer
+    """
     try:
         page = int(request.args.get('page', 1))
         per_page = int(request.args.get('per_page', 24))
@@ -57,7 +129,75 @@ def toggle_favorite(ingredient_id):
 @food_bp.route('/add', methods=['POST'])
 @login_required
 def add_food():
-    """Add a new food to the database"""
+    """
+    Add a new food to the database
+    ---
+    tags:
+      - Food Database
+    security:
+      - LoginRequired: []
+    parameters:
+      - name: food_name
+        in: formData
+        type: string
+        required: true
+        description: Name of the food
+      - name: quantity
+        in: formData
+        type: number
+        required: true
+        description: Quantity/serving size
+      - name: unit
+        in: formData
+        type: string
+        required: true
+        description: Unit of measurement (g, ml, piece, etc.)
+      - name: calories
+        in: formData
+        type: number
+        required: true
+        description: Calories per serving
+      - name: protein
+        in: formData
+        type: number
+        required: true
+        description: Protein in grams
+      - name: carbs
+        in: formData
+        type: number
+        required: true
+        description: Carbohydrates in grams
+      - name: fat
+        in: formData
+        type: number
+        required: true
+        description: Fat in grams
+      - name: fiber
+        in: formData
+        type: number
+        description: Fiber in grams (optional)
+    responses:
+      200:
+        description: Food added successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            food_id:
+              type: integer
+      400:
+        description: Invalid input data
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            error:
+              type: string
+    """
     try:
         food_data = {
             'food_name': request.form.get('food_name'),

@@ -25,7 +25,62 @@ def meal_tracking_week(start_date=None):
 @meal_bp.route('/add', methods=['POST'])
 @login_required
 def add_to_meal():
-    """Add food to a specific meal"""
+    """
+    Add food or recipe to a meal
+    ---
+    tags:
+      - Meal Tracking
+    security:
+      - LoginRequired: []
+    parameters:
+      - name: ingredient_id
+        in: formData
+        type: integer
+        description: Food ingredient ID (if adding food)
+      - name: recipe_id
+        in: formData
+        type: integer
+        description: Recipe ID (if adding recipe)
+      - name: quantity
+        in: formData
+        type: number
+        required: true
+        description: Quantity/serving size
+      - name: meal_type
+        in: formData
+        type: string
+        required: true
+        description: Type of meal (breakfast, lunch, dinner, snack)
+        enum: [breakfast, lunch, dinner, snack, other]
+      - name: date
+        in: formData
+        type: string
+        required: true
+        description: Date in YYYY-MM-DD format
+      - name: as_recipe
+        in: formData
+        type: boolean
+        description: Whether to add as recipe (true) or individual ingredients (false)
+    responses:
+      200:
+        description: Item added to meal successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+      400:
+        description: Invalid input data
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            error:
+              type: string
+    """
     try:
         food_id = request.form.get('food_id')
         meal_type = request.form.get('meal_type', 'other')
