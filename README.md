@@ -16,6 +16,17 @@ A comprehensive nutrition and fitness tracking application with AI-powered featu
 2. Set up environment variables (see `env.example`)
 3. Run the application: `python app.py`
 
+## Deployment
+
+### Production Deployment
+- Use `./deploy_to_digitalocean.sh` to deploy to production server
+- The script builds Docker image, pushes to Docker Hub, and deploys to DigitalOcean droplet
+
+### Server Maintenance
+- **Disk Space Cleanup**: If deployment fails due to "no space left on device", run `./cleanup_docker_space.sh`
+- This script connects to the production server and removes unused Docker images, containers, and volumes
+- It can free up several GB of space and should be run when the server disk usage is high
+
 ## Documentation
 
 See the `docs/` folder for detailed documentation:
