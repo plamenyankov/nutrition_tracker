@@ -133,6 +133,15 @@ body {
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
     overflow: hidden;
+    position: sticky;
+    top: 80px;
+    z-index: 10;
+    border: 2px solid var(--primary-color);
+}
+
+.exercise-selector.at-top {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--success-color);
 }
 
 .selector-header {
@@ -202,17 +211,33 @@ body {
 
     /* Improved mobile layout for sets */
     .set-header {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
+        align-items: center;
+    }
+
+    .set-number {
+        min-width: 40px;
+        font-size: 0.8rem;
     }
 
     .set-progression-info {
-        width: 100%;
-        order: 3;
-        margin: 0.5rem 0 0 0;
+        flex: 1;
+        margin: 0 0.5rem;
     }
 
     .set-actions {
-        order: 2;
+        flex-shrink: 0;
+        gap: 0.2rem;
+    }
+
+    .set-actions .btn-save,
+    .set-actions .btn-edit {
+        display: none;
+    }
+
+    .set-actions .btn-delete {
+        order: 3;
+        margin-left: 0.5rem;
     }
 
     .progression-status {
@@ -310,6 +335,45 @@ body {
     justify-content: space-between;
     align-items: flex-start;
     gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.exercise-header:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.exercise-header.collapsed {
+    border-bottom: none;
+}
+
+.exercise-content {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.exercise-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+.exercise-card.minimized {
+    margin: 0.5rem 1rem;
+}
+
+.exercise-card.minimized .exercise-header {
+    padding: 0.5rem 0.75rem;
+}
+
+.collapse-indicator {
+    font-size: 0.8rem;
+    color: #6c757d;
+    transition: transform 0.3s ease;
+    margin-left: 0.5rem;
+}
+
+.collapse-indicator.collapsed {
+    transform: rotate(-90deg);
 }
 
 .exercise-info {
@@ -384,6 +448,46 @@ body {
     align-items: flex-start;
     margin-bottom: 0.75rem;
     gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    padding: 0.2rem;
+    margin: -0.2rem -0.2rem 0.5rem -0.2rem;
+}
+
+.set-header:hover {
+    background: rgba(0,0,0,0.05);
+}
+
+.set-header.collapsed {
+    margin-bottom: 0;
+}
+
+.set-content {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.set-content.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.set-row.logged .set-header {
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem;
+    margin: -0.2rem;
+}
+
+.set-row.logged .set-progression-info {
+    font-weight: 600;
+}
+
+.set-row.logged .progression-status {
+    border-width: 2px;
 }
 
 .set-number {
@@ -978,7 +1082,7 @@ function addExerciseCard(exerciseId, exerciseName) {
     exerciseCard.className = 'exercise-card';
     exerciseCard.id = `exercise-${exerciseId}`;
     exerciseCard.innerHTML = `
-        <div class="exercise-header">
+        <div class="exercise-header" onclick="toggleExerciseCollapse(${exerciseId})">
             <div class="exercise-info">
                 <h4 class="exercise-name">${exerciseName}</h4>
                 <p class="exercise-history" id="progression-info-${exerciseId}">
@@ -988,14 +1092,19 @@ function addExerciseCard(exerciseId, exerciseName) {
                     </span>
                 </p>
             </div>
-            <button class="remove-exercise-btn" data-exercise-id="${exerciseId}">
-                <i class="fas fa-times"></i>
-            </button>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="collapse-indicator">▼</span>
+                <button class="remove-exercise-btn" data-exercise-id="${exerciseId}" onclick="event.stopPropagation()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
         </div>
-        <div class="sets-container" id="sets-${exerciseId}">
-            <button class="add-set-btn" data-exercise-id="${exerciseId}">
-                <i class="fas fa-plus"></i> Add Set
-            </button>
+        <div class="exercise-content">
+            <div class="sets-container" id="sets-${exerciseId}">
+                <button class="add-set-btn" data-exercise-id="${exerciseId}">
+                    <i class="fas fa-plus"></i> Add Set
+                </button>
+            </div>
         </div>
     `;
 
@@ -1032,6 +1141,10 @@ function addExerciseCard(exerciseId, exerciseName) {
     // Add first set automatically
     addSetRow(exerciseId);
     updateSummary();
+
+    // Minimize completed exercises and move selector to top
+    minimizeCompletedExercises();
+    moveExerciseSelectorToTop();
 }
 
 function addSetRow(exerciseId) {
@@ -1042,12 +1155,12 @@ function addSetRow(exerciseId) {
     setDiv.className = 'set-row';
     setDiv.id = `set-${setId}`;
     setDiv.innerHTML = `
-        <div class="set-header">
+        <div class="set-header" onclick="toggleSetCollapse('${setId}')">
             <span class="set-number">Set ${setNumber}</span>
             <div class="set-progression-info" id="progression-${setId}">
                 <span class="loading-progression">Loading suggestions...</span>
             </div>
-            <div class="set-actions">
+            <div class="set-actions" onclick="event.stopPropagation()">
                 <button class="set-btn btn-save" data-set-id="${setId}" data-exercise-id="${exerciseId}">
                     <i class="fas fa-check"></i>
                     <span class="d-none d-sm-inline">Save</span>
@@ -1061,16 +1174,18 @@ function addSetRow(exerciseId) {
                 </button>
             </div>
         </div>
-        <div class="set-inputs">
-            <div class="input-group">
-                <label class="input-label">Weight (kg)</label>
-                <input type="number" class="set-input weight-input"
-                       placeholder="0" step="0.5" min="0" id="weight-${setId}">
-            </div>
-            <div class="input-group">
-                <label class="input-label">Reps</label>
-                <input type="number" class="set-input reps-input"
-                       placeholder="0" min="1" id="reps-${setId}">
+        <div class="set-content" id="set-content-${setId}">
+            <div class="set-inputs">
+                <div class="input-group">
+                    <label class="input-label">Weight (kg)</label>
+                    <input type="number" class="set-input weight-input"
+                           placeholder="0" step="0.5" min="0" id="weight-${setId}">
+                </div>
+                <div class="input-group">
+                    <label class="input-label">Reps</label>
+                    <input type="number" class="set-input reps-input"
+                           placeholder="0" min="1" id="reps-${setId}">
+                </div>
             </div>
         </div>
     `;
@@ -1390,6 +1505,11 @@ function lockSet(setId) {
     // Toggle buttons
     setDiv.querySelector('.btn-save').classList.add('d-none');
     setDiv.querySelector('.btn-edit').classList.remove('d-none');
+
+    // Auto-collapse completed set
+    setTimeout(() => {
+        toggleSetCollapse(setId);
+    }, 1000);
 }
 
 function editSet(setId) {
@@ -1713,6 +1833,67 @@ function showToast(message, type = 'info') {
     toast.querySelector('.toast-close').addEventListener('click', () => {
         toast.remove();
     });
+}
+
+// Collapse/Expand functionality
+function toggleSetCollapse(setId) {
+    const setContent = document.getElementById(`set-content-${setId}`);
+    const setHeader = setContent.previousElementSibling;
+
+    if (setContent.classList.contains('collapsed')) {
+        setContent.classList.remove('collapsed');
+        setHeader.classList.remove('collapsed');
+    } else {
+        setContent.classList.add('collapsed');
+        setHeader.classList.add('collapsed');
+    }
+}
+
+function toggleExerciseCollapse(exerciseId) {
+    const exerciseCard = document.getElementById(`exercise-${exerciseId}`);
+    const exerciseContent = exerciseCard.querySelector('.exercise-content');
+    const exerciseHeader = exerciseCard.querySelector('.exercise-header');
+    const collapseIndicator = exerciseHeader.querySelector('.collapse-indicator');
+
+    if (exerciseContent.classList.contains('collapsed')) {
+        exerciseContent.classList.remove('collapsed');
+        exerciseHeader.classList.remove('collapsed');
+        exerciseCard.classList.remove('minimized');
+        if (collapseIndicator) collapseIndicator.classList.remove('collapsed');
+    } else {
+        exerciseContent.classList.add('collapsed');
+        exerciseHeader.classList.add('collapsed');
+        exerciseCard.classList.add('minimized');
+        if (collapseIndicator) collapseIndicator.classList.add('collapsed');
+    }
+}
+
+function minimizeCompletedExercises() {
+    // Find all exercises except the current one
+    const exerciseCards = document.querySelectorAll('.exercise-card');
+    const exerciseSelector = document.querySelector('.exercise-selector');
+
+    exerciseCards.forEach((card, index) => {
+        if (index < exerciseCards.length - 1) { // Not the last (current) exercise
+            const exerciseId = card.id.replace('exercise-', '');
+            const exerciseContent = card.querySelector('.exercise-content');
+            const exerciseHeader = card.querySelector('.exercise-header');
+
+            if (exerciseContent && !exerciseContent.classList.contains('collapsed')) {
+                toggleExerciseCollapse(exerciseId);
+            }
+        }
+    });
+}
+
+function moveExerciseSelectorToTop() {
+    const exerciseSelector = document.querySelector('.exercise-selector');
+    const workoutContent = document.querySelector('.workout-content');
+    const firstExercise = workoutContent.querySelector('.exercise-card');
+
+    if (firstExercise && exerciseSelector) {
+        workoutContent.insertBefore(exerciseSelector, firstExercise);
+    }
 }
 </script>
 {% endblock %}
