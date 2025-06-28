@@ -42,8 +42,8 @@ class DefaultUserPreferences:
     progression_strategy: str = 'reps_first'
     min_reps_target: int = 10
     max_reps_target: int = 15
-    weight_increment_upper: float = 2.5  # kg
-    weight_increment_lower: float = 5.0  # kg
+    weight_increment_upper: float = 5.0  # kg - unified increment
+    weight_increment_lower: float = 5.0  # kg - unified increment
     rest_timer_enabled: bool = True
     progression_notification_enabled: bool = True
     pyramid_preference: str = 'auto_detect'

@@ -53,47 +53,45 @@ class WeightCalculator:
     @staticmethod
     def calculate_smart_increment(exercise_info: Dict, current_weight: float,
                                 is_upper_body: bool, user_prefs: Optional[Dict] = None) -> float:
-        """Calculate smart weight increment based on exercise type and current weight"""
-        exercise_name = exercise_info.get('name', '').lower()
-        equipment_type = WeightCalculator.get_equipment_type(exercise_info)
+        """Calculate smart weight increment - always 5kg for all exercises"""
+        # Always return 5kg increment regardless of exercise type or body part
+        return 5.0
 
-        # Base increments from user preferences or defaults
-        if user_prefs:
-            base_increment = user_prefs.get('weight_increment_upper' if is_upper_body else 'weight_increment_lower',
-                                          2.5 if is_upper_body else 5.0)
-        else:
-            base_increment = 2.5 if is_upper_body else 5.0
+    @staticmethod
+    def calculate_volume_based_reps(current_weight: float, current_reps: int, new_weight: float,
+                                  volume_percentage: float = 0.9) -> int:
+        """
+        Calculate suggested reps based on volume maintenance
 
-        if equipment_type == 'bodyweight':
-            # For bodyweight exercises, suggest adding weight or progressing to harder variation
-            return 2.5 if current_weight == 0 else 2.5
+        Args:
+            current_weight: Current weight being lifted
+            current_reps: Current reps performed
+            new_weight: New suggested weight
+            volume_percentage: Percentage of original volume to maintain (default 90%)
 
-        elif equipment_type == 'machine':
-            # Machine exercises typically use 5kg increments due to plate limitations
-            if current_weight < 20:
-                return 2.5  # Smaller increment for lighter weights
-            else:
-                return 5.0  # Standard machine increment
+        Returns:
+            Suggested reps for the new weight (rounded up)
+        """
+        if current_weight <= 0 or new_weight <= 0:
+            return max(current_reps, 10)  # Default fallback
 
-        elif equipment_type == 'free_weight':
-            # Free weights allow more precise increments
-            if current_weight < 10:
-                return 0.5  # Very small increment for light weights
-            elif current_weight < 30:
-                return 1.0  # Small increment for moderate weights
-            elif current_weight < 60:
-                return 2.5  # Standard increment
-            else:
-                return 5.0 if not is_upper_body else 2.5  # Larger increment for heavy weights
+        # Calculate current total volume
+        current_volume = current_weight * current_reps
 
-        else:
-            # Default to user preferences with smart adjustments
-            if current_weight < 20:
-                return base_increment / 2  # Smaller increment for lighter weights
-            elif current_weight > 100:
-                return base_increment * 2  # Larger increment for very heavy weights
-            else:
-                return base_increment
+        # Calculate target volume (90% of current)
+        target_volume = current_volume * volume_percentage
+
+        # Calculate required reps for new weight to achieve target volume
+        required_reps = target_volume / new_weight
+
+        # Round up since we can't do partial reps
+        import math
+        suggested_reps = math.ceil(required_reps)
+
+        # Ensure minimum of 6 reps for safety and maximum of 20 for practicality
+        suggested_reps = max(6, min(20, suggested_reps))
+
+        return suggested_reps
 
     @staticmethod
     def round_to_practical_weight(weight: float, exercise_info: Dict) -> float:

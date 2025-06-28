@@ -62,13 +62,19 @@ def simple_set_progression_analysis(user_id, exercise_id, set_number, set_histor
     # Simple progression logic
     if recently_progressed:
         if current_reps >= 15:  # max_reps
+            # Import WeightCalculator for volume-based calculation
+            from models.services.progression.calculators.weight_calculator import WeightCalculator
+            new_weight = current_weight + 5.0  # Always 5kg increment
+            suggested_reps = WeightCalculator.calculate_volume_based_reps(
+                current_weight, current_reps, new_weight
+            )
             return {
                 'ready': True,
                 'confidence': 0.9,
                 'suggestion': 'increase_weight',
                 'current_weight': current_weight,
-                'suggested_weight': current_weight + 2.5,
-                'suggested_reps': 10,
+                'suggested_weight': new_weight,
+                'suggested_reps': suggested_reps,
                 'reps_to_go': 0,
                 'target_reps': 15
             }
@@ -88,13 +94,19 @@ def simple_set_progression_analysis(user_id, exercise_id, set_number, set_histor
     else:
         # Standard progression logic
         if current_reps >= 15:
+            # Import WeightCalculator for volume-based calculation
+            from models.services.progression.calculators.weight_calculator import WeightCalculator
+            new_weight = current_weight + 5.0  # Always 5kg increment
+            suggested_reps = WeightCalculator.calculate_volume_based_reps(
+                current_weight, current_reps, new_weight
+            )
             return {
                 'ready': True,
                 'confidence': 0.9,
                 'suggestion': 'increase_weight',
                 'current_weight': current_weight,
-                'suggested_weight': current_weight + 2.5,
-                'suggested_reps': 10,
+                'suggested_weight': new_weight,
+                'suggested_reps': suggested_reps,
                 'reps_to_go': 0,
                 'target_reps': 15
             }
