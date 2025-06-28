@@ -448,6 +448,67 @@ body {
     word-break: break-word;
 }
 
+/* New progression comparison styles */
+.progression-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    line-height: 1.2;
+}
+
+.progression-comparison {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    font-size: 0.65rem;
+    line-height: 1.2;
+}
+
+.last-performance, .suggested-performance {
+    flex: 1;
+    text-align: center;
+    min-width: 0;
+}
+
+.progression-arrow {
+    font-size: 0.8rem;
+    color: #6c757d;
+    flex-shrink: 0;
+    margin: 0 0.2rem;
+}
+
+.performance-value {
+    display: block;
+    font-weight: 700;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 576px) {
+    .progression-comparison {
+        flex-direction: column;
+        gap: 0.2rem;
+        text-align: center;
+    }
+
+    .progression-arrow {
+        transform: rotate(90deg);
+        margin: 0.1rem 0;
+    }
+
+    .last-performance, .suggested-performance {
+        width: 100%;
+    }
+
+    .performance-value {
+        font-size: 0.75rem;
+    }
+}
+
 .loading-progression {
     color: #6c757d;
     font-style: italic;
@@ -1072,9 +1133,19 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '🔥';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Ready!
-                            <div class="progression-details">
-                                Try: ${data.suggested_weight}kg × ${data.suggested_reps}
+                            <div class="progression-header">
+                                ${statusIcon} Ready to progress!
+                            </div>
+                            <div class="progression-comparison">
+                                <div class="last-performance">
+                                    <small class="text-muted">Last time:</small>
+                                    <span class="performance-value">${data.last_weight}kg × ${data.last_reps}</span>
+                                </div>
+                                <div class="progression-arrow">→</div>
+                                <div class="suggested-performance">
+                                    <small class="text-success">Try:</small>
+                                    <span class="performance-value text-success">${data.suggested_weight}kg × ${data.suggested_reps}</span>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1083,9 +1154,19 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '💪';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Keep building
-                            <div class="progression-details">
-                                Current: ${data.current_weight}kg × ${data.current_avg_reps}
+                            <div class="progression-header">
+                                ${statusIcon} Keep building strength
+                            </div>
+                            <div class="progression-comparison">
+                                <div class="last-performance">
+                                    <small class="text-muted">Last time:</small>
+                                    <span class="performance-value">${data.last_weight}kg × ${data.last_reps}</span>
+                                </div>
+                                <div class="progression-arrow">→</div>
+                                <div class="suggested-performance">
+                                    <small class="text-primary">Target:</small>
+                                    <span class="performance-value text-primary">${data.current_weight}kg × ${data.suggested_reps || data.current_avg_reps}</span>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1094,9 +1175,20 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '📈';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Almost ready
-                            <div class="progression-details">
-                                ${data.reps_to_go} more reps to go
+                            <div class="progression-header">
+                                ${statusIcon} Almost ready!
+                            </div>
+                            <div class="progression-comparison">
+                                <div class="last-performance">
+                                    <small class="text-muted">Last time:</small>
+                                    <span class="performance-value">${data.last_weight}kg × ${data.last_reps}</span>
+                                </div>
+                                <div class="progression-arrow">→</div>
+                                <div class="suggested-performance">
+                                    <small class="text-warning">Need:</small>
+                                    <span class="performance-value text-warning">${data.current_weight}kg × ${data.target_reps}</span>
+                                    <small class="text-muted">(${data.reps_to_go} more reps)</small>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1105,9 +1197,19 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '💪';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Build reps
-                            <div class="progression-details">
-                                Target: ${data.target_reps} reps
+                            <div class="progression-header">
+                                ${statusIcon} Build up reps
+                            </div>
+                            <div class="progression-comparison">
+                                <div class="last-performance">
+                                    <small class="text-muted">Last time:</small>
+                                    <span class="performance-value">${data.last_weight}kg × ${data.last_reps}</span>
+                                </div>
+                                <div class="progression-arrow">→</div>
+                                <div class="suggested-performance">
+                                    <small class="text-info">Target:</small>
+                                    <span class="performance-value text-info">${data.current_weight}kg × ${data.target_reps}</span>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -1116,9 +1218,19 @@ function fetchSetProgression(exerciseId, setNumber, setId) {
                     statusIcon = '💪';
                     progressionHTML = `
                         <div class="progression-status ${statusClass}">
-                            ${statusIcon} Keep going
-                            <div class="progression-details">
-                                Current: ${data.current_weight}kg × ${data.current_avg_reps || '—'}
+                            <div class="progression-header">
+                                ${statusIcon} Keep going
+                            </div>
+                            <div class="progression-comparison">
+                                <div class="last-performance">
+                                    <small class="text-muted">Last time:</small>
+                                    <span class="performance-value">${data.last_weight}kg × ${data.last_reps}</span>
+                                </div>
+                                <div class="progression-arrow">→</div>
+                                <div class="suggested-performance">
+                                    <small class="text-secondary">Try:</small>
+                                    <span class="performance-value text-secondary">${data.suggested_weight}kg × ${data.suggested_reps}</span>
+                                </div>
                             </div>
                         </div>
                     `;
