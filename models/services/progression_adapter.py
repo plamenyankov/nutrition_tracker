@@ -89,14 +89,24 @@ class ProgressionService:
         ready = stats.get('avg_reps', 0) >= max_reps_target - 1
 
         if ready:
-            weight_increment = prefs.get('weight_increment_upper' if is_upper_body else 'weight_increment_lower',
-                                       2.5 if is_upper_body else 5.0)
+            # Always use 5kg increment
+            weight_increment = 5.0
+            current_weight = stats.get('max_weight', 0)
+            new_weight = current_weight + weight_increment
+
+            # Calculate volume-based reps
+            from models.services.progression.calculators.weight_calculator import WeightCalculator
+            current_reps = stats.get('max_reps', max_reps_target)
+            suggested_reps = WeightCalculator.calculate_volume_based_reps(
+                current_weight, current_reps, new_weight
+            )
+
             return {
                 'ready': True,
                 'suggestion': 'increase_weight',
-                'current_weight': stats.get('max_weight', 0),
-                'new_weight': stats.get('max_weight', 0) + weight_increment,
-                'new_reps_target': prefs.get('min_reps_target', 10),
+                'current_weight': current_weight,
+                'new_weight': new_weight,
+                'new_reps_target': suggested_reps,
                 'reason': f'Consistently hitting {max_reps_target} reps',
                 'confidence': 0.9
             }
@@ -261,7 +271,7 @@ class AdvancedProgressionService:
 
             # Calculate suggested weight for new set
             last_weight = last_set_history[0]['weight']
-            exercise_info = self.workout_repo.get_exercise_info(exercise_id)
+            exercise_info = self.workout_repo.get_exercise_info(exercise_id) or {}
             is_upper_body = self.weight_calculator.is_upper_body_exercise(exercise_info)
 
             if pattern_info['pattern'] == 'ascending':
@@ -344,5 +354,5 @@ class AdvancedProgressionService:
 
     def _is_upper_body_exercise(self, exercise_id: int) -> bool:
         """Check if exercise is upper body"""
-        exercise_info = self.workout_repo.get_exercise_info(exercise_id)
+        exercise_info = self.workout_repo.get_exercise_info(exercise_id) or {}
         return self.weight_calculator.is_upper_body_exercise(exercise_info)

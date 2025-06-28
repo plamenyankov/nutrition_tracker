@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 from datetime import datetime, timedelta
 import statistics
 import logging
+from ..calculators.weight_calculator import WeightCalculator
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,8 @@ class ReadinessAnalyzer:
         # Get rep targets from preferences
         min_reps = user_prefs.get('min_reps_target', 10)
         max_reps = user_prefs.get('max_reps_target', 15)
-        weight_increment = user_prefs.get('weight_increment_upper' if is_upper_body else 'weight_increment_lower',
-                                        2.5 if is_upper_body else 5.0)
+        # Always use 5kg increment
+        weight_increment = 5.0
 
         # Analyze recent performance
         recent_weights = [h['weight'] for h in set_history[:3]]
@@ -100,13 +101,18 @@ class ReadinessAnalyzer:
         """Analyze readiness after recent weight progression"""
         if current_reps >= max_reps:
             # Already hitting max reps with new weight - ready for another progression!
+            new_weight = current_weight + weight_increment
+            # Calculate volume-based reps for the new weight
+            suggested_reps = WeightCalculator.calculate_volume_based_reps(
+                current_weight, current_reps, new_weight
+            )
             return {
                 'ready': True,
                 'confidence': 0.95,
                 'suggestion': 'increase_weight',
                 'current_weight': current_weight,
-                'suggested_weight': current_weight + weight_increment,
-                'suggested_reps': min_reps,
+                'suggested_weight': new_weight,
+                'suggested_reps': suggested_reps,
                 'reps_to_go': 0,
                 'target_reps': max_reps
             }
@@ -147,13 +153,19 @@ class ReadinessAnalyzer:
 
         if hitting_max_reps:
             # Ready to progress in weight
+            new_weight = current_weight + weight_increment
+            # Calculate volume-based reps using the best recent performance
+            best_recent_reps = max(recent_reps[:2])
+            suggested_reps = WeightCalculator.calculate_volume_based_reps(
+                current_weight, best_recent_reps, new_weight
+            )
             return {
                 'ready': True,
                 'confidence': 0.9,
                 'suggestion': 'increase_weight',
                 'current_weight': current_weight,
-                'suggested_weight': current_weight + weight_increment,
-                'suggested_reps': min_reps,
+                'suggested_weight': new_weight,
+                'suggested_reps': suggested_reps,
                 'reps_to_go': 0,
                 'target_reps': max_reps
             }

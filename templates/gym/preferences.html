@@ -153,20 +153,24 @@
                 <!-- Weight Increments -->
                 <div class="preference-section">
                     <h4 class="mb-3">Weight Increments</h4>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>New Progression System:</strong> All exercises now use a unified 5kg increment with volume-based rep calculations to maintain 90% of your previous total volume.
+                    </div>
                     <div class="row">
                         <div class="col-md-6">
                             <label for="weight_increment_upper" class="form-label">Upper Body (kg)</label>
                             <input type="number" class="form-control" id="weight_increment_upper"
-                                   name="weight_increment_upper" value="{{ preferences.weight_increment_upper }}"
-                                   step="0.5" min="0.5" max="10" required>
-                            <small class="form-text text-muted">For bench, rows, presses, etc.</small>
+                                   name="weight_increment_upper" value="5" readonly
+                                   step="0.5" min="5" max="5" required>
+                            <small class="form-text text-muted">Fixed at 5kg for all exercises</small>
                         </div>
                         <div class="col-md-6">
                             <label for="weight_increment_lower" class="form-label">Lower Body (kg)</label>
                             <input type="number" class="form-control" id="weight_increment_lower"
-                                   name="weight_increment_lower" value="{{ preferences.weight_increment_lower }}"
-                                   step="0.5" min="0.5" max="20" required>
-                            <small class="form-text text-muted">For squats, deadlifts, etc.</small>
+                                   name="weight_increment_lower" value="5" readonly
+                                   step="0.5" min="5" max="5" required>
+                            <small class="form-text text-muted">Fixed at 5kg for all exercises</small>
                         </div>
                     </div>
                 </div>

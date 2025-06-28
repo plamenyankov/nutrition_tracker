@@ -143,12 +143,12 @@ class ProgressionService(BaseProgressionService):
 
             # Calculate suggested weight for new set
             last_weight = last_set_history[0]['weight']
-            exercise_info = self.workout_repo.get_exercise_info(exercise_id)
+            exercise_info = self.workout_repo.get_exercise_info(exercise_id) or {}
             is_upper_body = self.weight_calculator.is_upper_body_exercise(exercise_info)
 
             if pattern_info['pattern'] == 'ascending':
-                # Increase weight from last set
-                increment = 2.5 if is_upper_body else 5.0
+                # Always use 5kg increment
+                increment = 5.0
                 suggested_weight = last_weight + increment
             elif pattern_info['pattern'] == 'descending':
                 # Decrease weight from last set
