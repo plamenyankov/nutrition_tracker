@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from typing import Optional
 import mysql.connector
 from mysql.connector import Error
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -28,19 +32,38 @@ def get_database_config(environment: str = None) -> DatabaseConfig:
     """Get database configuration based on environment"""
     env = environment or os.getenv('FLASK_ENV', 'development')
 
-    # Remote database credentials - different IPs for local vs production
-    # Local (with Wireguard): 192.168.11.1
-    # Production (direct): 213.91.178.104
-    if env == 'production':
-        # Production uses direct internet connection
-        db_host = os.getenv('DB_HOST', '213.91.178.104')
+    # Check for DigitalOcean database credentials first (preferred)
+    do_db_host = os.getenv('DO_DB_HOST')
+    do_db_port = os.getenv('DO_DB_PORT')
+    do_db_user = os.getenv('DO_DB_USER')
+    do_db_pass = os.getenv('DO_DB_PASS')
+    
+    use_do_db = do_db_host is not None
+    
+    if use_do_db:
+        # Use DigitalOcean managed database
+        db_host = do_db_host
+        db_port = int(do_db_port) if do_db_port else 25060
+        db_user = do_db_user or 'nutrition_user'
+        db_pass = do_db_pass
+        ssl_disabled = False  # DigitalOcean requires SSL
+        logger.info(f"Using DigitalOcean database: {db_host}:{db_port}")
     else:
-        # Development uses Wireguard VPN
-        db_host = os.getenv('DB_HOST_LOCAL', '192.168.11.1')
-
-    db_port = int(os.getenv('DB_PORT', '3306'))
-    db_user = os.getenv('DB_USER', 'remote_user')
-    db_pass = os.getenv('DB_PASS', 'BuGr@d@N4@loB6!')
+        # Fall back to legacy configuration
+        # Remote database credentials - different IPs for local vs production
+        # Local (with Wireguard): 192.168.11.1
+        # Production (direct): 213.91.178.104
+        if env == 'production':
+            # Production uses direct internet connection
+            db_host = os.getenv('DB_HOST', '213.91.178.104')
+        else:
+            # Development uses Wireguard VPN
+            db_host = os.getenv('DB_HOST_LOCAL', '192.168.11.1')
+        
+        db_port = int(os.getenv('DB_PORT', '3306'))
+        db_user = os.getenv('DB_USER', 'remote_user')
+        db_pass = os.getenv('DB_PASS', 'BuGr@d@N4@loB6!')
+        ssl_disabled = True  # Disable SSL for internal network
 
     # Determine database name based on environment
     if env == 'production':
@@ -61,7 +84,7 @@ def get_database_config(environment: str = None) -> DatabaseConfig:
         database=db_name,
         username=db_user,
         password=db_pass,
-        ssl_disabled=True,  # Disable SSL for internal network
+        ssl_disabled=ssl_disabled,
         autocommit=False,
         auth_plugin='mysql_native_password'
     )
@@ -69,17 +92,25 @@ def get_database_config(environment: str = None) -> DatabaseConfig:
 def ensure_database_exists(config: DatabaseConfig) -> bool:
     """Check if the database exists (assumes it's already created)"""
     try:
-        # Try to connect directly to the database
-        connection = mysql.connector.connect(
-            host=config.host,
-            port=config.port,
-            database=config.database,
-            user=config.username,
-            password=config.password,
-            ssl_disabled=config.ssl_disabled,
-            auth_plugin=config.auth_plugin,
-            connection_timeout=10
-        )
+        # Build connection parameters
+        conn_params = {
+            'host': config.host,
+            'port': config.port,
+            'database': config.database,
+            'user': config.username,
+            'password': config.password,
+            'auth_plugin': config.auth_plugin,
+            'connection_timeout': 10
+        }
+        
+        # Configure SSL for DigitalOcean databases
+        if not config.ssl_disabled:
+            # DigitalOcean requires SSL but doesn't require certificate verification
+            conn_params['ssl_disabled'] = False
+            conn_params['ssl_verify_cert'] = False
+            conn_params['ssl_verify_identity'] = False
+        
+        connection = mysql.connector.connect(**conn_params)
 
         if connection.is_connected():
             logger.info(f"Database '{config.database}' is accessible")
@@ -112,16 +143,25 @@ def get_connection_string(config: DatabaseConfig) -> str:
 def test_connection(config: DatabaseConfig) -> bool:
     """Test database connection"""
     try:
-        connection = mysql.connector.connect(
-            host=config.host,
-            port=config.port,
-            database=config.database,
-            user=config.username,
-            password=config.password,
-            ssl_disabled=config.ssl_disabled,
-            auth_plugin=config.auth_plugin,
-            connection_timeout=10
-        )
+        # Build connection parameters
+        conn_params = {
+            'host': config.host,
+            'port': config.port,
+            'database': config.database,
+            'user': config.username,
+            'password': config.password,
+            'auth_plugin': config.auth_plugin,
+            'connection_timeout': 10
+        }
+        
+        # Configure SSL for DigitalOcean databases
+        if not config.ssl_disabled:
+            # DigitalOcean requires SSL but doesn't require certificate verification
+            conn_params['ssl_disabled'] = False
+            conn_params['ssl_verify_cert'] = False
+            conn_params['ssl_verify_identity'] = False
+        
+        connection = mysql.connector.connect(**conn_params)
 
         if connection.is_connected():
             db_info = connection.get_server_info()

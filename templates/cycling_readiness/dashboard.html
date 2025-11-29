@@ -1,0 +1,1454 @@
+{% extends 'layout.html' %}
+
+{% block title %}Zyra Cycle - Cycling & Readiness{% endblock %}
+
+{% block head %}
+<style>
+    /* ============== CSS Variables & Color Roles ============== */
+    :root {
+        --color-teal: #00FFC6;      /* Primary UI */
+        --color-blue: #0077FF;       /* Sleep/Recovery */
+        --color-green: #00E676;      /* Power/Performance */
+        --color-red: #FF5252;        /* Warnings/Low */
+        --color-yellow: #FFC107;     /* Moderate */
+        --color-muted: rgba(255, 255, 255, 0.4);
+        --color-muted-light: rgba(255, 255, 255, 0.6);
+    }
+
+    /* ============== Layout & Container ============== */
+    .cycle-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 0.75rem;
+    }
+
+    @media (min-width: 768px) {
+        .cycle-container {
+            padding: 0 1.5rem;
+        }
+    }
+
+    /* ============== Hero Section (Compact) ============== */
+    .cycle-hero {
+        background: linear-gradient(135deg, rgba(0, 119, 255, 0.12) 0%, rgba(0, 255, 198, 0.08) 100%);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(0, 255, 198, 0.15);
+    }
+
+    .cycle-hero h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, var(--color-blue) 0%, var(--color-teal) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0;
+    }
+
+    .cycle-hero .subtitle {
+        font-size: 0.8rem;
+        color: var(--color-muted-light);
+        margin: 0;
+    }
+
+    .date-badge {
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--color-teal);
+        padding: 0.375rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    /* ============== Stats Grid (Compact) ============== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    @media (min-width: 640px) {
+        .stats-grid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    .stat-card {
+        background: rgba(26, 26, 26, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 0.75rem 0.5rem;
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        border-color: var(--color-teal);
+        transform: translateY(-1px);
+    }
+
+    .stat-value {
+        font-family: 'Roboto Mono', monospace;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-green);
+    }
+
+    .stat-value.tss { color: var(--color-yellow); }
+    .stat-value.time { color: var(--color-blue); }
+
+    .stat-label {
+        color: var(--color-muted);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 0.125rem;
+    }
+
+    /* ============== Tabs ============== */
+    .cycle-tabs {
+        display: flex;
+        gap: 0.25rem;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .cycle-tab {
+        position: relative;
+        padding: 0.75rem 1.25rem;
+        background: transparent;
+        border: none;
+        color: var(--color-muted);
+        font-weight: 600;
+        font-size: 0.85rem;
+        font-family: 'Montserrat', sans-serif;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .cycle-tab::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        width: 0;
+        height: 2px;
+        background: var(--color-teal);
+        transition: all 0.3s ease;
+        transform: translateX(-50%);
+        border-radius: 2px;
+    }
+
+    .cycle-tab:hover {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .cycle-tab:hover::after {
+        width: 30%;
+    }
+
+    .cycle-tab.active {
+        color: var(--color-teal);
+        text-shadow: 0 0 20px rgba(0, 255, 198, 0.3);
+    }
+
+    .cycle-tab.active::after {
+        width: 60%;
+        box-shadow: 0 0 8px rgba(0, 255, 198, 0.5);
+    }
+
+    .cycle-tab i {
+        margin-right: 0.5rem;
+        transition: color 0.3s ease;
+    }
+
+    .cycle-tab.active i {
+        color: var(--color-teal);
+    }
+
+    .cycle-tab[data-tab="readiness"] i {
+        color: var(--color-blue);
+    }
+
+    .cycle-tab[data-tab="readiness"].active i {
+        color: var(--color-blue);
+        text-shadow: 0 0 10px rgba(0, 119, 255, 0.5);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* ============== Section Cards (Compact) ============== */
+    .section-card {
+        background: rgba(26, 26, 26, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .section-title {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: white;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .section-title i {
+        color: var(--color-teal);
+        font-size: 0.85rem;
+    }
+
+    .section-title.power i { color: var(--color-green); }
+    .section-title.sleep i { color: var(--color-blue); }
+
+    /* ============== Grid Layouts ============== */
+    .flex-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    @media (min-width: 992px) {
+        .flex-layout {
+            flex-direction: row;
+        }
+
+        .flex-layout > .flex-col-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .flex-layout > .flex-col-side {
+            width: 380px;
+            flex-shrink: 0;
+        }
+    }
+
+    /* ============== Upload Zone (Compact) ============== */
+    .upload-zone {
+        border: 2px dashed rgba(0, 255, 198, 0.25);
+        border-radius: 10px;
+        padding: 1.25rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(0, 255, 198, 0.02);
+    }
+
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: var(--color-teal);
+        background: rgba(0, 255, 198, 0.06);
+    }
+
+    .upload-zone i {
+        font-size: 2rem;
+        color: var(--color-teal);
+        margin-bottom: 0.5rem;
+    }
+
+    .upload-zone .title {
+        font-size: 0.9rem;
+        color: white;
+        margin-bottom: 0.25rem;
+    }
+
+    .upload-zone .hint {
+        color: var(--color-muted);
+        font-size: 0.75rem;
+    }
+
+    /* File list */
+    .file-list {
+        margin-top: 0.75rem;
+        max-height: 120px;
+        overflow-y: auto;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.5rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 6px;
+        margin-bottom: 0.375rem;
+        font-size: 0.8rem;
+    }
+
+    .file-item i { color: var(--color-teal); font-size: 0.75rem; }
+    .file-item .filename {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--color-muted-light);
+    }
+
+    .file-item .remove-file {
+        color: var(--color-muted);
+        cursor: pointer;
+        padding: 0.125rem;
+        font-size: 0.7rem;
+    }
+
+    .file-item .remove-file:hover { color: var(--color-red); }
+
+    /* ============== Status Messages ============== */
+    .status-msg {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.625rem 0.75rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        margin-top: 0.75rem;
+    }
+
+    .status-msg.loading {
+        background: rgba(0, 255, 198, 0.1);
+        color: var(--color-teal);
+        border: 1px solid rgba(0, 255, 198, 0.2);
+    }
+
+    .status-msg.success {
+        background: rgba(0, 230, 118, 0.1);
+        color: var(--color-green);
+        border: 1px solid rgba(0, 230, 118, 0.2);
+    }
+
+    .status-msg.error {
+        background: rgba(255, 82, 82, 0.1);
+        color: var(--color-red);
+        border: 1px solid rgba(255, 82, 82, 0.2);
+    }
+
+    .status-msg i { font-size: 0.9rem; }
+
+    /* ============== Empty States ============== */
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: var(--color-muted);
+    }
+
+    .empty-state i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        opacity: 0.5;
+    }
+
+    .empty-state p {
+        font-size: 0.85rem;
+        margin: 0;
+    }
+
+    .empty-state.power i { color: var(--color-green); }
+    .empty-state.sleep i { color: var(--color-blue); }
+
+    /* ============== Data Table (Compact) ============== */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+    }
+
+    .data-table th {
+        color: var(--color-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+        padding: 0.5rem 0.375rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    .data-table td {
+        padding: 0.5rem 0.375rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        font-family: 'Roboto Mono', monospace;
+        white-space: nowrap;
+    }
+
+    .data-table tr:hover {
+        background: rgba(0, 255, 198, 0.03);
+    }
+
+    /* Placeholder values */
+    .val-empty {
+        color: var(--color-muted);
+        font-size: 0.7rem;
+    }
+
+    .val-power { color: var(--color-green); }
+    .val-hr { color: var(--color-red); }
+    .val-tss { color: var(--color-yellow); }
+    .val-time { color: var(--color-blue); }
+
+    /* ============== Score Badge ============== */
+    .score-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        font-weight: 700;
+        font-family: 'Roboto Mono', monospace;
+        font-size: 0.8rem;
+    }
+
+    .score-high { background: rgba(0, 230, 118, 0.2); color: var(--color-green); }
+    .score-medium { background: rgba(255, 193, 7, 0.2); color: var(--color-yellow); }
+    .score-low { background: rgba(255, 82, 82, 0.2); color: var(--color-red); }
+
+    /* ============== Form Controls (Compact) ============== */
+    .form-control, .form-select {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .form-control:focus, .form-select:focus {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--color-teal);
+        box-shadow: 0 0 0 2px rgba(0, 255, 198, 0.1);
+        color: white;
+    }
+
+    .form-label {
+        color: var(--color-muted-light);
+        font-weight: 500;
+        font-size: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+
+    /* ============== Rating & Status Selectors ============== */
+    .rating-selector, .status-selector {
+        display: flex;
+        gap: 0.25rem;
+    }
+
+    .rating-option, .status-option {
+        flex: 1;
+        padding: 0.4rem 0.25rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.02);
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.2s ease;
+        color: var(--color-muted);
+        font-size: 0.8rem;
+    }
+
+    .rating-option:hover, .status-option:hover {
+        border-color: var(--color-teal);
+        background: rgba(0, 255, 198, 0.08);
+    }
+
+    .rating-option.selected {
+        border-color: var(--color-teal);
+        background: rgba(0, 255, 198, 0.15);
+        color: var(--color-teal);
+    }
+
+    .rating-option input, .status-option input { display: none; }
+
+    .status-option.negative { color: var(--color-red); }
+    .status-option.neutral { color: var(--color-yellow); }
+    .status-option.positive { color: var(--color-teal); }
+
+    .status-option.selected.negative { background: rgba(255, 82, 82, 0.15); border-color: var(--color-red); }
+    .status-option.selected.neutral { background: rgba(255, 193, 7, 0.15); border-color: var(--color-yellow); }
+    .status-option.selected.positive { background: rgba(0, 255, 198, 0.15); border-color: var(--color-teal); }
+
+    /* ============== Buttons ============== */
+    .btn-zyra {
+        background: linear-gradient(135deg, var(--color-blue) 0%, var(--color-teal) 100%);
+        border: none;
+        color: white;
+        font-weight: 600;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        font-size: 0.85rem;
+    }
+
+    .btn-zyra:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0, 119, 255, 0.3);
+        color: white;
+    }
+
+    .btn-zyra:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    /* Delete button */
+    .btn-delete {
+        background: transparent;
+        border: none;
+        color: var(--color-muted);
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        font-size: 0.75rem;
+    }
+
+    .btn-delete:hover {
+        color: var(--color-red);
+        background: rgba(255, 82, 82, 0.1);
+    }
+
+    /* ============== Chart Container ============== */
+    .chart-container {
+        position: relative;
+        height: 220px;
+    }
+
+    @media (min-width: 768px) {
+        .chart-container { height: 250px; }
+    }
+
+    .chart-container.compact {
+        height: 180px;
+    }
+
+    /* ============== Loading Overlay ============== */
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+
+    .loading-overlay.active { display: flex; }
+
+    .spinner-zyra {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(0, 255, 198, 0.2);
+        border-top-color: var(--color-teal);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+        color: white;
+        margin-top: 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    /* ============== Toast ============== */
+    .toast-container {
+        position: fixed;
+        top: 70px;
+        right: 0.75rem;
+        z-index: 9999;
+        max-width: 320px;
+    }
+
+    .toast-zyra {
+        background: rgba(26, 26, 26, 0.98);
+        border: 1px solid var(--color-teal);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        color: white;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        animation: slideIn 0.3s ease;
+    }
+
+    .toast-zyra.error { border-color: var(--color-red); }
+    .toast-zyra.success { border-color: var(--color-green); }
+
+    @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ============== Confirm Modal ============== */
+    .confirm-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .confirm-modal.active { display: flex; }
+
+    .confirm-dialog {
+        background: rgba(26, 26, 26, 0.98);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        padding: 1.25rem;
+        max-width: 320px;
+        width: 90%;
+        text-align: center;
+    }
+
+    .confirm-dialog h4 {
+        color: white;
+        font-size: 1rem;
+        margin-bottom: 0.375rem;
+    }
+
+    .confirm-dialog p {
+        color: var(--color-muted);
+        font-size: 0.8rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .confirm-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .confirm-actions button {
+        flex: 1;
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-cancel {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+    }
+
+    .btn-cancel:hover { background: rgba(255, 255, 255, 0.12); }
+
+    .btn-confirm-delete {
+        background: var(--color-red);
+        border: none;
+        color: white;
+    }
+
+    .btn-confirm-delete:hover { background: #FF3333; }
+
+    /* ============== Extraction Results ============== */
+    .extraction-results { margin-top: 0.75rem; }
+
+    .extraction-item {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+        padding: 0.5rem 0.625rem;
+        margin-bottom: 0.375rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .extraction-item.cycling { border-left: 3px solid var(--color-green); }
+    .extraction-item.sleep { border-left: 3px solid var(--color-blue); }
+    .extraction-item.unknown { border-left: 3px solid var(--color-yellow); }
+    .extraction-item.error { border-left: 3px solid var(--color-red); }
+
+    .extraction-icon {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+    }
+
+    .extraction-item.cycling .extraction-icon { background: rgba(0, 230, 118, 0.15); color: var(--color-green); }
+    .extraction-item.sleep .extraction-icon { background: rgba(0, 119, 255, 0.15); color: var(--color-blue); }
+    .extraction-item.unknown .extraction-icon { background: rgba(255, 193, 7, 0.15); color: var(--color-yellow); }
+    .extraction-item.error .extraction-icon { background: rgba(255, 82, 82, 0.15); color: var(--color-red); }
+
+    .extraction-details { flex: 1; min-width: 0; }
+
+    .extraction-filename {
+        font-size: 0.7rem;
+        color: var(--color-muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .extraction-type { font-weight: 600; font-size: 0.8rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cycle-container py-3">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-zyra"></div>
+        <p class="loading-text">Processing screenshots...</p>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="confirmModal" class="confirm-modal">
+        <div class="confirm-dialog">
+            <h4><i class="fas fa-exclamation-triangle text-warning me-2"></i>Delete Workout?</h4>
+            <p>This action cannot be undone.</p>
+            <div class="confirm-actions">
+                <button class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn-confirm-delete" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="cycle-hero">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1><i class="fas fa-bicycle me-2"></i>Zyra Cycle</h1>
+                <p class="subtitle">Cycling performance & morning readiness</p>
+            </div>
+            <span class="date-badge">
+                <i class="fas fa-calendar-day me-1"></i>{{ today }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ cycling_stats.total_workouts or 0 }}</div>
+            <div class="stat-label">Workouts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value tss">{{ "%.0f"|format(cycling_stats.total_tss or 0) }}</div>
+            <div class="stat-label">Total TSS</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.0f"|format(cycling_stats.avg_power or 0) }}W</div>
+            <div class="stat-label">Avg Power</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value time">{{ "%.0f"|format((cycling_stats.total_duration_sec or 0) / 3600) }}h</div>
+            <div class="stat-label">Total Time</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="cycle-tabs">
+        <button class="cycle-tab active" data-tab="workouts">
+            <i class="fas fa-bicycle"></i>Workouts
+        </button>
+        <button class="cycle-tab" data-tab="readiness">
+            <i class="fas fa-moon"></i>Readiness & Sleep
+        </button>
+    </div>
+
+    <!-- Tab: Workouts -->
+    <div id="workoutsTab" class="tab-content active">
+        <div class="flex-layout">
+            <div class="flex-col-main">
+                <!-- Import Section -->
+                <div class="section-card">
+                    <h3 class="section-title">
+                        <i class="fas fa-cloud-upload-alt"></i>Import Screenshots
+                    </h3>
+                    <form id="bundleUploadForm" enctype="multipart/form-data">
+                        <div class="upload-zone" id="bundleUploadZone">
+                            <i class="fas fa-images"></i>
+                            <p class="title">Drop screenshots here</p>
+                            <p class="hint">Cycling app, Apple Watch, Sleep data</p>
+                            <input type="file" id="bundleImageInput" name="images" accept="image/*" multiple class="d-none">
+                        </div>
+                        <div id="fileListContainer" class="file-list d-none"></div>
+                        <div id="statusMessage" class="d-none"></div>
+                        <div id="uploadActions" class="d-none mt-2">
+                            <button type="submit" class="btn btn-zyra w-100" id="uploadBtn">
+                                <i class="fas fa-magic me-1"></i>Extract & Merge
+                            </button>
+                        </div>
+                        <div id="extractionResults" class="extraction-results d-none"></div>
+                    </form>
+                </div>
+
+                <!-- Recent Workouts Table -->
+                <div class="section-card">
+                    <h3 class="section-title power">
+                        <i class="fas fa-list"></i>Recent Workouts
+                    </h3>
+                    {% if cycling_workouts %}
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Power</th>
+                                    <th>Avg HR</th>
+                                    <th>Max HR</th>
+                                    <th>TSS</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="cyclingTableBody">
+                                {% for workout in cycling_workouts %}
+                                <tr data-workout-id="{{ workout.id }}">
+                                    <td>{{ workout.date if workout.date is string else workout.date.strftime('%m/%d') if workout.date else '--' }}</td>
+                                    <td class="val-time">{{ "%d:%02d"|format((workout.duration_sec or 0) // 60, (workout.duration_sec or 0) % 60) if workout.duration_sec else '<span class="val-empty">--</span>' | safe }}</td>
+                                    <td class="val-power">{{ "%.0f"|format(workout.avg_power_w) if workout.avg_power_w else '<span class="val-empty">--</span>' | safe }}{{ 'W' if workout.avg_power_w else '' }}</td>
+                                    <td class="val-hr">{{ workout.avg_heart_rate if workout.avg_heart_rate else '<span class="val-empty">--</span>' | safe }}{{ ' bpm' if workout.avg_heart_rate else '' }}</td>
+                                    <td class="val-hr">{{ workout.max_heart_rate if workout.max_heart_rate else '<span class="val-empty">--</span>' | safe }}{{ ' bpm' if workout.max_heart_rate else '' }}</td>
+                                    <td class="val-tss">{{ "%.0f"|format(workout.tss) if workout.tss else '<span class="val-empty">--</span>' | safe }}</td>
+                                    <td>
+                                        <button class="btn-delete btn-delete-workout" data-id="{{ workout.id }}" title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state power">
+                        <i class="fas fa-bicycle"></i>
+                        <p>No workouts imported yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="flex-col-side">
+                <!-- Performance Trends Chart -->
+                <div class="section-card">
+                    <h3 class="section-title power">
+                        <i class="fas fa-chart-line"></i>Performance Trends
+                    </h3>
+                    {% if cycling_chart.dates and cycling_chart.dates|length > 0 %}
+                    <div class="chart-container">
+                        <canvas id="cyclingChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="empty-state power">
+                        <i class="fas fa-chart-area"></i>
+                        <p>No data yet. Upload screenshots to see your performance trend.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab: Readiness & Sleep -->
+    <div id="readinessTab" class="tab-content">
+        <div class="flex-layout">
+            <div class="flex-col-main">
+                <!-- Morning Readiness Form -->
+                <div class="section-card">
+                    <h3 class="section-title sleep">
+                        <i class="fas fa-sun"></i>Morning Readiness
+                    </h3>
+                    <form id="readinessForm">
+                        <input type="hidden" id="readinessDate" name="date" value="{{ today }}">
+
+                        <!-- Energy -->
+                        <div class="mb-2">
+                            <label class="form-label">Energy Level</label>
+                            <div class="rating-selector" data-field="energy">
+                                {% for i in range(1, 6) %}
+                                <label class="rating-option"><input type="radio" name="energy" value="{{ i }}">{{ i }}</label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Mood -->
+                        <div class="mb-2">
+                            <label class="form-label">Mood</label>
+                            <div class="rating-selector" data-field="mood">
+                                <label class="rating-option"><input type="radio" name="mood" value="1">😔</label>
+                                <label class="rating-option"><input type="radio" name="mood" value="2">😐</label>
+                                <label class="rating-option"><input type="radio" name="mood" value="3">😊</label>
+                            </div>
+                        </div>
+
+                        <!-- Muscle Fatigue -->
+                        <div class="mb-2">
+                            <label class="form-label">Muscle Fatigue</label>
+                            <div class="rating-selector" data-field="muscle_fatigue">
+                                <label class="rating-option"><input type="radio" name="muscle_fatigue" value="1">Low</label>
+                                <label class="rating-option"><input type="radio" name="muscle_fatigue" value="2">Med</label>
+                                <label class="rating-option"><input type="radio" name="muscle_fatigue" value="3">High</label>
+                            </div>
+                        </div>
+
+                        <!-- HRV & RHR -->
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <label class="form-label">HRV Status</label>
+                                <div class="status-selector" data-field="hrv_status">
+                                    <label class="status-option negative"><input type="radio" name="hrv_status" value="-1">↓</label>
+                                    <label class="status-option neutral"><input type="radio" name="hrv_status" value="0">→</label>
+                                    <label class="status-option positive"><input type="radio" name="hrv_status" value="1">↑</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">RHR Status</label>
+                                <div class="status-selector" data-field="rhr_status">
+                                    <label class="status-option positive"><input type="radio" name="rhr_status" value="-1">↓</label>
+                                    <label class="status-option neutral"><input type="radio" name="rhr_status" value="0">→</label>
+                                    <label class="status-option negative"><input type="radio" name="rhr_status" value="1">↑</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sleep -->
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <label class="form-label">Sleep (hours)</label>
+                                <input type="number" class="form-control" id="sleepHours" step="0.5" min="0" max="12" placeholder="7.5">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Deep Sleep (min)</label>
+                                <input type="number" class="form-control" name="deep_sleep_minutes" min="0" max="300" placeholder="60">
+                            </div>
+                        </div>
+
+                        <div class="row mb-2">
+                            <div class="col-6">
+                                <label class="form-label">Wakeups</label>
+                                <input type="number" class="form-control" name="wakeups_count" min="0" max="10" placeholder="1">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Stress</label>
+                                <select class="form-select" name="stress_level">
+                                    <option value="1">Low</option>
+                                    <option value="2" selected>Normal</option>
+                                    <option value="3">High</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="symptomsFlag" name="symptoms_flag">
+                                <label class="form-check-label" style="font-size: 0.8rem; color: var(--color-muted-light);" for="symptomsFlag">
+                                    Experiencing symptoms
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-zyra w-100">
+                            <i class="fas fa-save me-1"></i>Save Readiness
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Readiness History -->
+                <div class="section-card">
+                    <h3 class="section-title sleep">
+                        <i class="fas fa-history"></i>Readiness History
+                    </h3>
+                    {% if readiness_entries %}
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Score</th>
+                                    <th>Energy</th>
+                                    <th>Sleep</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in readiness_entries %}
+                                <tr>
+                                    <td>{{ entry.date if entry.date is string else entry.date.strftime('%m/%d') if entry.date else '--' }}</td>
+                                    <td>
+                                        {% if entry.morning_score %}
+                                        <span class="score-badge {% if entry.morning_score >= 70 %}score-high{% elif entry.morning_score >= 40 %}score-medium{% else %}score-low{% endif %}">
+                                            {{ entry.morning_score }}
+                                        </span>
+                                        {% else %}
+                                        <span class="val-empty">--</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ entry.energy if entry.energy else '<span class="val-empty">--</span>' | safe }}/5</td>
+                                    <td class="val-time">{{ "%.1f"|format((entry.sleep_minutes or 0) / 60) if entry.sleep_minutes else '<span class="val-empty">--</span>' | safe }}{{ 'h' if entry.sleep_minutes else '' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state sleep">
+                        <i class="fas fa-bed"></i>
+                        <p>No readiness entries yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="flex-col-side">
+                <!-- Readiness Trend Chart -->
+                <div class="section-card">
+                    <h3 class="section-title sleep">
+                        <i class="fas fa-chart-area"></i>Readiness Trend
+                    </h3>
+                    {% if readiness_chart.dates and readiness_chart.dates|length > 0 %}
+                    <div class="chart-container compact">
+                        <canvas id="readinessChart"></canvas>
+                    </div>
+                    {% else %}
+                    <div class="empty-state sleep">
+                        <i class="fas fa-chart-line"></i>
+                        <p>No readiness data yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ============== Toast Helper ==============
+    function showToast(message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast-zyra ${type}`;
+        toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} me-2"></i>${message}`;
+        container.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    // ============== Status Message Helper ==============
+    function showStatus(type, message) {
+        const el = document.getElementById('statusMessage');
+        el.className = `status-msg ${type}`;
+        const icon = type === 'loading' ? 'fa-spinner fa-spin' : type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        el.innerHTML = `<i class="fas ${icon}"></i><span>${message}</span>`;
+        el.classList.remove('d-none');
+    }
+
+    function hideStatus() {
+        document.getElementById('statusMessage').classList.add('d-none');
+    }
+
+    // ============== Loading Overlay ==============
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    function showLoading(text = 'Processing screenshots...') {
+        loadingOverlay.querySelector('.loading-text').textContent = text;
+        loadingOverlay.classList.add('active');
+    }
+    function hideLoading() { loadingOverlay.classList.remove('active'); }
+
+    // ============== Tab Switching ==============
+    document.querySelectorAll('.cycle-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.cycle-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(this.dataset.tab + 'Tab').classList.add('active');
+        });
+    });
+
+    // ============== Rating Selectors ==============
+    document.querySelectorAll('.rating-selector, .status-selector').forEach(selector => {
+        selector.querySelectorAll('.rating-option, .status-option').forEach(option => {
+            option.addEventListener('click', function() {
+                selector.querySelectorAll('.rating-option, .status-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                this.querySelector('input').checked = true;
+            });
+        });
+    });
+
+    // ============== Multi-file Upload ==============
+    const bundleZone = document.getElementById('bundleUploadZone');
+    const bundleInput = document.getElementById('bundleImageInput');
+    const fileListContainer = document.getElementById('fileListContainer');
+    const uploadActions = document.getElementById('uploadActions');
+    const extractionResults = document.getElementById('extractionResults');
+    let selectedFiles = [];
+
+    function updateFileList() {
+        if (selectedFiles.length === 0) {
+            fileListContainer.classList.add('d-none');
+            uploadActions.classList.add('d-none');
+            hideStatus();
+            return;
+        }
+
+        fileListContainer.classList.remove('d-none');
+        uploadActions.classList.remove('d-none');
+        fileListContainer.innerHTML = selectedFiles.map((file, idx) => `
+            <div class="file-item">
+                <i class="fas fa-image"></i>
+                <span class="filename">${file.name}</span>
+                <span class="remove-file" data-idx="${idx}"><i class="fas fa-times"></i></span>
+            </div>
+        `).join('');
+
+        fileListContainer.querySelectorAll('.remove-file').forEach(btn => {
+            btn.addEventListener('click', function() {
+                selectedFiles.splice(parseInt(this.dataset.idx), 1);
+                updateFileList();
+            });
+        });
+    }
+
+    bundleZone.addEventListener('click', () => bundleInput.click());
+    bundleZone.addEventListener('dragover', (e) => { e.preventDefault(); bundleZone.classList.add('dragover'); });
+    bundleZone.addEventListener('dragleave', () => bundleZone.classList.remove('dragover'));
+    bundleZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        bundleZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            selectedFiles = [...selectedFiles, ...Array.from(e.dataTransfer.files)];
+            updateFileList();
+        }
+    });
+
+    bundleInput.addEventListener('change', function() {
+        if (this.files.length) {
+            selectedFiles = [...selectedFiles, ...Array.from(this.files)];
+            updateFileList();
+        }
+    });
+
+    // ============== Bundle Upload Form ==============
+    document.getElementById('bundleUploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (selectedFiles.length === 0) {
+            showToast('Please select at least one image', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        selectedFiles.forEach(file => formData.append('images', file));
+
+        showLoading(`Processing ${selectedFiles.length} image(s)...`);
+        showStatus('loading', 'Analyzing screenshots...');
+        extractionResults.classList.add('d-none');
+        document.getElementById('uploadBtn').disabled = true;
+
+        try {
+            const response = await fetch('/cycling-readiness/api/cycle/import-bundle', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            hideLoading();
+            document.getElementById('uploadBtn').disabled = false;
+
+            if (data.success) {
+                const results = data.extraction_results || [];
+                const errors = results.filter(r => r.type === 'error').length;
+
+                if (errors > 0 && errors === results.length) {
+                    showStatus('error', 'Could not parse screenshots');
+                } else if (errors > 0) {
+                    showStatus('success', `Merged successfully! (${errors} failed)`);
+                } else {
+                    showStatus('success', 'Merged successfully!');
+                }
+
+                if (results.length > 0) {
+                    extractionResults.classList.remove('d-none');
+                    extractionResults.innerHTML = results.map(r => {
+                        const typeClass = r.type === 'cycling_workout' ? 'cycling' :
+                                         r.type === 'sleep_summary' ? 'sleep' :
+                                         r.type === 'error' ? 'error' : 'unknown';
+                        const icon = r.type === 'cycling_workout' ? 'fa-bicycle' :
+                                    r.type === 'sleep_summary' ? 'fa-moon' :
+                                    r.type === 'error' ? 'fa-exclamation-triangle' : 'fa-question';
+                        const typeName = r.type === 'cycling_workout' ? 'Cycling' :
+                                        r.type === 'sleep_summary' ? 'Sleep' :
+                                        r.type === 'error' ? 'Error' : 'Unknown';
+                        return `
+                            <div class="extraction-item ${typeClass}">
+                                <div class="extraction-icon"><i class="fas ${icon}"></i></div>
+                                <div class="extraction-details">
+                                    <div class="extraction-type">${typeName}</div>
+                                    <div class="extraction-filename">${r.filename}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                selectedFiles = [];
+                updateFileList();
+                setTimeout(() => location.reload(), 2500);
+            } else {
+                showStatus('error', data.error || 'Import failed');
+                showToast(data.error || 'Import failed', 'error');
+            }
+        } catch (err) {
+            hideLoading();
+            document.getElementById('uploadBtn').disabled = false;
+            showStatus('error', 'Error processing images');
+            showToast('Error processing images', 'error');
+        }
+    });
+
+    // ============== Readiness Form ==============
+    document.getElementById('readinessForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const sleepHours = parseFloat(document.getElementById('sleepHours').value) || 0;
+        const data = {
+            date: document.getElementById('readinessDate').value,
+            energy: document.querySelector('[name="energy"]:checked')?.value,
+            mood: document.querySelector('[name="mood"]:checked')?.value,
+            muscle_fatigue: document.querySelector('[name="muscle_fatigue"]:checked')?.value,
+            hrv_status: document.querySelector('[name="hrv_status"]:checked')?.value || 0,
+            rhr_status: document.querySelector('[name="rhr_status"]:checked')?.value || 0,
+            min_hr_status: 0,
+            sleep_minutes: Math.round(sleepHours * 60),
+            deep_sleep_minutes: parseInt(document.querySelector('[name="deep_sleep_minutes"]').value) || 0,
+            wakeups_count: parseInt(document.querySelector('[name="wakeups_count"]').value) || 0,
+            stress_level: parseInt(document.querySelector('[name="stress_level"]').value) || 2,
+            symptoms_flag: document.getElementById('symptomsFlag').checked
+        };
+
+        if (!data.energy || !data.mood || !data.muscle_fatigue) {
+            showToast('Please fill Energy, Mood, and Fatigue', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/cycling-readiness/api/readiness', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                showToast(`Saved! Score: ${result.morning_score}`, 'success');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(result.error || 'Failed to save', 'error');
+            }
+        } catch (err) {
+            showToast('Error saving readiness', 'error');
+        }
+    });
+
+    // ============== Delete Workout ==============
+    let workoutToDelete = null;
+
+    window.closeConfirmModal = function() {
+        document.getElementById('confirmModal').classList.remove('active');
+        workoutToDelete = null;
+    };
+
+    function showConfirmModal(workoutId) {
+        workoutToDelete = workoutId;
+        document.getElementById('confirmModal').classList.add('active');
+    }
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+        if (!workoutToDelete) return;
+
+        try {
+            const response = await fetch(`/cycling-readiness/api/cycling/${workoutToDelete}`, { method: 'DELETE' });
+            const data = await response.json();
+            closeConfirmModal();
+
+            if (data.success) {
+                const row = document.querySelector(`tr[data-workout-id="${workoutToDelete}"]`);
+                if (row) {
+                    row.style.opacity = '0';
+                    row.style.transition = 'opacity 0.3s ease';
+                    setTimeout(() => row.remove(), 300);
+                }
+                showToast('Workout deleted', 'success');
+            } else {
+                showToast(data.error || 'Failed to delete', 'error');
+            }
+        } catch (err) {
+            closeConfirmModal();
+            showToast('Error deleting workout', 'error');
+        }
+    });
+
+    document.querySelectorAll('.btn-delete-workout').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showConfirmModal(this.dataset.id);
+        });
+    });
+
+    document.getElementById('confirmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirmModal();
+    });
+
+    // ============== Charts ==============
+    const cyclingChartData = {{ cycling_chart | tojson | safe }};
+    const readinessChartData = {{ readiness_chart | tojson | safe }};
+
+    const chartDefaults = {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: {
+                labels: { color: 'rgba(255,255,255,0.6)', boxWidth: 10, font: { size: 10 } }
+            }
+        },
+        scales: {
+            x: {
+                ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 }, maxRotation: 0 },
+                grid: { color: 'rgba(255,255,255,0.04)' }
+            },
+            y: {
+                ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } },
+                grid: { color: 'rgba(255,255,255,0.04)' }
+            }
+        }
+    };
+
+    // Cycling Chart
+    if (cyclingChartData.dates && cyclingChartData.dates.length > 0) {
+        new Chart(document.getElementById('cyclingChart'), {
+            type: 'line',
+            data: {
+                labels: cyclingChartData.dates,
+                datasets: [
+                    {
+                        label: 'Power (W)',
+                        data: cyclingChartData.avg_power,
+                        borderColor: '#00E676',
+                        backgroundColor: 'rgba(0, 230, 118, 0.1)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 2
+                    },
+                    {
+                        label: 'Avg HR',
+                        data: cyclingChartData.avg_heart_rate,
+                        borderColor: '#FF5252',
+                        backgroundColor: 'rgba(255, 82, 82, 0.1)',
+                        tension: 0.4,
+                        fill: false,
+                        pointRadius: 2,
+                        yAxisID: 'y2'
+                    },
+                    {
+                        label: 'TSS',
+                        data: cyclingChartData.tss,
+                        borderColor: '#FFC107',
+                        tension: 0.4,
+                        yAxisID: 'y1',
+                        pointRadius: 2
+                    }
+                ]
+            },
+            options: {
+                ...chartDefaults,
+                scales: {
+                    ...chartDefaults.scales,
+                    y1: {
+                        position: 'right',
+                        ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } },
+                        grid: { display: false }
+                    },
+                    y2: {
+                        position: 'right',
+                        ticks: { 
+                            color: 'rgba(255, 82, 82, 0.6)', 
+                            font: { size: 9 },
+                            callback: function(value) { return value + ' bpm'; }
+                        },
+                        grid: { display: false },
+                        min: 60,
+                        suggestedMax: 200
+                    }
+                }
+            }
+        });
+    }
+
+    // Readiness Chart
+    if (readinessChartData.dates && readinessChartData.dates.length > 0) {
+        new Chart(document.getElementById('readinessChart'), {
+            type: 'line',
+            data: {
+                labels: readinessChartData.dates,
+                datasets: [{
+                    label: 'Score',
+                    data: readinessChartData.morning_score,
+                    borderColor: '#0077FF',
+                    backgroundColor: 'rgba(0, 119, 255, 0.15)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 2
+                }]
+            },
+            options: {
+                ...chartDefaults,
+                plugins: { legend: { display: false } },
+                scales: {
+                    ...chartDefaults.scales,
+                    y: { ...chartDefaults.scales.y, min: 0, max: 100 }
+                }
+            }
+        });
+    }
+
+    console.log('🚴 Zyra Cycle v3 initialized');
+});
+</script>
+{% endblock %}

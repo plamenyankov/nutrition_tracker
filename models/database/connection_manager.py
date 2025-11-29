@@ -41,6 +41,12 @@ class DatabaseConnectionManager:
                 'time_zone': '+00:00',
                 'ssl_disabled': self.config.ssl_disabled
             }
+            
+            # Configure SSL for DigitalOcean databases
+            if not self.config.ssl_disabled:
+                # DigitalOcean requires SSL but doesn't require certificate verification
+                pool_config['ssl_verify_cert'] = False
+                pool_config['ssl_verify_identity'] = False
 
             self.connection_pool = pooling.MySQLConnectionPool(**pool_config)
             logger.info(f"MySQL connection pool initialized for {self.config.database} at {self.config.host}:{self.config.port}")

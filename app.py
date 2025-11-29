@@ -15,6 +15,7 @@ from models.blueprints.recipe_bp import recipe_bp
 from models.blueprints.ai_bp import ai_bp
 from models.blueprints.analytics_bp import analytics_bp
 from models.blueprints.gym import gym_bp
+from models.blueprints.cycling_readiness import cycling_readiness_bp
 from routes.timer_routes import timer_bp
 from models.calorie_weight import CalorieWeight
 from datetime import datetime
@@ -122,6 +123,7 @@ app.register_blueprint(recipe_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(analytics_bp)
 app.register_blueprint(gym_bp)
+app.register_blueprint(cycling_readiness_bp)
 app.register_blueprint(timer_bp)
 
 food_db = FoodDatabase()
