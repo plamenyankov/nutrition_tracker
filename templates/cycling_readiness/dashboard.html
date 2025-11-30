@@ -741,7 +741,7 @@
     <!-- Delete Confirmation Modal -->
     <div id="confirmModal" class="confirm-modal">
         <div class="confirm-dialog">
-            <h4><i class="fas fa-exclamation-triangle text-warning me-2"></i>Delete Workout?</h4>
+            <h4><i class="fas fa-exclamation-triangle text-warning me-2"></i><span id="confirmModalTitle">Delete?</span></h4>
             <p>This action cannot be undone.</p>
             <div class="confirm-actions">
                 <button class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
@@ -1006,11 +1006,12 @@
                                     <th>Score</th>
                                     <th>Energy</th>
                                     <th>Sleep</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for entry in readiness_entries %}
-                                <tr>
+                                <tr data-readiness-id="{{ entry.id }}">
                                     <td>{{ entry.date if entry.date is string else entry.date.strftime('%m/%d') if entry.date else '--' }}</td>
                                     <td>
                                         {% if entry.morning_score %}
@@ -1023,6 +1024,11 @@
                                     </td>
                                     <td>{{ entry.energy if entry.energy else '<span class="val-empty">--</span>' | safe }}/5</td>
                                     <td class="val-time">{{ "%.1f"|format((entry.sleep_minutes or 0) / 60) if entry.sleep_minutes else '<span class="val-empty">--</span>' | safe }}{{ 'h' if entry.sleep_minutes else '' }}</td>
+                                    <td>
+                                        <button class="btn-delete btn-delete-readiness" data-id="{{ entry.id }}" title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -1206,20 +1212,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (results.length > 0) {
                     extractionResults.classList.remove('d-none');
                     extractionResults.innerHTML = results.map(r => {
-                        const typeClass = r.type === 'cycling_workout' ? 'cycling' :
-                                         r.type === 'sleep_summary' ? 'sleep' :
-                                         r.type === 'error' ? 'error' : 'unknown';
-                        const icon = r.type === 'cycling_workout' ? 'fa-bicycle' :
-                                    r.type === 'sleep_summary' ? 'fa-moon' :
-                                    r.type === 'error' ? 'fa-exclamation-triangle' : 'fa-question';
-                        const typeName = r.type === 'cycling_workout' ? 'Cycling' :
-                                        r.type === 'sleep_summary' ? 'Sleep' :
-                                        r.type === 'error' ? 'Error' : 'Unknown';
+                        // Handle both old (cycling_workout) and new (cycling_power, watch_workout) types
+                        const isCycling = r.type === 'cycling_workout' || r.type === 'cycling_power' || r.type === 'watch_workout';
+                        const isSleep = r.type === 'sleep_summary';
+                        const isError = r.type === 'error';
+                        
+                        const typeClass = isCycling ? 'cycling' : isSleep ? 'sleep' : isError ? 'error' : 'unknown';
+                        const icon = isCycling ? 'fa-bicycle' : isSleep ? 'fa-moon' : isError ? 'fa-exclamation-triangle' : 'fa-question';
+                        const typeName = isCycling ? 'Cycling' : isSleep ? 'Sleep' : isError ? 'Error' : 'Unknown';
+                        const confidence = r.confidence ? ` (${Math.round(r.confidence * 100)}%)` : '';
+                        
                         return `
                             <div class="extraction-item ${typeClass}">
                                 <div class="extraction-icon"><i class="fas ${icon}"></i></div>
                                 <div class="extraction-details">
-                                    <div class="extraction-type">${typeName}</div>
+                                    <div class="extraction-type">${typeName}${confidence}</div>
                                     <div class="extraction-filename">${r.filename}</div>
                                 </div>
                             </div>
@@ -1286,48 +1293,85 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ============== Delete Workout ==============
-    let workoutToDelete = null;
+    // ============== Delete Records ==============
+    let deleteType = null; // 'workout', 'readiness', or 'sleep'
+    let deleteId = null;
 
     window.closeConfirmModal = function() {
         document.getElementById('confirmModal').classList.remove('active');
-        workoutToDelete = null;
+        deleteType = null;
+        deleteId = null;
     };
 
-    function showConfirmModal(workoutId) {
-        workoutToDelete = workoutId;
+    function showConfirmModal(type, id) {
+        deleteType = type;
+        deleteId = id;
+        
+        // Set modal title based on type
+        const titles = {
+            'workout': 'Delete Workout?',
+            'readiness': 'Delete Readiness Entry?',
+            'sleep': 'Delete Sleep Summary?'
+        };
+        document.getElementById('confirmModalTitle').textContent = titles[type] || 'Delete?';
         document.getElementById('confirmModal').classList.add('active');
     }
 
     document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
-        if (!workoutToDelete) return;
+        if (!deleteId || !deleteType) return;
+
+        let endpoint = '';
+        let successMessage = '';
+        
+        switch(deleteType) {
+            case 'workout':
+                endpoint = `/cycling-readiness/api/cycling/${deleteId}`;
+                successMessage = 'Workout deleted';
+                break;
+            case 'readiness':
+                endpoint = `/cycling-readiness/api/readiness/${deleteId}`;
+                successMessage = 'Readiness entry deleted';
+                break;
+            case 'sleep':
+                endpoint = `/cycling-readiness/api/sleep/${deleteId}`;
+                successMessage = 'Sleep summary deleted';
+                break;
+            default:
+                closeConfirmModal();
+                return;
+        }
 
         try {
-            const response = await fetch(`/cycling-readiness/api/cycling/${workoutToDelete}`, { method: 'DELETE' });
+            const response = await fetch(endpoint, { method: 'DELETE' });
             const data = await response.json();
             closeConfirmModal();
 
             if (data.success) {
-                const row = document.querySelector(`tr[data-workout-id="${workoutToDelete}"]`);
-                if (row) {
-                    row.style.opacity = '0';
-                    row.style.transition = 'opacity 0.3s ease';
-                    setTimeout(() => row.remove(), 300);
-                }
-                showToast('Workout deleted', 'success');
+                showToast(successMessage, 'success');
+                // Reload page after short delay to update stats and charts
+                setTimeout(() => location.reload(), 500);
             } else {
                 showToast(data.error || 'Failed to delete', 'error');
             }
         } catch (err) {
             closeConfirmModal();
-            showToast('Error deleting workout', 'error');
+            showToast('Error deleting record', 'error');
         }
     });
 
+    // Workout delete buttons
     document.querySelectorAll('.btn-delete-workout').forEach(btn => {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            showConfirmModal(this.dataset.id);
+            showConfirmModal('workout', this.dataset.id);
+        });
+    });
+
+    // Readiness delete buttons
+    document.querySelectorAll('.btn-delete-readiness').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            showConfirmModal('readiness', this.dataset.id);
         });
     });
 

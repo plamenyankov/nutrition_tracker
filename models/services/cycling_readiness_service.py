@@ -384,21 +384,21 @@ class CyclingReadinessService:
                 ))
                 conn.commit()
 
-            # Recalculate morning score if we have enough data
+            # Always recalculate morning score with defaults for missing values
             updated = self.get_readiness_by_date(readiness_date)
-            if updated and updated.get('energy'):
+            if updated:
                 new_score = self.calculate_morning_score(
-                    energy=updated.get('energy', 3),
-                    mood=updated.get('mood', 2),
-                    muscle_fatigue=updated.get('muscle_fatigue', 2),
-                    hrv_status=updated.get('hrv_status', 0),
-                    rhr_status=updated.get('rhr_status', 0),
-                    min_hr_status=updated.get('min_hr_status', 0),
-                    sleep_minutes=updated.get('sleep_minutes', 0),
-                    deep_sleep_minutes=updated.get('deep_sleep_minutes', 0),
-                    wakeups_count=updated.get('wakeups_count', 0),
-                    stress_level=updated.get('stress_level', 2),
-                    symptoms_flag=updated.get('symptoms_flag', False)
+                    energy=updated.get('energy') or 3,  # Default neutral energy
+                    mood=updated.get('mood') or 2,       # Default neutral mood
+                    muscle_fatigue=updated.get('muscle_fatigue') or 2,  # Default moderate
+                    hrv_status=updated.get('hrv_status') or 0,
+                    rhr_status=updated.get('rhr_status') or 0,
+                    min_hr_status=updated.get('min_hr_status') or 0,
+                    sleep_minutes=updated.get('sleep_minutes') or 0,
+                    deep_sleep_minutes=updated.get('deep_sleep_minutes') or 0,
+                    wakeups_count=updated.get('wakeups_count') or 0,
+                    stress_level=updated.get('stress_level') or 2,
+                    symptoms_flag=updated.get('symptoms_flag') or False
                 )
                 with self.get_connection() as conn:
                     cursor = conn.cursor()
@@ -409,19 +409,34 @@ class CyclingReadinessService:
 
             return self.get_readiness_by_date(readiness_date)
         else:
-            # Create new entry with just sleep data
-            # Other fields will be null/default until user fills them
+            # Create new entry with sleep data and calculate initial score
+            # Uses default values for user-input fields
+            initial_score = self.calculate_morning_score(
+                energy=3,  # Default neutral energy
+                mood=2,    # Default neutral mood
+                muscle_fatigue=2,  # Default moderate fatigue
+                hrv_status=0,
+                rhr_status=0,
+                min_hr_status=min_hr_status if min_hr is not None else 0,
+                sleep_minutes=sleep_minutes or 0,
+                deep_sleep_minutes=deep_sleep_minutes or 0,
+                wakeups_count=wakeups_count or 0,
+                stress_level=2,
+                symptoms_flag=False
+            )
+            
             with self.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
                     INSERT INTO readiness_entries (
                         user_id, date, sleep_minutes, deep_sleep_minutes,
-                        wakeups_count, min_hr_status
-                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                        wakeups_count, min_hr_status, morning_score
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ''', (
                     self.user_id, readiness_date, sleep_minutes,
                     deep_sleep_minutes, wakeups_count,
-                    min_hr_status if min_hr is not None else 0
+                    min_hr_status if min_hr is not None else 0,
+                    initial_score
                 ))
                 conn.commit()
 
@@ -533,6 +548,34 @@ class CyclingReadinessService:
             ''', (self.user_id, date))
             return cursor.fetchone()
 
+    def delete_readiness_entry(self, entry_id: int) -> bool:
+        """Delete a readiness entry by ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if self.user_id:
+                cursor.execute('''
+                    DELETE FROM readiness_entries 
+                    WHERE id = %s AND user_id = %s
+                ''', (entry_id, self.user_id))
+            else:
+                cursor.execute('DELETE FROM readiness_entries WHERE id = %s', (entry_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def delete_sleep_summary(self, summary_id: int) -> bool:
+        """Delete a sleep summary by ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if self.user_id:
+                cursor.execute('''
+                    DELETE FROM sleep_summaries 
+                    WHERE id = %s AND user_id = %s
+                ''', (summary_id, self.user_id))
+            else:
+                cursor.execute('DELETE FROM sleep_summaries WHERE id = %s', (summary_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+
     def get_readiness_with_workouts(self, days: int = 14) -> List[Dict]:
         """Get readiness entries combined with cycling workout data for the same dates"""
         with self.get_connection() as conn:
@@ -568,22 +611,58 @@ class CyclingReadinessService:
         max_heart_rate: int = None,
         notes: str = None
     ) -> int:
-        """Save a sleep summary entry"""
+        """
+        Save or update a sleep summary entry.
+        Uses UPSERT to avoid duplicate records for same date/user.
+        """
         with self.get_connection() as conn:
             cursor = conn.cursor()
+            
+            # Check if record exists for this date/user
             cursor.execute('''
-                INSERT INTO sleep_summaries (
-                    user_id, date, sleep_start_time, sleep_end_time,
+                SELECT id FROM sleep_summaries 
+                WHERE user_id = %s AND date = %s
+            ''', (self.user_id, date))
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing record, merging with new data
+                cursor.execute('''
+                    UPDATE sleep_summaries SET
+                        sleep_start_time = COALESCE(%s, sleep_start_time),
+                        sleep_end_time = COALESCE(%s, sleep_end_time),
+                        total_sleep_minutes = COALESCE(%s, total_sleep_minutes),
+                        deep_sleep_minutes = COALESCE(%s, deep_sleep_minutes),
+                        wakeups_count = COALESCE(%s, wakeups_count),
+                        min_heart_rate = COALESCE(%s, min_heart_rate),
+                        avg_heart_rate = COALESCE(%s, avg_heart_rate),
+                        max_heart_rate = COALESCE(%s, max_heart_rate),
+                        notes = COALESCE(%s, notes),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s
+                ''', (
+                    sleep_start_time, sleep_end_time,
+                    total_sleep_minutes, deep_sleep_minutes, wakeups_count,
+                    min_heart_rate, avg_heart_rate, max_heart_rate, notes,
+                    existing[0]
+                ))
+                conn.commit()
+                return existing[0]
+            else:
+                # Insert new record
+                cursor.execute('''
+                    INSERT INTO sleep_summaries (
+                        user_id, date, sleep_start_time, sleep_end_time,
+                        total_sleep_minutes, deep_sleep_minutes, wakeups_count,
+                        min_heart_rate, avg_heart_rate, max_heart_rate, notes
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    self.user_id, date, sleep_start_time, sleep_end_time,
                     total_sleep_minutes, deep_sleep_minutes, wakeups_count,
                     min_heart_rate, avg_heart_rate, max_heart_rate, notes
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (
-                self.user_id, date, sleep_start_time, sleep_end_time,
-                total_sleep_minutes, deep_sleep_minutes, wakeups_count,
-                min_heart_rate, avg_heart_rate, max_heart_rate, notes
-            ))
-            conn.commit()
-            return cursor.lastrowid
+                ))
+                conn.commit()
+                return cursor.lastrowid
 
     def get_sleep_summaries(self, limit: int = 14) -> List[Dict]:
         """Get recent sleep summaries"""

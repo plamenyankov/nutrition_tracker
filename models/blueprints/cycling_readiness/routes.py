@@ -34,11 +34,13 @@ from . import cycling_readiness_bp
 from models.services.cycling_readiness_service import CyclingReadinessService
 from models.services.openai_extraction import (
     extract_from_image,
+    extract_batch,
     extract_cycling_workout_from_image,
     extract_sleep_summary_from_image,
     CyclingWorkoutPayload,
     SleepSummaryPayload,
-    UnknownPayload
+    UnknownPayload,
+    BatchExtractionResult
 )
 
 logger = logging.getLogger(__name__)
@@ -227,7 +229,7 @@ def get_cycling_stats():
 def import_bundle():
     """
     Import multiple screenshots at once (cycling, sleep, etc.).
-    Automatically classifies each image and merges data.
+    Uses SINGLE OpenAI API call for all images with AI-powered merging.
     ---
     tags:
       - Bundle Import
@@ -238,7 +240,7 @@ def import_bundle():
         in: formData
         type: file
         required: true
-        description: One or more screenshots
+        description: One or more screenshots (max 4)
     responses:
       200:
         description: Successfully processed bundle
@@ -254,108 +256,140 @@ def import_bundle():
 
     try:
         service = get_service()
-        cycling_payloads = []
-        sleep_payloads = []
-        unknown_payloads = []
-        extraction_results = []
-
-        # Process each file
+        
+        # Prepare images for batch extraction
+        image_tuples = []
         for file in files:
             if file.filename == '':
                 continue
-
-            try:
-                payload = extract_from_image(file.stream, file.filename)
-                result = {
-                    'filename': file.filename,
-                    'type': payload.type,
-                    'data': payload.to_dict()
-                }
-                extraction_results.append(result)
-
-                if isinstance(payload, CyclingWorkoutPayload):
-                    cycling_payloads.append(payload.to_dict())
-                elif isinstance(payload, SleepSummaryPayload):
-                    sleep_payloads.append(payload.to_dict())
-                else:
-                    unknown_payloads.append(payload.to_dict())
-
-            except Exception as e:
-                logger.error(f"Failed to extract from {file.filename}: {e}")
-                extraction_results.append({
-                    'filename': file.filename,
-                    'type': 'error',
-                    'error': str(e)
-                })
-
-        # Determine canonical date
-        canonical_date = None
-        all_workout_dates = [p.get('workout_date') for p in cycling_payloads if p.get('workout_date')]
-        all_sleep_dates = [p.get('sleep_end_date') for p in sleep_payloads if p.get('sleep_end_date')]
-
-        if all_workout_dates:
-            # Use the latest workout date
-            canonical_date = max(all_workout_dates)
-            if len(set(all_workout_dates)) > 1:
-                logger.warning(f"Multiple workout dates found: {all_workout_dates}. Using: {canonical_date}")
-        elif all_sleep_dates:
-            canonical_date = max(all_sleep_dates)
-        else:
-            canonical_date = datetime.now().strftime('%Y-%m-%d')
-
-        # Assign canonical date to payloads with null dates
-        for p in cycling_payloads:
-            if not p.get('workout_date'):
-                p['workout_date'] = canonical_date
-
-        for p in sleep_payloads:
-            if not p.get('sleep_end_date'):
-                p['sleep_end_date'] = canonical_date
-
-        # Merge cycling workouts
+            # Reset file pointer
+            file.stream.seek(0)
+            image_tuples.append((file.stream, file.filename))
+        
+        if not image_tuples:
+            return jsonify({'error': 'No valid files selected'}), 400
+        
+        logger.info(f"[BUNDLE] Processing {len(image_tuples)} images: {[t[1] for t in image_tuples]}")
+        
+        # ============== SINGLE API CALL for all images ==============
+        batch_result = extract_batch(image_tuples)
+        
+        # Log batch results
+        logger.info(f"[BUNDLE] Batch extraction complete:")
+        logger.info(f"[BUNDLE]   - Images: {len(batch_result.image_results)}")
+        for r in batch_result.image_results:
+            logger.info(f"[BUNDLE]   - {r.filename}: type={r.type}, confidence={r.confidence:.2f}")
+        if batch_result.canonical_workout.date:
+            cw = batch_result.canonical_workout
+            logger.info(f"[BUNDLE]   - Canonical workout: date={cw.date}, power={cw.avg_power}W, HR={cw.avg_hr}")
+        if batch_result.canonical_sleep.date:
+            cs = batch_result.canonical_sleep
+            logger.info(f"[BUNDLE]   - Canonical sleep: date={cs.date}, total={cs.total_sleep_minutes}min")
+        if batch_result.errors:
+            logger.warning(f"[BUNDLE]   - Errors: {batch_result.errors}")
+        
+        # Check for extraction errors
+        if batch_result.errors and not batch_result.canonical_workout.date and not batch_result.canonical_sleep.date:
+            return jsonify({
+                'error': 'Extraction failed',
+                'details': batch_result.errors
+            }), 400
+        
+        # ============== Save canonical workout ==============
         cycling_result = None
-        if cycling_payloads:
-            workout_id, merged_data = service.merge_cycling_workout(canonical_date, cycling_payloads)
+        if batch_result.canonical_workout.date:
+            cw = batch_result.canonical_workout
+            
+            # Convert duration_minutes to seconds
+            duration_sec = int(cw.duration_minutes * 60) if cw.duration_minutes else None
+            
+            # Create payload dict for merge function
+            cycling_payload = {
+                'workout_date': cw.date,
+                'sport': 'indoor_cycle',
+                'duration_sec': duration_sec,
+                'avg_power_w': cw.avg_power,
+                'max_power_w': cw.max_power,
+                'normalized_power_w': cw.normalized_power,
+                'avg_heart_rate': cw.avg_hr,
+                'max_heart_rate': cw.max_hr,
+                'avg_cadence': cw.cadence_avg,
+                'max_cadence': cw.cadence_max,
+                'distance_km': cw.distance_km,
+                'kcal_active': cw.calories_active,
+                'kcal_total': cw.calories_total,
+                'tss': cw.tss,
+                'intensity_factor': cw.intensity_factor
+            }
+            
+            workout_id, merged_data = service.merge_cycling_workout(cw.date, [cycling_payload])
             cycling_result = merged_data
-
-        # Process sleep data and update readiness
+        
+        # ============== Save canonical sleep ==============
         readiness_results = []
-        for sleep_payload in sleep_payloads:
-            readiness_date = sleep_payload.get('sleep_end_date') or canonical_date
-
+        if batch_result.canonical_sleep.date:
+            cs = batch_result.canonical_sleep
+            
             # Save sleep summary
             service.save_sleep_summary(
-                date=readiness_date,
-                sleep_start_time=sleep_payload.get('sleep_start_time'),
-                sleep_end_time=sleep_payload.get('sleep_end_time'),
-                total_sleep_minutes=sleep_payload.get('total_sleep_minutes'),
-                deep_sleep_minutes=sleep_payload.get('deep_sleep_minutes'),
-                wakeups_count=sleep_payload.get('wakeups_count'),
-                min_heart_rate=sleep_payload.get('min_heart_rate'),
-                avg_heart_rate=sleep_payload.get('avg_heart_rate'),
-                max_heart_rate=sleep_payload.get('max_heart_rate'),
-                notes=sleep_payload.get('notes')
+                date=cs.date,
+                sleep_start_time=cs.sleep_start,
+                sleep_end_time=cs.sleep_end,
+                total_sleep_minutes=cs.total_sleep_minutes,
+                deep_sleep_minutes=cs.deep_sleep_minutes,
+                wakeups_count=cs.wakeups,
+                min_heart_rate=cs.min_hr,
+                avg_heart_rate=cs.avg_hr,
+                max_heart_rate=cs.max_hr,
+                notes=None
             )
-
+            
+            # Build sleep payload for readiness update
+            sleep_payload = {
+                'sleep_end_date': cs.date,
+                'total_sleep_minutes': cs.total_sleep_minutes,
+                'deep_sleep_minutes': cs.deep_sleep_minutes,
+                'wakeups_count': cs.wakeups,
+                'min_heart_rate': cs.min_hr
+            }
+            
             # Update readiness entry
-            readiness = service.update_readiness_from_sleep(readiness_date, sleep_payload)
+            readiness = service.update_readiness_from_sleep(cs.date, sleep_payload)
             if readiness:
-                # Convert date for JSON
                 if readiness.get('date'):
                     readiness['date'] = readiness['date'].strftime('%Y-%m-%d') if hasattr(readiness['date'], 'strftime') else str(readiness['date'])
                 readiness_results.append(readiness)
-
+        
+        # ============== Build response ==============
+        canonical_date = batch_result.canonical_workout.date or batch_result.canonical_sleep.date or datetime.now().strftime('%Y-%m-%d')
+        
+        # Count image types
+        cycling_count = sum(1 for r in batch_result.image_results if r.type in ['cycling_power', 'watch_workout'])
+        sleep_count = sum(1 for r in batch_result.image_results if r.type == 'sleep_summary')
+        unknown_count = sum(1 for r in batch_result.image_results if r.type == 'unknown')
+        
         return jsonify({
             'success': True,
             'canonical_date': canonical_date,
-            'extraction_results': extraction_results,
+            'extraction_results': [
+                {
+                    'filename': r.filename,
+                    'type': r.type,
+                    'confidence': r.confidence,
+                    'fields': r.fields
+                } for r in batch_result.image_results
+            ],
             'cycling_workout': serialize_for_json(cycling_result),
+            'canonical_workout': serialize_for_json(batch_result.canonical_workout.to_dict()),
+            'canonical_sleep': serialize_for_json(batch_result.canonical_sleep.to_dict()),
             'readiness_entries': serialize_for_json(readiness_results),
+            'missing_fields': batch_result.missing_fields,
             'summary': {
-                'cycling_images': len(cycling_payloads),
-                'sleep_images': len(sleep_payloads),
-                'unknown_images': len(unknown_payloads),
-                'errors': len([r for r in extraction_results if r.get('type') == 'error'])
+                'cycling_images': cycling_count,
+                'sleep_images': sleep_count,
+                'unknown_images': unknown_count,
+                'errors': len(batch_result.errors),
+                'api_calls': 1  # Single API call!
             }
         })
 
@@ -574,6 +608,32 @@ def get_readiness_entries():
             e['date'] = e['date'].strftime('%Y-%m-%d') if hasattr(e['date'], 'strftime') else str(e['date'])
 
     return jsonify({'entries': entries})
+
+
+@cycling_readiness_bp.route('/api/readiness/<int:entry_id>', methods=['DELETE'])
+@login_required
+def delete_readiness_entry(entry_id):
+    """Delete a readiness entry"""
+    service = get_service()
+    success = service.delete_readiness_entry(entry_id)
+
+    if success:
+        logger.info(f"[DELETE] Readiness entry {entry_id} deleted")
+        return jsonify({'success': True})
+    return jsonify({'error': 'Readiness entry not found'}), 404
+
+
+@cycling_readiness_bp.route('/api/sleep/<int:summary_id>', methods=['DELETE'])
+@login_required
+def delete_sleep_summary(summary_id):
+    """Delete a sleep summary"""
+    service = get_service()
+    success = service.delete_sleep_summary(summary_id)
+
+    if success:
+        logger.info(f"[DELETE] Sleep summary {summary_id} deleted")
+        return jsonify({'success': True})
+    return jsonify({'error': 'Sleep summary not found'}), 404
 
 
 @cycling_readiness_bp.route('/api/readiness/chart', methods=['GET'])

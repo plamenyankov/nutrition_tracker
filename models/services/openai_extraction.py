@@ -1,14 +1,14 @@
 """
 OpenAI-powered extraction service for cycling workout and sleep screenshots.
 Uses GPT-4o vision capabilities to extract structured data from images.
-Supports automatic classification of screenshot type.
+Supports batch processing of multiple images in a single API call.
 """
 import os
 import json
 import base64
 import logging
 from dataclasses import dataclass, asdict, field
-from typing import Optional, BinaryIO, Dict, Any, List, Union
+from typing import Optional, BinaryIO, Dict, Any, List, Union, Tuple
 from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -44,6 +44,7 @@ class CyclingWorkoutPayload:
     intensity_factor: Optional[float] = None
     tss: Optional[float] = None
     avg_cadence: Optional[int] = None
+    max_cadence: Optional[int] = None
     distance_km: Optional[float] = None
     kcal_active: Optional[int] = None
     kcal_total: Optional[int] = None
@@ -63,6 +64,9 @@ class SleepSummaryPayload:
     sleep_end_time: Optional[str] = None     # HH:MM
     total_sleep_minutes: Optional[int] = None
     deep_sleep_minutes: Optional[int] = None
+    rem_minutes: Optional[int] = None
+    core_minutes: Optional[int] = None
+    awake_minutes: Optional[int] = None
     wakeups_count: Optional[int] = None
     min_heart_rate: Optional[int] = None
     avg_heart_rate: Optional[int] = None
@@ -83,76 +87,332 @@ class UnknownPayload:
         return asdict(self)
 
 
+@dataclass
+class ImageResult:
+    """Result from processing a single image"""
+    filename: str
+    type: str  # cycling_power, watch_workout, sleep_summary, unknown
+    fields: Dict[str, Any]
+    confidence: float
+
+
+@dataclass 
+class CanonicalWorkout:
+    """Merged cycling workout data from all images"""
+    date: Optional[str] = None
+    duration_minutes: Optional[float] = None
+    avg_power: Optional[float] = None
+    max_power: Optional[float] = None
+    normalized_power: Optional[float] = None
+    avg_hr: Optional[int] = None
+    max_hr: Optional[int] = None
+    cadence_avg: Optional[int] = None
+    cadence_max: Optional[int] = None
+    distance_km: Optional[float] = None
+    calories_active: Optional[int] = None
+    calories_total: Optional[int] = None
+    tss: Optional[float] = None
+    intensity_factor: Optional[float] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class CanonicalSleep:
+    """Merged sleep data from all images"""
+    date: Optional[str] = None
+    sleep_start: Optional[str] = None
+    sleep_end: Optional[str] = None
+    total_sleep_minutes: Optional[int] = None
+    deep_sleep_minutes: Optional[int] = None
+    rem_minutes: Optional[int] = None
+    core_minutes: Optional[int] = None
+    awake_minutes: Optional[int] = None
+    wakeups: Optional[int] = None
+    min_hr: Optional[int] = None
+    avg_hr: Optional[int] = None
+    max_hr: Optional[int] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class BatchExtractionResult:
+    """Complete result from batch image extraction"""
+    image_results: List[ImageResult]
+    canonical_workout: CanonicalWorkout
+    canonical_sleep: CanonicalSleep
+    missing_fields: Dict[str, List[str]]
+    errors: List[str]
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'imageResults': [
+                {
+                    'filename': r.filename,
+                    'type': r.type,
+                    'fields': r.fields,
+                    'confidence': r.confidence
+                } for r in self.image_results
+            ],
+            'canonicalWorkout': self.canonical_workout.to_dict(),
+            'canonicalSleep': self.canonical_sleep.to_dict(),
+            'missingFields': self.missing_fields,
+            'errors': self.errors
+        }
+
+
 # Type alias for any payload
 ExtractedPayload = Union[CyclingWorkoutPayload, SleepSummaryPayload, UnknownPayload]
 
 
-# ============== Unified Prompt Template ==============
+# ============== Batch Extraction Prompt (1-4 images, single API call) ==============
 
-UNIFIED_EXTRACTION_PROMPT = """You are analyzing a screenshot from a fitness, cycling, or health app. Your task is to:
+BATCH_EXTRACTION_PROMPT = """You are analyzing 1–4 fitness screenshots from cycling apps, Apple Watch, or Apple Health.
 
-1. FIRST, classify what type of screenshot this is:
-   - "cycling_workout" = Any cycling/workout app showing exercise metrics (power, HR, duration, calories, TSS, etc.)
-   - "sleep_summary" = Any sleep tracking app showing sleep data (duration, deep sleep, wake-ups, night HR)
-   - "unknown" = Cannot determine or not a fitness/health screenshot
+=== IMAGE CLASSIFICATION RULES ===
 
-2. THEN, extract ALL available data fields from the image.
+For EACH image, classify it as one of:
 
-IMPORTANT RULES:
-- Return ONLY valid JSON, no additional text or explanation.
-- Use null for any value that is not visible in the image.
-- Convert all durations to the specified unit (seconds for workouts, minutes for sleep).
-- Convert distances to kilometers.
-- Use 24-hour format for times (HH:MM).
-- Use ISO format for dates (YYYY-MM-DD).
-- IMPORTANT: Extract ALL numeric values visible in the screenshot.
+"cycling_power" if the image shows ANY of:
+- Power metrics (watts, W, WATT)
+- Tacx, Zwift, Garmin, TrainerRoad, Wahoo, Strava, Peloton app
+- TSS, IF, NP (Training Stress Score, Intensity Factor, Normalized Power)
+- Cadence (RPM)
+- Cycling-specific graphs or power curves
 
-For CYCLING_WORKOUT, return:
+"watch_workout" if the image shows:
+- Apple Watch workout summary with "Indoor Cycle", "Outdoor Cycle", or "Cycling"
+- Duration, heart rate, calories for a cycling activity
+- Apple Fitness+ cycling workout
+
+"sleep_summary" if the image shows:
+- Sleep stages: REM, Core, Deep, Awake
+- Apple Health sleep analysis
+- Total sleep time with sleep/wake times
+
+"unknown" ONLY if:
+- The image contains NO cycling metrics AND NO sleep data
+- Examples: food photos, random apps, non-fitness screens
+
+CRITICAL: Do NOT classify cycling screenshots as "unknown". If you see ANY power, distance, duration, heart rate, or calories from an exercise, it's likely cycling.
+
+=== EXTRACTION FIELDS ===
+
+For cycling (cycling_power or watch_workout):
+- date: YYYY-MM-DD
+- duration_minutes: decimal (convert from HH:MM:SS)
+- avg_power: watts
+- max_power: watts  
+- normalized_power: NP in watts
+- avg_hr: BPM
+- max_hr: BPM
+- cadence_avg: RPM
+- cadence_max: RPM
+- distance_km: kilometers (convert from miles: 1 mi = 1.60934 km)
+- calories_active: active calories
+- calories_total: total calories
+- tss: Training Stress Score
+- intensity_factor: IF as decimal
+
+For sleep (sleep_summary):
+- date: wake-up date YYYY-MM-DD
+- sleep_start: HH:MM 24h format
+- sleep_end: HH:MM 24h format
+- total_sleep_minutes
+- deep_sleep_minutes
+- rem_minutes
+- core_minutes
+- awake_minutes
+- wakeups: count
+- min_hr, avg_hr, max_hr: BPM
+
+=== MERGING RULES ===
+
+- Use the latest date across all images as canonical date
+- For each field: use value with highest confidence, or first non-null value
+- Never infer or guess values not shown in screenshots
+
+=== OUTPUT FORMAT (STRICT JSON) ===
+
+{
+  "imageResults": [
+    {
+      "filename": "",
+      "type": "cycling_power | watch_workout | sleep_summary | unknown",
+      "fields": { },
+      "confidence": 0.0
+    }
+  ],
+  "canonicalWorkout": {
+    "date": null,
+    "duration_minutes": null,
+    "avg_power": null,
+    "max_power": null,
+    "normalized_power": null,
+    "avg_hr": null,
+    "max_hr": null,
+    "cadence_avg": null,
+    "cadence_max": null,
+    "distance_km": null,
+    "calories_active": null,
+    "calories_total": null,
+    "tss": null,
+    "intensity_factor": null
+  },
+  "canonicalSleep": {
+    "date": null,
+    "sleep_start": null,
+    "sleep_end": null,
+    "total_sleep_minutes": null,
+    "deep_sleep_minutes": null,
+    "rem_minutes": null,
+    "core_minutes": null,
+    "awake_minutes": null,
+    "wakeups": null,
+    "min_hr": null,
+    "avg_hr": null,
+    "max_hr": null
+  },
+  "missingFields": {
+    "workout": [],
+    "sleep": []
+  },
+  "errors": []
+}
+
+Rules:
+- Return JSON ONLY (no markdown, no comments)
+- All fields must be present
+- Use null for missing values
+- Confidence = 0.0 to 1.0
+- Numbers must be numeric, not strings"""
+
+
+# ============== Unified Single-Image Prompt (robust classification) ==============
+
+UNIFIED_EXTRACTION_PROMPT = """You are a strict data-extraction assistant for a cycling and sleep tracking app.
+
+You receive ONE screenshot. It can be:
+1) A cycling workout screen from Tacx, Zwift, Garmin, TrainerRoad, Wahoo, Strava, or similar
+2) An Apple Watch Indoor Cycle / Outdoor Cycle / Cycling workout summary
+3) An Apple Fitness+ cycling workout
+4) An Apple Health sleep summary
+5) Or something unrelated
+
+=== STEP 1: CLASSIFY THE IMAGE ===
+
+Decide the `type` using these rules:
+
+TYPE = "cycling_workout" if ANY of these are true:
+- Shows watts / W / WATT / power metrics
+- Shows cycling-specific data: cadence (RPM), distance (km/mi), speed (km/h, mph)
+- Shows Training Stress Score (TSS) or Intensity Factor (IF) or Normalized Power (NP)
+- Displays "Indoor Cycle", "Outdoor Cycle", "Cycling", "Bike", "Ride" as workout type
+- Has Tacx, Zwift, Garmin, TrainerRoad, Wahoo, Strava, Peloton branding
+- Is an Apple Watch workout summary showing duration, heart rate, calories with cycling context
+- Shows a cycling workout graph or power curve
+
+TYPE = "sleep_summary" if:
+- Shows sleep stages: REM / Core / Deep / Awake
+- Displays total sleep duration with sleep/wake times
+- Has Apple Health sleep analysis or similar sleep tracking data
+
+TYPE = "unknown" ONLY if:
+- The image does NOT contain ANY cycling metrics (watts, distance, cadence, cycling workout)
+- AND does NOT contain ANY sleep data (sleep stages, sleep duration)
+- For example: a photo of food, a random app, a non-fitness screen
+
+CRITICAL: If you see ANY cycling-related metrics (power, distance, cadence, heart rate during workout, calories burned in exercise), classify as "cycling_workout". Do NOT mark cycling screenshots as "unknown".
+
+=== STEP 2: EXTRACT DATA ===
+
+If type = "cycling_workout", extract these fields (use null if NOT visible):
+
+- workout_date: "YYYY-MM-DD" (look for date in header or summary)
+- start_time: "HH:MM" in 24h format
+- sport: "indoor_cycle" | "outdoor_cycle" | "cycling"
+- duration_sec: total duration in SECONDS (convert from HH:MM:SS or MM:SS)
+- distance_km: distance in kilometers (convert from miles if shown as mi: 1 mi = 1.60934 km)
+- avg_power_w: average power in watts
+- max_power_w: maximum power in watts
+- normalized_power_w: NP in watts
+- intensity_factor: IF as decimal (e.g., 0.85)
+- tss: Training Stress Score
+- avg_heart_rate: average HR in BPM (look for "Avg" or "Average" near heart icon or "Heart Rate")
+- max_heart_rate: maximum HR in BPM (look for "Max" or "Peak")
+- avg_cadence: average cadence in RPM
+- kcal_active: active calories (smaller number, labeled "Active" or separate from total)
+- kcal_total: total calories (larger number, or only number shown)
+
+HEART RATE HINTS:
+- Apple Watch: Look for heart icon ♥ with numbers, often shows "Avg" and "Max" separately
+- Tacx/Zwift/Garmin: HR is usually in a dedicated section with BPM label
+- If only one HR value is shown, it's typically the average
+
+POWER HINTS:
+- Look for "W", "watts", "WATT" labels
+- "Avg Power" or just "Power" → avg_power_w
+- "Max Power" → max_power_w
+- "NP" or "Normalized Power" → normalized_power_w
+
+If type = "sleep_summary", extract these fields:
+
+- sleep_start_date: "YYYY-MM-DD" (the night you went to bed)
+- sleep_end_date: "YYYY-MM-DD" (the morning you woke up - this is the main date)
+- sleep_start_time: "HH:MM" in 24h format
+- sleep_end_time: "HH:MM" in 24h format
+- total_sleep_minutes: total sleep in minutes (convert from hours if needed)
+- deep_sleep_minutes: deep sleep in minutes
+- rem_minutes: REM sleep in minutes (if shown)
+- core_minutes: core/light sleep in minutes (if shown)
+- awake_minutes: awake time in minutes (if shown)
+- wakeups_count: number of times woken up
+- min_heart_rate: minimum HR during sleep
+- avg_heart_rate: average HR during sleep
+- max_heart_rate: maximum HR during sleep
+
+=== STEP 3: OUTPUT FORMAT ===
+
+Return ONLY this JSON structure (no markdown, no explanation, no comments):
+
 {
   "type": "cycling_workout",
-  "workout_date": "YYYY-MM-DD",
-  "start_time": "HH:MM",
+  "source_hint": "tacx | zwift | garmin | trainerroad | wahoo | strava | apple_watch | apple_fitness | peloton | other",
+  "workout_date": null,
+  "start_time": null,
   "sport": "indoor_cycle",
   "duration_sec": null,
-  "avg_heart_rate": null,
-  "max_heart_rate": null,
+  "distance_km": null,
   "avg_power_w": null,
   "max_power_w": null,
   "normalized_power_w": null,
   "intensity_factor": null,
   "tss": null,
+  "avg_heart_rate": null,
+  "max_heart_rate": null,
   "avg_cadence": null,
-  "distance_km": null,
   "kcal_active": null,
   "kcal_total": null,
   "notes": ""
 }
 
-HEART RATE EXTRACTION (CRITICAL - carefully look for heart rate data):
-- Look for these labels: "Avg Heart Rate", "Average Heart Rate", "Avg HR", "Heart Rate", "HR", "♥", "❤️", "BPM"
-- avg_heart_rate = average/mean heart rate during workout (typically 100-180 for cycling)
-- max_heart_rate = maximum/peak heart rate during workout (typically 150-200 for cycling)
-- Heart rate values are shown as "XXX BPM" or "XXX bpm" or just a number near a heart icon
-- In Apple Watch/Fitness: look for heart rate in the workout summary, often shows avg and max
-- In cycling apps (Zwift, TrainerRoad, Wahoo, Garmin, Strava): HR is usually displayed prominently
-- IMPORTANT: If you see ANY heart rate numbers in the screenshot, extract them!
+OR for sleep:
 
-POWER EXTRACTION - Look for:
-- "Avg Power", "Average Power", "Power" → avg_power_w (watts)
-- "Max Power", "Peak Power" → max_power_w (watts)
-- "NP", "Normalized Power" → normalized_power_w (watts)
-- "IF", "Intensity Factor" → intensity_factor (decimal like 0.85)
-- "TSS", "Training Stress Score" → tss (number)
-
-For SLEEP_SUMMARY, return:
 {
   "type": "sleep_summary",
-  "sleep_start_date": "YYYY-MM-DD",
-  "sleep_end_date": "YYYY-MM-DD",
-  "sleep_start_time": "HH:MM",
-  "sleep_end_time": "HH:MM",
+  "source_hint": "apple_health | other",
+  "sleep_start_date": null,
+  "sleep_end_date": null,
+  "sleep_start_time": null,
+  "sleep_end_time": null,
   "total_sleep_minutes": null,
   "deep_sleep_minutes": null,
+  "rem_minutes": null,
+  "core_minutes": null,
+  "awake_minutes": null,
   "wakeups_count": null,
   "min_heart_rate": null,
   "avg_heart_rate": null,
@@ -160,19 +420,20 @@ For SLEEP_SUMMARY, return:
   "notes": ""
 }
 
-For UNKNOWN, return:
+OR for unknown:
+
 {
   "type": "unknown",
+  "source_hint": "unknown",
   "notes": "Brief description of what the image shows"
 }
 
-NOTES:
-- sleep_start_date is when you went to bed (e.g., previous night)
-- sleep_end_date is when you woke up (this is the main date for tracking)
-- For Apple Watch/Health screenshots, look for workout summary or sleep analysis data
-- If deep sleep is shown as percentage, calculate minutes from total sleep
-- sport can be: indoor_cycle, outdoor_cycle, spinning, cycling, etc.
-- ALWAYS try to extract avg_heart_rate and max_heart_rate if any heart rate data is visible"""
+RULES:
+- All numeric values must be numbers, not strings
+- Use null for values not visible in the screenshot
+- Do NOT guess or infer values not explicitly shown
+- Return valid JSON only, no markdown code fences
+- If in doubt between cycling_workout and unknown, choose cycling_workout if ANY fitness metrics are visible"""
 
 
 # ============== Helper Functions ==============
@@ -199,23 +460,40 @@ def get_image_mime_type(filename: str) -> str:
 def parse_json_response(response_text: str) -> Dict[str, Any]:
     """Parse JSON from OpenAI response, handling potential markdown code blocks"""
     text = response_text.strip()
+    original_text = text  # Keep for error logging
 
-    # Remove markdown code blocks if present
+    # Remove markdown code blocks if present (```json or ``` or ```JSON)
     if text.startswith('```'):
         lines = text.split('\n')
         # Remove first line (```json or ```)
         if lines[0].startswith('```'):
             lines = lines[1:]
-        # Remove last line (```)
+        # Remove last line (```) if present
         if lines and lines[-1].strip() == '```':
             lines = lines[:-1]
-        text = '\n'.join(lines)
+        text = '\n'.join(lines).strip()
+    
+    # Also handle case where ``` is at the end but not on its own line
+    if text.endswith('```'):
+        text = text[:-3].strip()
+    
+    # Try to find JSON object in the text if parsing fails
+    if not text.startswith('{'):
+        # Look for first { and last }
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            text = text[start_idx:end_idx + 1]
+            logger.warning(f"[PARSE] Extracted JSON from response (had extra text)")
 
     try:
-        return json.loads(text)
+        parsed = json.loads(text)
+        logger.debug(f"[PARSE] Successfully parsed JSON with type: {parsed.get('type', 'unknown')}")
+        return parsed
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse JSON: {e}")
-        logger.error(f"Response text: {text[:500]}")
+        logger.error(f"[PARSE] Failed to parse JSON: {e}")
+        logger.error(f"[PARSE] Original response: {original_text[:1000]}")
+        logger.error(f"[PARSE] Cleaned text: {text[:1000]}")
         raise ValueError(f"Invalid JSON response from OpenAI: {e}")
 
 
@@ -256,9 +534,217 @@ def call_openai_vision(base64_image: str, mime_type: str, prompt: str) -> str:
             raise ValueError(f"OpenAI API error: {error_msg}")
 
 
+def call_openai_vision_batch(
+    images: List[Tuple[str, str, str]],  # List of (base64_image, mime_type, filename)
+    prompt: str = None
+) -> str:
+    """
+    Make OpenAI Vision API call with MULTIPLE images in a single request.
+    
+    Args:
+        images: List of tuples (base64_image, mime_type, filename)
+        prompt: Optional custom prompt (uses BATCH_EXTRACTION_PROMPT if None)
+    
+    Returns:
+        Raw response text from OpenAI
+    """
+    if not images:
+        raise ValueError("No images provided for batch extraction")
+    
+    if len(images) > 4:
+        raise ValueError("Maximum 4 images allowed per batch extraction")
+    
+    client = get_openai_client()
+    prompt = prompt or BATCH_EXTRACTION_PROMPT
+    
+    # Build content array with text prompt + all images
+    content = [{"type": "text", "text": prompt}]
+    
+    for base64_image, mime_type, filename in images:
+        content.append({
+            "type": "image_url",
+            "image_url": {
+                "url": f"data:{mime_type};base64,{base64_image}",
+                "detail": "high"
+            }
+        })
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{
+                "role": "user",
+                "content": content
+            }],
+            temperature=0,
+            max_tokens=4000  # Increased for multiple images
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        error_msg = str(e)
+        logger.error(f"OpenAI API batch error: {error_msg}")
+        if "insufficient_quota" in error_msg or "429" in error_msg:
+            raise ValueError("OpenAI API quota exceeded. Please check your billing and add credits at https://platform.openai.com/account/billing")
+        elif "invalid_api_key" in error_msg or "401" in error_msg:
+            raise ValueError("Invalid OpenAI API key. Please check your OPENAI_API_KEY in .env file")
+        else:
+            raise ValueError(f"OpenAI API error: {error_msg}")
+
+
+def extract_batch(
+    images: List[Tuple[BinaryIO, str]]
+) -> BatchExtractionResult:
+    """
+    Extract data from 1-4 images in a SINGLE OpenAI API call.
+    
+    This is the recommended method for processing multiple images together
+    as it reduces API calls and improves merging accuracy.
+    
+    Args:
+        images: List of tuples (image_file, filename)
+    
+    Returns:
+        BatchExtractionResult containing:
+        - image_results: Individual extraction results per image
+        - canonical_workout: Merged cycling workout data
+        - canonical_sleep: Merged sleep data
+        - missing_fields: Fields that couldn't be extracted
+        - errors: Any extraction errors
+    """
+    if not images:
+        return BatchExtractionResult(
+            image_results=[],
+            canonical_workout=CanonicalWorkout(),
+            canonical_sleep=CanonicalSleep(),
+            missing_fields={'workout': [], 'sleep': []},
+            errors=['No images provided']
+        )
+    
+    if len(images) > 4:
+        logger.warning(f"Received {len(images)} images, limiting to first 4")
+        images = images[:4]
+    
+    # Prepare images for API call
+    prepared_images = []
+    filenames = []
+    for image_file, filename in images:
+        try:
+            base64_image = encode_image_to_base64(image_file)
+            mime_type = get_image_mime_type(filename)
+            prepared_images.append((base64_image, mime_type, filename))
+            filenames.append(filename)
+        except Exception as e:
+            logger.error(f"Failed to encode image {filename}: {e}")
+    
+    if not prepared_images:
+        return BatchExtractionResult(
+            image_results=[],
+            canonical_workout=CanonicalWorkout(),
+            canonical_sleep=CanonicalSleep(),
+            missing_fields={'workout': [], 'sleep': []},
+            errors=['Failed to encode any images']
+        )
+    
+    logger.info(f"Batch extracting data from {len(prepared_images)} images: {filenames}")
+    
+    try:
+        # Single API call for all images
+        response_text = call_openai_vision_batch(prepared_images)
+        logger.debug(f"OpenAI batch response: {response_text}")
+        
+        # Parse response
+        data = parse_json_response(response_text)
+        
+        # Build result from parsed data
+        return _build_batch_result(data, filenames)
+        
+    except Exception as e:
+        logger.error(f"Batch extraction failed: {e}")
+        return BatchExtractionResult(
+            image_results=[],
+            canonical_workout=CanonicalWorkout(),
+            canonical_sleep=CanonicalSleep(),
+            missing_fields={'workout': [], 'sleep': []},
+            errors=[str(e)]
+        )
+
+
+def _build_batch_result(data: Dict[str, Any], filenames: List[str]) -> BatchExtractionResult:
+    """Build BatchExtractionResult from parsed OpenAI response"""
+    
+    # Parse image results
+    image_results = []
+    for i, img_data in enumerate(data.get('imageResults', [])):
+        filename = img_data.get('filename') or (filenames[i] if i < len(filenames) else f"image_{i}")
+        image_results.append(ImageResult(
+            filename=filename,
+            type=img_data.get('type', 'unknown'),
+            fields=img_data.get('fields', {}),
+            confidence=float(img_data.get('confidence', 0.0))
+        ))
+    
+    # Parse canonical workout
+    cw_data = data.get('canonicalWorkout', {})
+    canonical_workout = CanonicalWorkout(
+        date=cw_data.get('date'),
+        duration_minutes=cw_data.get('duration_minutes'),
+        avg_power=cw_data.get('avg_power'),
+        max_power=cw_data.get('max_power'),
+        normalized_power=cw_data.get('normalized_power'),
+        avg_hr=cw_data.get('avg_hr'),
+        max_hr=cw_data.get('max_hr'),
+        cadence_avg=cw_data.get('cadence_avg'),
+        cadence_max=cw_data.get('cadence_max'),
+        distance_km=cw_data.get('distance_km'),
+        calories_active=cw_data.get('calories_active'),
+        calories_total=cw_data.get('calories_total'),
+        tss=cw_data.get('tss'),
+        intensity_factor=cw_data.get('intensity_factor')
+    )
+    
+    # Parse canonical sleep
+    cs_data = data.get('canonicalSleep', {})
+    canonical_sleep = CanonicalSleep(
+        date=cs_data.get('date'),
+        sleep_start=cs_data.get('sleep_start'),
+        sleep_end=cs_data.get('sleep_end'),
+        total_sleep_minutes=cs_data.get('total_sleep_minutes'),
+        deep_sleep_minutes=cs_data.get('deep_sleep_minutes'),
+        rem_minutes=cs_data.get('rem_minutes'),
+        core_minutes=cs_data.get('core_minutes'),
+        awake_minutes=cs_data.get('awake_minutes'),
+        wakeups=cs_data.get('wakeups'),
+        min_hr=cs_data.get('min_hr'),
+        avg_hr=cs_data.get('avg_hr'),
+        max_hr=cs_data.get('max_hr')
+    )
+    
+    # Parse missing fields
+    missing_fields = data.get('missingFields', {'workout': [], 'sleep': []})
+    if not isinstance(missing_fields, dict):
+        missing_fields = {'workout': [], 'sleep': []}
+    
+    # Parse errors
+    errors = data.get('errors', [])
+    if not isinstance(errors, list):
+        errors = []
+    
+    return BatchExtractionResult(
+        image_results=image_results,
+        canonical_workout=canonical_workout,
+        canonical_sleep=canonical_sleep,
+        missing_fields=missing_fields,
+        errors=errors
+    )
+
+
 def create_payload_from_data(data: Dict[str, Any]) -> ExtractedPayload:
     """Create the appropriate payload object from parsed JSON data"""
     payload_type = data.get('type', 'unknown')
+    source_hint = data.get('source_hint', 'unknown')
+    
+    # Log classification for debugging
+    logger.info(f"[EXTRACTION] Type: {payload_type}, Source: {source_hint}")
 
     if payload_type == 'cycling_workout':
         # Convert 0 to None for heart rate fields (0 is not a valid HR)
@@ -268,6 +754,11 @@ def create_payload_from_data(data: Dict[str, Any]) -> ExtractedPayload:
             avg_hr = None
         if max_hr == 0:
             max_hr = None
+        
+        # Log key cycling fields for debugging
+        logger.info(f"[EXTRACTION] Cycling data: date={data.get('workout_date')}, "
+                   f"power={data.get('avg_power_w')}W, HR={avg_hr}/{max_hr}, "
+                   f"duration={data.get('duration_sec')}s, TSS={data.get('tss')}")
         
         return CyclingWorkoutPayload(
             type="cycling_workout",
@@ -289,6 +780,10 @@ def create_payload_from_data(data: Dict[str, Any]) -> ExtractedPayload:
             notes=data.get('notes', '')
         )
     elif payload_type == 'sleep_summary':
+        # Log key sleep fields for debugging
+        logger.info(f"[EXTRACTION] Sleep data: date={data.get('sleep_end_date')}, "
+                   f"total={data.get('total_sleep_minutes')}min, deep={data.get('deep_sleep_minutes')}min")
+        
         return SleepSummaryPayload(
             type="sleep_summary",
             sleep_start_date=data.get('sleep_start_date'),
@@ -297,6 +792,9 @@ def create_payload_from_data(data: Dict[str, Any]) -> ExtractedPayload:
             sleep_end_time=data.get('sleep_end_time'),
             total_sleep_minutes=data.get('total_sleep_minutes'),
             deep_sleep_minutes=data.get('deep_sleep_minutes'),
+            rem_minutes=data.get('rem_minutes'),
+            core_minutes=data.get('core_minutes'),
+            awake_minutes=data.get('awake_minutes'),
             wakeups_count=data.get('wakeups_count'),
             min_heart_rate=data.get('min_heart_rate'),
             avg_heart_rate=data.get('avg_heart_rate'),
@@ -304,6 +802,9 @@ def create_payload_from_data(data: Dict[str, Any]) -> ExtractedPayload:
             notes=data.get('notes', '')
         )
     else:
+        # Log unknown type with notes for debugging
+        logger.warning(f"[EXTRACTION] Unknown type! Notes: {data.get('notes', 'No notes')}")
+        
         return UnknownPayload(
             type="unknown",
             notes=data.get('notes', 'Unrecognized screenshot type')
@@ -330,15 +831,36 @@ def extract_from_image(
     base64_image = encode_image_to_base64(image_file)
     mime_type = get_image_mime_type(filename)
 
-    logger.info(f"Extracting data from image: {filename}")
+    logger.info(f"[EXTRACTION] Processing image: {filename} ({mime_type})")
 
-    # Call OpenAI with unified prompt
-    response_text = call_openai_vision(base64_image, mime_type, UNIFIED_EXTRACTION_PROMPT)
-    logger.debug(f"OpenAI response: {response_text}")
+    try:
+        # Call OpenAI with unified prompt
+        response_text = call_openai_vision(base64_image, mime_type, UNIFIED_EXTRACTION_PROMPT)
+        
+        # Log raw response for debugging (truncated)
+        response_preview = response_text[:500] if len(response_text) > 500 else response_text
+        logger.info(f"[EXTRACTION] Raw OpenAI response for {filename}: {response_preview}")
 
-    # Parse and create payload
-    data = parse_json_response(response_text)
-    return create_payload_from_data(data)
+        # Parse and create payload
+        data = parse_json_response(response_text)
+        
+        # Log parsed type
+        parsed_type = data.get('type', 'unknown')
+        logger.info(f"[EXTRACTION] {filename} -> classified as: {parsed_type}")
+        
+        payload = create_payload_from_data(data)
+        
+        # Final summary log
+        logger.info(f"[EXTRACTION] {filename} complete: type={payload.type}")
+        
+        return payload
+        
+    except Exception as e:
+        logger.error(f"[EXTRACTION] Failed to process {filename}: {str(e)}")
+        return UnknownPayload(
+            type="unknown",
+            notes=f"Extraction error: {str(e)}"
+        )
 
 
 def extract_from_base64(
