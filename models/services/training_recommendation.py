@@ -26,6 +26,17 @@ class TrainingInterval:
     duration_minutes: int
     target_zone: Literal["Z1", "Z2", "Z3", "Z4"]
     notes: Optional[str] = None
+    
+    # Power targets (optional, based on athlete's baseline)
+    target_power_w_min: Optional[int] = None
+    target_power_w_max: Optional[int] = None
+    
+    # Heart rate targets (optional)
+    target_hr_bpm_min: Optional[int] = None
+    target_hr_bpm_max: Optional[int] = None
+    expected_avg_hr_bpm: Optional[int] = None
+    
+    # For interval blocks
     repeats: Optional[int] = None
     work_minutes: Optional[int] = None
     rest_minutes: Optional[int] = None
@@ -42,6 +53,12 @@ class TrainingSessionPlan:
     overall_intensity: Literal["very_easy", "easy", "moderate", "hard"]
     intervals: List[TrainingInterval]
     comments: Optional[str] = None
+    
+    # Session-level targets (optional)
+    session_target_power_w_min: Optional[int] = None
+    session_target_power_w_max: Optional[int] = None
+    expected_avg_hr_bpm: Optional[int] = None
+    expected_avg_power_w: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
         result = {
@@ -52,6 +69,14 @@ class TrainingSessionPlan:
         }
         if self.comments:
             result['comments'] = self.comments
+        if self.session_target_power_w_min is not None:
+            result['session_target_power_w_min'] = self.session_target_power_w_min
+        if self.session_target_power_w_max is not None:
+            result['session_target_power_w_max'] = self.session_target_power_w_max
+        if self.expected_avg_hr_bpm is not None:
+            result['expected_avg_hr_bpm'] = self.expected_avg_hr_bpm
+        if self.expected_avg_power_w is not None:
+            result['expected_avg_power_w'] = self.expected_avg_power_w
         return result
 
 
@@ -85,58 +110,85 @@ class TrainingRecommendation:
 
 # ============== OpenAI System Prompt ==============
 
-TRAINING_COACH_SYSTEM_PROMPT = """You are an experienced endurance cycling coach specializing in Norwegian-style polarized training.
+TRAINING_COACH_SYSTEM_PROMPT = """You are an experienced endurance cycling coach using a Norwegian-style polarized training approach.
 
-You will receive a JSON object called "training_context" containing:
-- evaluation_date: The date for which to provide a recommendation (YYYY-MM-DD)
-- day: Current day's readiness, sleep, and cardio metrics (NO workout data - you're recommending WHAT to do)
-- history_7d: Daily summaries for the 7 days BEFORE evaluation_date, including workouts done, readiness, and recovery
-- baseline_30d: Rolling 30-day averages for RHR, HRV, sleep, readiness, and training load
+## Your Task
+You will receive a JSON object called "training_context" for one evaluation_date. You must recommend the safest and most effective training for that date, using ONLY the data provided in training_context.
 
-Your task: Recommend the safest and most effective training for the evaluation_date.
+## Input Structure (training_context)
+- **evaluation_date**: The date you are recommending for (YYYY-MM-DD)
+- **day**: The athlete's state on evaluation_date:
+  - readiness: score (0-100), energy (1-5), mood (1-3), muscle_fatigue (1-3), hrv_status (-1/0/1), rhr_status (-1/0/1), symptoms (bool)
+  - sleep: total_minutes, deep_minutes, awake_minutes, min_hr, max_hr
+  - cardio: rhr_bpm, hrv_low_ms, hrv_high_ms
+- **history_7d**: The 7 days BEFORE evaluation_date (D-7 to D-1), each with:
+  - readiness_score, workout_type, workout_duration_minutes, tss, rhr_bpm, hrv_avg_ms
+- **baseline_30d**: Rolling 30-day averages (D-30 to D-1):
+  - avg_rhr_bpm, avg_hrv_ms, avg_sleep_minutes, avg_deep_sleep_minutes, avg_readiness_score, avg_workouts_per_week, avg_tss_per_week
 
-## Decision Framework
+## Key Decision Factors
 
-### When to recommend REST or RECOVERY SPIN (Z1, 20-45 min):
-- Readiness score < 50
-- HRV status = -1 (significantly below baseline)
-- RHR status = 1 (elevated above baseline)
-- Poor sleep (< 6 hours or low deep sleep)
-- Symptoms flag = true
-- 2+ hard sessions (Z3+, TSS > 50) in last 3 days
-- 3+ consecutive training days without rest
+1. **Readiness & Symptoms**: Low score (<50) or symptoms=true → REST or very easy Z1
+2. **HRV/RHR Status**: Compare to baseline. If hrv_status=-1 (worse) or rhr_status=1 (elevated) → prioritize recovery
+3. **Sleep Quality**: <6h or low deep sleep → reduce intensity
+4. **Recent Training Load**: Count hard sessions (TSS>40 or workout_type containing 'z3'/'z4'/'norwegian') in last 3 days
+5. **Rest Days**: Need at least 1-2 rest/easy days per week
 
-### When to recommend Z2 ENDURANCE (30-75 min):
-- Readiness score 50-70
-- Normal HRV/RHR (status = 0)
-- Adequate sleep (6-8 hours)
-- 1+ rest day in last 3 days
-- Weekly TSS not already high
+## When to Recommend Each Session Type
 
-### When to recommend NORWEGIAN 4x4 (40-50 min total):
-- Readiness score > 70
-- HRV status >= 0 (normal or above baseline)
-- RHR status <= 0 (normal or below baseline)
+### REST (day_type="rest", session_plan=null):
+- Readiness <40, symptoms=true, or signs of overreaching
+- Already 3+ consecutive training days
+
+### RECOVERY SPIN Z1 (20-45 min):
+- Readiness 40-55 or recovering from hard effort
+- Keep HR <65% max, very easy spinning
+
+### EASY ENDURANCE Z1 (45-60 min):
+- Readiness 55-65, normal recovery metrics
+
+### STEADY ENDURANCE Z2 (45-90 min):
+- Readiness 60-75, good sleep, no recent hard days
+
+### NORWEGIAN 4x4 (40-50 min total):
+- Readiness >70
+- HRV/RHR status >= 0 (normal or better than baseline)
 - Good sleep (7+ hours)
 - No symptoms
-- No hard session in last 2 days
+- No hard session in last 2-3 days
 - At least 1 rest day in last 4 days
+- Structure: 10min warmup Z1 → 4×(4min Z4 / 3min Z1) → 10min cooldown Z1
 
-### General Rules:
-1. ALWAYS prefer conservative over aggressive when in doubt
-2. Recovery is when adaptation happens - don't skip it
+## Heart Rate & Power Targets
+When providing intervals, include realistic targets based on training_context:
+- Use baseline data to estimate appropriate ranges
+- For Z1: 55-65% max HR
+- For Z2: 65-75% max HR  
+- For Z4 (4x4 work): 90-95% max HR
+
+For each interval (especially work intervals), fill when possible:
+- target_hr_bpm_min / target_hr_bpm_max
+- expected_avg_hr_bpm (especially for main work segments)
+- target_power_w_min / target_power_w_max (if power data is available in history)
+
+Use conservative estimates. If you cannot determine targets, omit them.
+
+## General Rules
+1. **ALWAYS prefer conservative** over aggressive when in doubt
+2. Recovery is when adaptation happens - never skip it
 3. Never recommend hard training on consecutive days
-4. Weekly structure should be roughly: 2 easy : 1 hard (or 3:1)
-5. If last 7 days show high average TSS or many workouts, lean toward rest/recovery
+4. Weekly structure should be roughly 3:1 (easy:hard)
+5. If last 7 days show high TSS or many workouts → lean toward rest
 
 ## Output Format
 
 Return ONLY a valid JSON object matching this exact schema:
 
+```json
 {
   "date": "YYYY-MM-DD",
   "day_type": "rest" | "recovery_spin_z1" | "easy_endurance_z1" | "steady_endurance_z2" | "norwegian_4x4" | "hybrid_endurance" | "other",
-  "reason_short": "1-3 sentences explaining the recommendation based on the data",
+  "reason_short": "1-3 sentences explaining the recommendation",
   "session_plan": null | {
     "duration_minutes": <int>,
     "primary_zone": "Z1" | "Z2" | "Z3" | "Z4",
@@ -146,13 +198,22 @@ Return ONLY a valid JSON object matching this exact schema:
         "kind": "warmup" | "steady" | "interval" | "recovery" | "cooldown",
         "duration_minutes": <int>,
         "target_zone": "Z1" | "Z2" | "Z3" | "Z4",
-        "notes": "<optional string>",
-        "repeats": <optional int for intervals>,
+        "notes": "<optional>",
+        "target_power_w_min": <optional int>,
+        "target_power_w_max": <optional int>,
+        "target_hr_bpm_min": <optional int>,
+        "target_hr_bpm_max": <optional int>,
+        "expected_avg_hr_bpm": <optional int>,
+        "repeats": <optional int>,
         "work_minutes": <optional int>,
         "rest_minutes": <optional int>
       }
     ],
-    "comments": "<optional string>"
+    "comments": "<optional>",
+    "session_target_power_w_min": <optional int>,
+    "session_target_power_w_max": <optional int>,
+    "expected_avg_hr_bpm": <optional int>,
+    "expected_avg_power_w": <optional int>
   },
   "flags": {
     "ok_to_push": <bool>,
@@ -161,17 +222,17 @@ Return ONLY a valid JSON object matching this exact schema:
     "monitor_hrv": <bool>
   }
 }
+```
 
 For rest days, set session_plan to null.
 Do NOT include any text outside the JSON object."""
 
 
-TRAINING_USER_PROMPT_TEMPLATE = """Analyze the following training context and provide a training recommendation for {date}.
+TRAINING_USER_PROMPT_TEMPLATE = """Here is the training_context for the athlete and the evaluation date.
+Using only this data, choose the best training for that date.
+Respond only with valid JSON that matches the TrainingRecommendation schema.
 
-training_context:
-{context_json}
-
-Remember: Return ONLY the JSON recommendation, no other text."""
+{context_json}"""
 
 
 # ============== Database Functions ==============
@@ -298,6 +359,57 @@ def save_training_recommendation(
     return rec
 
 
+def _parse_interval(interval_data: Dict) -> TrainingInterval:
+    """
+    Parse a single interval from JSON data.
+    
+    Args:
+        interval_data: Dictionary with interval fields
+    
+    Returns:
+        TrainingInterval object
+    """
+    return TrainingInterval(
+        kind=interval_data.get('kind', 'steady'),
+        duration_minutes=interval_data.get('duration_minutes', 0),
+        target_zone=interval_data.get('target_zone', 'Z1'),
+        notes=interval_data.get('notes'),
+        target_power_w_min=interval_data.get('target_power_w_min'),
+        target_power_w_max=interval_data.get('target_power_w_max'),
+        target_hr_bpm_min=interval_data.get('target_hr_bpm_min'),
+        target_hr_bpm_max=interval_data.get('target_hr_bpm_max'),
+        expected_avg_hr_bpm=interval_data.get('expected_avg_hr_bpm'),
+        repeats=interval_data.get('repeats'),
+        work_minutes=interval_data.get('work_minutes'),
+        rest_minutes=interval_data.get('rest_minutes')
+    )
+
+
+def _parse_session_plan(sp: Dict) -> TrainingSessionPlan:
+    """
+    Parse a session plan from JSON data.
+    
+    Args:
+        sp: Dictionary with session plan fields
+    
+    Returns:
+        TrainingSessionPlan object
+    """
+    intervals = [_parse_interval(i) for i in sp.get('intervals', [])]
+    
+    return TrainingSessionPlan(
+        duration_minutes=sp.get('duration_minutes', 0),
+        primary_zone=sp.get('primary_zone', 'Z1'),
+        overall_intensity=sp.get('overall_intensity', 'easy'),
+        intervals=intervals,
+        comments=sp.get('comments'),
+        session_target_power_w_min=sp.get('session_target_power_w_min'),
+        session_target_power_w_max=sp.get('session_target_power_w_max'),
+        expected_avg_hr_bpm=sp.get('expected_avg_hr_bpm'),
+        expected_avg_power_w=sp.get('expected_avg_power_w')
+    )
+
+
 def _build_recommendation_from_payload(payload: Dict, fallback_date: str) -> TrainingRecommendation:
     """
     Build a TrainingRecommendation from a stored JSON payload.
@@ -312,26 +424,7 @@ def _build_recommendation_from_payload(payload: Dict, fallback_date: str) -> Tra
     # Parse session plan if present
     session_plan = None
     if payload.get('session_plan'):
-        sp = payload['session_plan']
-        intervals = []
-        for interval_data in sp.get('intervals', []):
-            intervals.append(TrainingInterval(
-                kind=interval_data.get('kind', 'steady'),
-                duration_minutes=interval_data.get('duration_minutes', 0),
-                target_zone=interval_data.get('target_zone', 'Z1'),
-                notes=interval_data.get('notes'),
-                repeats=interval_data.get('repeats'),
-                work_minutes=interval_data.get('work_minutes'),
-                rest_minutes=interval_data.get('rest_minutes')
-            ))
-        
-        session_plan = TrainingSessionPlan(
-            duration_minutes=sp.get('duration_minutes', 0),
-            primary_zone=sp.get('primary_zone', 'Z1'),
-            overall_intensity=sp.get('overall_intensity', 'easy'),
-            intervals=intervals,
-            comments=sp.get('comments')
-        )
+        session_plan = _parse_session_plan(payload['session_plan'])
     
     return TrainingRecommendation(
         date=payload.get('date', fallback_date),
@@ -385,14 +478,13 @@ def generate_training_recommendation(
     service = CyclingReadinessService(user_id=user_id, connection_manager=connection_manager)
     context = service.build_training_context(target_date)
     
-    # Build the user prompt with context
+    # Build the user prompt with context (just the JSON)
     context_json = json.dumps(context, indent=2, default=str)
-    user_prompt = TRAINING_USER_PROMPT_TEMPLATE.format(
-        date=date_str,
-        context_json=context_json
-    )
+    user_prompt = TRAINING_USER_PROMPT_TEMPLATE.format(context_json=context_json)
     
     logger.info(f"[TRAINING] Generating NEW recommendation for user={user_id}, date={date_str}")
+    logger.debug(f"[TRAINING] Context: evaluation_date={context.get('evaluation_date')}, "
+                 f"readiness_score={context.get('day', {}).get('readiness', {}).get('score')}")
     
     # Call OpenAI
     model_name = DEFAULT_MODEL_NAME
@@ -478,40 +570,9 @@ def parse_recommendation_response(response_text: str, fallback_date: str) -> Tra
         logger.error(f"[TRAINING] Raw response: {response_text[:500]}")
         raise ValueError(f"Failed to parse AI response as JSON: {str(e)}")
     
-    # Build the recommendation object
+    # Build the recommendation using the reusable helper
     try:
-        # Parse session plan if present
-        session_plan = None
-        if data.get('session_plan'):
-            sp = data['session_plan']
-            intervals = []
-            for interval_data in sp.get('intervals', []):
-                intervals.append(TrainingInterval(
-                    kind=interval_data.get('kind', 'steady'),
-                    duration_minutes=interval_data.get('duration_minutes', 0),
-                    target_zone=interval_data.get('target_zone', 'Z1'),
-                    notes=interval_data.get('notes'),
-                    repeats=interval_data.get('repeats'),
-                    work_minutes=interval_data.get('work_minutes'),
-                    rest_minutes=interval_data.get('rest_minutes')
-                ))
-            
-            session_plan = TrainingSessionPlan(
-                duration_minutes=sp.get('duration_minutes', 0),
-                primary_zone=sp.get('primary_zone', 'Z1'),
-                overall_intensity=sp.get('overall_intensity', 'easy'),
-                intervals=intervals,
-                comments=sp.get('comments')
-            )
-        
-        recommendation = TrainingRecommendation(
-            date=data.get('date', fallback_date),
-            day_type=data.get('day_type', 'rest'),
-            reason_short=data.get('reason_short', 'Unable to determine recommendation.'),
-            session_plan=session_plan,
-            flags=data.get('flags', {})
-        )
-        
+        recommendation = _build_recommendation_from_payload(data, fallback_date)
         return recommendation
         
     except Exception as e:
@@ -537,15 +598,45 @@ def get_recommendation_summary(recommendation: TrainingRecommendation) -> str:
     
     if recommendation.session_plan:
         sp = recommendation.session_plan
-        summary += f"\n📋 Session Plan ({sp.duration_minutes} min, {sp.primary_zone}):\n"
+        summary += f"\n📋 Session Plan ({sp.duration_minutes} min, {sp.primary_zone}, {sp.overall_intensity}):\n"
+        
+        # Session-level targets
+        if sp.expected_avg_hr_bpm:
+            summary += f"   Expected Avg HR: {sp.expected_avg_hr_bpm} bpm\n"
+        if sp.expected_avg_power_w:
+            summary += f"   Expected Avg Power: {sp.expected_avg_power_w}W\n"
+        
+        summary += "\n"
+        
         for i, interval in enumerate(sp.intervals, 1):
             if interval.repeats:
                 summary += f"  {i}. {interval.kind}: {interval.repeats}x {interval.work_minutes}min {interval.target_zone}"
                 if interval.rest_minutes:
                     summary += f" / {interval.rest_minutes}min rest"
-                summary += "\n"
             else:
-                summary += f"  {i}. {interval.kind}: {interval.duration_minutes}min {interval.target_zone}\n"
+                summary += f"  {i}. {interval.kind}: {interval.duration_minutes}min {interval.target_zone}"
+            
+            # Add targets if available
+            targets = []
+            if interval.target_hr_bpm_min or interval.target_hr_bpm_max:
+                hr_range = f"{interval.target_hr_bpm_min or '?'}-{interval.target_hr_bpm_max or '?'} bpm"
+                targets.append(hr_range)
+            if interval.expected_avg_hr_bpm:
+                targets.append(f"avg ~{interval.expected_avg_hr_bpm} bpm")
+            if interval.target_power_w_min or interval.target_power_w_max:
+                power_range = f"{interval.target_power_w_min or '?'}-{interval.target_power_w_max or '?'}W"
+                targets.append(power_range)
+            
+            if targets:
+                summary += f" ({', '.join(targets)})"
+            
+            if interval.notes:
+                summary += f" [{interval.notes}]"
+            
+            summary += "\n"
+        
+        if sp.comments:
+            summary += f"\n   💡 {sp.comments}\n"
     
     if recommendation.flags:
         flags = [k for k, v in recommendation.flags.items() if v]
