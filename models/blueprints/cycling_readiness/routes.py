@@ -1446,13 +1446,8 @@ def get_training_recommendation_api():
     force_refresh = request.args.get('refresh', '').lower() == 'true'
     
     try:
-        # Check if we have a cached recommendation (for response metadata)
-        had_cached = False
-        if not force_refresh:
-            existing = get_training_recommendation(current_user.id, target_date)
-            had_cached = existing is not None
-        
         # Generate or retrieve the recommendation
+        # If force_refresh=False, this will return cached recommendation if it exists
         recommendation = generate_training_recommendation(
             user_id=current_user.id,
             target_date=target_date,
@@ -1465,7 +1460,7 @@ def get_training_recommendation_api():
         return jsonify({
             'success': True,
             'date': target_date.strftime('%Y-%m-%d'),
-            'cached': had_cached and not force_refresh,
+            'refreshed': force_refresh,
             'recommendation': recommendation.to_dict(),
             'summary': summary
         })
