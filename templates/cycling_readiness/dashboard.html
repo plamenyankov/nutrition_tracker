@@ -1140,6 +1140,223 @@
         font-size: 0.8rem;
     }
 
+    /* ============== Collapsible Readiness Card ============== */
+    .readiness-card {
+        transition: all 0.3s ease;
+    }
+    
+    .readiness-header {
+        cursor: pointer;
+    }
+    
+    .readiness-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .readiness-date-label {
+        font-size: 0.7rem;
+        color: var(--color-muted-light);
+        margin-left: 0.5rem;
+        font-weight: 400;
+    }
+    
+    .collapse-indicator {
+        color: var(--color-muted);
+        transition: transform 0.3s ease;
+    }
+    
+    .readiness-card.collapsed .collapse-indicator {
+        transform: rotate(-90deg);
+    }
+    
+    .readiness-form-body {
+        padding-top: 1rem;
+        transition: all 0.3s ease;
+        max-height: 1000px;
+        overflow: hidden;
+    }
+    
+    .readiness-card.collapsed .readiness-form-body {
+        max-height: 0;
+        padding-top: 0;
+        opacity: 0;
+        pointer-events: none;
+    }
+    
+    /* Summary Pills */
+    .readiness-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 0 0.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        margin-top: 0.5rem;
+    }
+    
+    .summary-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+    }
+    
+    .summary-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.5rem;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--color-muted-light);
+    }
+    
+    .summary-pill.score {
+        background: linear-gradient(135deg, var(--color-blue), var(--color-teal));
+        color: white;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.6rem;
+    }
+    
+    .summary-pill.score.score-high { background: linear-gradient(135deg, #00c853, #00ffc6); }
+    .summary-pill.score.score-medium { background: linear-gradient(135deg, #ffc107, #ff9800); }
+    .summary-pill.score.score-low { background: linear-gradient(135deg, #ff5252, #ff1744); }
+    
+    .summary-pill.hrv, .summary-pill.rhr {
+        font-family: monospace;
+    }
+    
+    .summary-pill.symptoms {
+        background: rgba(255, 82, 82, 0.2);
+        color: var(--color-red);
+    }
+    
+    .edit-summary-btn {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        white-space: nowrap;
+    }
+    
+    /* Override Controls */
+    .cardio-metric-display .metric-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .auto-chip {
+        font-size: 0.5rem;
+        background: var(--color-teal);
+        color: white;
+        padding: 0.05rem 0.25rem;
+        border-radius: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .auto-chip.manual {
+        background: var(--color-yellow);
+        color: var(--color-dark);
+    }
+    
+    .btn-override {
+        background: none;
+        border: none;
+        color: var(--color-muted);
+        padding: 0.1rem;
+        font-size: 0.6rem;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-override:hover {
+        color: var(--color-teal);
+        opacity: 1;
+    }
+    
+    .override-input {
+        margin-top: 0.5rem;
+    }
+    
+    .override-input input {
+        font-size: 0.75rem;
+        text-align: center;
+    }
+    
+    .override-actions {
+        text-align: center;
+        margin-top: 0.25rem;
+    }
+    
+    .override-actions .btn-link {
+        font-size: 0.65rem;
+        color: var(--color-muted);
+        padding: 0;
+        text-decoration: none;
+    }
+    
+    .override-actions .btn-link:hover {
+        color: var(--color-red);
+    }
+    
+    /* Readiness History Expanded Table */
+    .readiness-history-table {
+        font-size: 0.75rem;
+    }
+    
+    .readiness-history-table th {
+        font-size: 0.65rem;
+        text-align: center;
+        padding: 0.3rem 0.25rem;
+        white-space: nowrap;
+    }
+    
+    .readiness-history-table td {
+        text-align: center;
+        padding: 0.35rem 0.25rem;
+        vertical-align: middle;
+    }
+    
+    .readiness-history-table .status-arrow {
+        font-size: 0.85rem;
+    }
+    
+    .readiness-history-table .status-arrow.positive { color: var(--color-teal); }
+    .readiness-history-table .status-arrow.neutral { color: var(--color-yellow); }
+    .readiness-history-table .status-arrow.negative { color: var(--color-red); }
+    
+    .readiness-history-table .edit-row-btn {
+        color: var(--color-teal);
+        cursor: pointer;
+        padding: 0.2rem;
+        background: none;
+        border: none;
+        font-size: 0.75rem;
+    }
+    
+    .readiness-history-table .edit-row-btn:hover {
+        color: var(--color-blue);
+    }
+    
+    /* Mood emoji display */
+    .mood-emoji { font-size: 0.9rem; }
+    
+    /* Compact cardio values */
+    .cardio-value { 
+        font-family: monospace; 
+        font-size: 0.7rem; 
+        color: var(--color-red);
+    }
+    
+    .cardio-value.has-override {
+        border-bottom: 1px dashed var(--color-yellow);
+    }
+
     .rating-option:hover, .status-option:hover {
         border-color: var(--color-teal);
         background: rgba(0, 255, 198, 0.08);
@@ -2113,137 +2330,199 @@
     <div id="readinessTab" class="tab-content">
         <div class="flex-layout">
             <div class="flex-col-main">
-                <!-- Morning Readiness Form -->
-                <div class="section-card">
-                    <h3 class="section-title sleep">
-                        <i class="fas fa-sun"></i>Morning Readiness
-                    </h3>
-                    <form id="readinessForm">
-                        <input type="hidden" id="readinessDate" name="date" value="{{ today }}">
-
-                        <!-- Energy -->
-                        <div class="mb-2">
-                            <label class="form-label">Energy Level</label>
-                            <div class="rating-selector" data-field="energy">
-                                {% for i in range(1, 6) %}
-                                <label class="rating-option"><input type="radio" name="energy" value="{{ i }}">{{ i }}</label>
-                                {% endfor %}
-                            </div>
+                <!-- Morning Readiness - Collapsible Card -->
+                <div class="section-card readiness-card" id="morningReadinessCard">
+                    <!-- Card Header - Always visible -->
+                    <div class="readiness-header" id="readinessHeader">
+                        <div class="readiness-header-content" onclick="toggleReadinessForm()">
+                            <h3 class="section-title sleep mb-0">
+                                <i class="fas fa-sun"></i>Morning Readiness
+                                <span class="readiness-date-label" id="readinessDateLabel"></span>
+                            </h3>
+                            <span class="collapse-indicator" id="collapseIndicator">
+                                <i class="fas fa-chevron-down"></i>
+                            </span>
                         </div>
-
-                        <!-- Mood -->
-                        <div class="mb-2">
-                            <label class="form-label">Mood</label>
-                            <div class="rating-selector" data-field="mood">
-                                <label class="rating-option"><input type="radio" name="mood" value="1">😔</label>
-                                <label class="rating-option"><input type="radio" name="mood" value="2">😐</label>
-                                <label class="rating-option"><input type="radio" name="mood" value="3">😊</label>
+                        
+                        <!-- Summary View (shown when collapsed) -->
+                        <div class="readiness-summary" id="readinessSummary" style="display: none;">
+                            <div class="summary-pills">
+                                <span class="summary-pill score" id="summaryScore" title="Readiness Score">--</span>
+                                <span class="summary-pill energy" id="summaryEnergy" title="Energy">⚡ --</span>
+                                <span class="summary-pill mood" id="summaryMood" title="Mood">😐</span>
+                                <span class="summary-pill fatigue" id="summaryFatigue" title="Muscle Fatigue">💪 --</span>
+                                <span class="summary-pill hrv" id="summaryHrv" title="HRV Status">HRV →</span>
+                                <span class="summary-pill rhr" id="summaryRhr" title="RHR Status">RHR →</span>
+                                <span class="summary-pill symptoms" id="summarySymptoms" title="Symptoms" style="display: none;">🤒</span>
                             </div>
+                            <button class="btn btn-sm btn-outline-zyra edit-summary-btn" onclick="event.stopPropagation(); editReadinessForDate()" title="Edit">
+                                <i class="fas fa-pencil-alt"></i> Edit
+                            </button>
                         </div>
+                    </div>
+                    
+                    <!-- Form Body (collapsible) -->
+                    <div class="readiness-form-body" id="readinessFormBody">
+                        <form id="readinessForm">
+                            <input type="hidden" id="readinessDate" name="date" value="{{ today }}">
+                            <input type="hidden" id="readinessEntryId" value="">
 
-                        <!-- Muscle Fatigue -->
-                        <div class="mb-2">
-                            <label class="form-label">Muscle Fatigue</label>
-                            <div class="rating-selector" data-field="muscle_fatigue">
-                                <label class="rating-option"><input type="radio" name="muscle_fatigue" value="1">Low</label>
-                                <label class="rating-option"><input type="radio" name="muscle_fatigue" value="2">Med</label>
-                                <label class="rating-option"><input type="radio" name="muscle_fatigue" value="3">High</label>
+                            <!-- Energy -->
+                            <div class="mb-2">
+                                <label class="form-label">Energy Level</label>
+                                <div class="rating-selector" data-field="energy">
+                                    {% for i in range(1, 6) %}
+                                    <label class="rating-option"><input type="radio" name="energy" value="{{ i }}">{{ i }}</label>
+                                    {% endfor %}
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- HRV & RHR Section -->
-                        <div class="cardio-status-section mb-3" id="cardioStatusSection">
-                            <!-- Cardio Data Display (shown when data exists) -->
-                            <div id="cardioDataDisplay" style="display: none;">
-                                <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
-                                    <i class="fas fa-heartbeat me-1" style="color: var(--color-red);"></i>Cardio metrics from Apple Health
-                                </p>
+                            <!-- Mood -->
+                            <div class="mb-2">
+                                <label class="form-label">Mood</label>
+                                <div class="rating-selector" data-field="mood">
+                                    <label class="rating-option"><input type="radio" name="mood" value="1">😔</label>
+                                    <label class="rating-option"><input type="radio" name="mood" value="2">😐</label>
+                                    <label class="rating-option"><input type="radio" name="mood" value="3">😊</label>
+                                </div>
+                            </div>
+
+                            <!-- Muscle Fatigue -->
+                            <div class="mb-2">
+                                <label class="form-label">Muscle Fatigue</label>
+                                <div class="rating-selector" data-field="muscle_fatigue">
+                                    <label class="rating-option"><input type="radio" name="muscle_fatigue" value="1">Low</label>
+                                    <label class="rating-option"><input type="radio" name="muscle_fatigue" value="2">Med</label>
+                                    <label class="rating-option"><input type="radio" name="muscle_fatigue" value="3">High</label>
+                                </div>
+                            </div>
+
+                            <!-- HRV & RHR Section -->
+                            <div class="cardio-status-section mb-3" id="cardioStatusSection">
+                                <!-- Cardio Data Display (shown when data exists) -->
+                                <div id="cardioDataDisplay" style="display: none;">
+                                    <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
+                                        <i class="fas fa-heartbeat me-1" style="color: var(--color-red);"></i>Cardio metrics
+                                    </p>
+                                    <div class="row mb-2">
+                                        <div class="col-6">
+                                            <div class="cardio-metric-display" id="rhrCardioCard">
+                                                <div class="metric-header">
+                                                    <span class="metric-label">Resting HR</span>
+                                                    <span class="auto-chip" id="rhrAutoChip">AUTO</span>
+                                                    <button type="button" class="btn-override" id="rhrOverrideBtn" onclick="toggleCardioOverride('rhr')" title="Override">
+                                                        <i class="fas fa-pencil-alt"></i>
+                                                    </button>
+                                                </div>
+                                                <span class="metric-value" id="displayRhrBpm">--</span>
+                                                <!-- Override input (hidden by default) -->
+                                                <div class="override-input" id="rhrOverrideInput" style="display: none;">
+                                                    <input type="number" class="form-control form-control-sm" id="overrideRhrBpm" 
+                                                           placeholder="bpm" min="40" max="120">
+                                                    <div class="override-actions">
+                                                        <button type="button" class="btn btn-xs btn-link" onclick="resetCardioToAuto('rhr')">Reset</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <div class="cardio-metric-display" id="hrvCardioCard">
+                                                <div class="metric-header">
+                                                    <span class="metric-label">HRV</span>
+                                                    <span class="auto-chip" id="hrvAutoChip">AUTO</span>
+                                                    <button type="button" class="btn-override" id="hrvOverrideBtn" onclick="toggleCardioOverride('hrv')" title="Override">
+                                                        <i class="fas fa-pencil-alt"></i>
+                                                    </button>
+                                                </div>
+                                                <span class="metric-value" id="displayHrv">--</span>
+                                                <!-- Override input (hidden by default) -->
+                                                <div class="override-input" id="hrvOverrideInput" style="display: none;">
+                                                    <div class="d-flex gap-1">
+                                                        <input type="number" class="form-control form-control-sm" id="overrideHrvLow" 
+                                                               placeholder="low" min="1" max="200" style="width: 60px;">
+                                                        <span style="color: var(--color-muted);">–</span>
+                                                        <input type="number" class="form-control form-control-sm" id="overrideHrvHigh" 
+                                                               placeholder="high" min="1" max="200" style="width: 60px;">
+                                                    </div>
+                                                    <div class="override-actions">
+                                                        <button type="button" class="btn btn-xs btn-link" onclick="resetCardioToAuto('hrv')">Reset</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Manual Cardio Input (shown when no data) -->
+                                <div id="manualCardioInput" style="display: none;">
+                                    <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
+                                        <i class="fas fa-edit me-1"></i>No cardio data - enter manually (optional)
+                                    </p>
+                                    <div class="row mb-2">
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm" id="manualRhrBpm" 
+                                                   placeholder="RHR (bpm)" min="40" max="120" style="font-size: 0.75rem;">
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm" id="manualHrvLow" 
+                                                   placeholder="HRV low" min="1" max="200" style="font-size: 0.75rem;">
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm" id="manualHrvHigh" 
+                                                   placeholder="HRV high" min="1" max="200" style="font-size: 0.75rem;">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Status Selectors -->
                                 <div class="row mb-2">
                                     <div class="col-6">
-                                        <div class="cardio-metric-display">
-                                            <span class="metric-label">Resting HR</span>
-                                            <span class="metric-value" id="displayRhrBpm">--</span>
+                                        <label class="form-label">
+                                            HRV Status
+                                            <span class="auto-badge" id="hrvAutoLabel" style="display: none;">auto</span>
+                                        </label>
+                                        <div class="status-selector" data-field="hrv_status">
+                                            <label class="status-option negative"><input type="radio" name="hrv_status" value="-1">↓</label>
+                                            <label class="status-option neutral"><input type="radio" name="hrv_status" value="0">→</label>
+                                            <label class="status-option positive"><input type="radio" name="hrv_status" value="1">↑</label>
                                         </div>
                                     </div>
                                     <div class="col-6">
-                                        <div class="cardio-metric-display">
-                                            <span class="metric-label">HRV</span>
-                                            <span class="metric-value" id="displayHrv">--</span>
+                                        <label class="form-label">
+                                            RHR Status
+                                            <span class="auto-badge" id="rhrAutoLabel" style="display: none;">auto</span>
+                                        </label>
+                                        <div class="status-selector" data-field="rhr_status">
+                                            <label class="status-option positive"><input type="radio" name="rhr_status" value="-1">↓</label>
+                                            <label class="status-option neutral"><input type="radio" name="rhr_status" value="0">→</label>
+                                            <label class="status-option negative"><input type="radio" name="rhr_status" value="1">↑</label>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Manual Cardio Input (shown when no data) -->
-                            <div id="manualCardioInput" style="display: none;">
-                                <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
-                                    <i class="fas fa-edit me-1"></i>No cardio data - enter manually (optional)
-                                </p>
-                                <div class="row mb-2">
-                                    <div class="col-4">
-                                        <input type="number" class="form-control form-control-sm" id="manualRhrBpm" 
-                                               placeholder="RHR (bpm)" min="40" max="120" style="font-size: 0.75rem;">
-                                    </div>
-                                    <div class="col-4">
-                                        <input type="number" class="form-control form-control-sm" id="manualHrvLow" 
-                                               placeholder="HRV low" min="1" max="200" style="font-size: 0.75rem;">
-                                    </div>
-                                    <div class="col-4">
-                                        <input type="number" class="form-control form-control-sm" id="manualHrvHigh" 
-                                               placeholder="HRV high" min="1" max="200" style="font-size: 0.75rem;">
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Status Selectors -->
-                            <div class="row mb-2">
-                                <div class="col-6">
-                                    <label class="form-label">
-                                        HRV Status
-                                        <span class="auto-badge" id="hrvAutoLabel" style="display: none;">auto</span>
+
+                            <!-- Sleep Note -->
+                            <p class="text-muted small mb-3" style="font-size: 0.7rem; opacity: 0.7;">
+                                <i class="fas fa-info-circle me-1"></i>Sleep data is imported from screenshots
+                            </p>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="symptomsFlag" name="symptoms_flag">
+                                    <label class="form-check-label" style="font-size: 0.8rem; color: var(--color-muted-light);" for="symptomsFlag">
+                                        Experiencing symptoms
                                     </label>
-                                    <div class="status-selector" data-field="hrv_status">
-                                        <label class="status-option negative"><input type="radio" name="hrv_status" value="-1">↓</label>
-                                        <label class="status-option neutral"><input type="radio" name="hrv_status" value="0">→</label>
-                                        <label class="status-option positive"><input type="radio" name="hrv_status" value="1">↑</label>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">
-                                        RHR Status
-                                        <span class="auto-badge" id="rhrAutoLabel" style="display: none;">auto</span>
-                                    </label>
-                                    <div class="status-selector" data-field="rhr_status">
-                                        <label class="status-option positive"><input type="radio" name="rhr_status" value="-1">↓</label>
-                                        <label class="status-option neutral"><input type="radio" name="rhr_status" value="0">→</label>
-                                        <label class="status-option negative"><input type="radio" name="rhr_status" value="1">↑</label>
-                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Sleep -->
-                        <!-- Note: Sleep data is imported from screenshots, not entered manually -->
-                        <p class="text-muted small mb-3" style="font-size: 0.7rem; opacity: 0.7;">
-                            <i class="fas fa-info-circle me-1"></i>Sleep data is imported from screenshots
-                        </p>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="symptomsFlag" name="symptoms_flag">
-                                <label class="form-check-label" style="font-size: 0.8rem; color: var(--color-muted-light);" for="symptomsFlag">
-                                    Experiencing symptoms
-                                </label>
-                            </div>
-                        </div>
-
-                        <button type="submit" class="btn btn-zyra w-100">
-                            <i class="fas fa-save me-1"></i>Save Readiness
-                        </button>
-                    </form>
+                            <button type="submit" class="btn btn-zyra w-100">
+                                <i class="fas fa-save me-1"></i>Save Readiness
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
-                <!-- Readiness History -->
+                <!-- Readiness History - Expanded Table -->
                 <div class="section-card">
                     <h3 class="section-title sleep">
                         <i class="fas fa-history"></i>Readiness History
@@ -2275,52 +2554,33 @@
                             </div>
                         </span>
                     </h3>
-                    {% if readiness_entries %}
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div class="table-responsive" id="readinessHistoryContainer">
+                        <table class="data-table readiness-history-table" id="readinessHistoryTable">
                             <thead>
                                 <tr>
                                     <th>Date</th>
                                     <th>Score</th>
-                                    <th>Energy</th>
-                                    <th>Sleep</th>
+                                    <th title="Energy">⚡</th>
+                                    <th title="Mood">😊</th>
+                                    <th title="Fatigue">💪</th>
+                                    <th title="Sleep">💤</th>
+                                    <th title="RHR">RHR</th>
+                                    <th title="HRV">HRV</th>
+                                    <th title="HRV Status">H↕</th>
+                                    <th title="RHR Status">R↕</th>
+                                    <th title="Symptoms">🤒</th>
                                     <th></th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                {% for entry in readiness_entries %}
-                                <tr data-readiness-id="{{ entry.id }}">
-                                    <td>{{ entry.date if entry.date is string else entry.date.strftime('%m/%d') if entry.date else '--' }}</td>
-                                    <td>
-                                        {% if entry.morning_score %}
-                                        <span class="score-badge {% if entry.morning_score >= 70 %}score-high{% elif entry.morning_score >= 40 %}score-medium{% else %}score-low{% endif %}">
-                                            {{ entry.morning_score }}
-                                        </span>
-                                        {% else %}
-                                        <span class="val-empty">--</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ entry.energy if entry.energy else '<span class="val-empty">--</span>' | safe }}/5</td>
-                                    <td class="val-time">{{ "%.1f"|format((entry.sleep_minutes or 0) / 60) if entry.sleep_minutes else '<span class="val-empty">--</span>' | safe }}{{ 'h' if entry.sleep_minutes else '' }}</td>
-                                    <td>
-                                        <button class="btn-edit btn-edit-readiness" data-id="{{ entry.id }}" title="Edit">
-                                            <i class="fas fa-pencil-alt"></i>
-                                        </button>
-                                        <button class="btn-delete btn-delete-readiness" data-id="{{ entry.id }}" title="Delete">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
+                            <tbody id="readinessHistoryBody">
+                                <!-- Will be populated via JavaScript -->
                             </tbody>
                         </table>
+                        <div class="empty-state sleep" id="readinessHistoryEmpty" style="display: none;">
+                            <i class="fas fa-bed"></i>
+                            <p>No readiness entries yet.</p>
+                        </div>
                     </div>
-                    {% else %}
-                    <div class="empty-state sleep">
-                        <i class="fas fa-bed"></i>
-                        <p>No readiness entries yet.</p>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
 
@@ -2507,36 +2767,138 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ============== Cardio Status Auto-Fill ==============
+    // ============== Morning Readiness - Collapse/Expand ==============
     let hasCardioData = false;
     let autoHrvStatus = null;
     let autoRhrStatus = null;
+    let currentReadinessData = null;
+    let rhrManualOverride = false;
+    let hrvManualOverride = false;
+    let originalRhrBpm = null;
+    let originalHrvLow = null;
+    let originalHrvHigh = null;
 
-    async function loadCardioStatus(date) {
+    // Toggle collapse/expand of Morning Readiness form
+    function toggleReadinessForm() {
+        const card = document.getElementById('morningReadinessCard');
+        const summary = document.getElementById('readinessSummary');
+        const formBody = document.getElementById('readinessFormBody');
+        
+        if (card.classList.contains('collapsed')) {
+            // Expand
+            card.classList.remove('collapsed');
+            summary.style.display = 'none';
+        } else {
+            // Collapse (only if we have readiness data)
+            if (currentReadinessData && currentReadinessData.has_readiness) {
+                card.classList.add('collapsed');
+                summary.style.display = 'flex';
+            }
+        }
+    }
+    
+    // Edit readiness for current date
+    function editReadinessForDate() {
+        const card = document.getElementById('morningReadinessCard');
+        card.classList.remove('collapsed');
+        document.getElementById('readinessSummary').style.display = 'none';
+        // Scroll to form
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    // Update the summary pills display
+    function updateReadinessSummary(data) {
+        if (!data || !data.has_readiness) return;
+        
+        const r = data.readiness;
+        const c = data.cardio;
+        
+        // Score
+        const scoreEl = document.getElementById('summaryScore');
+        if (r.morning_score) {
+            scoreEl.textContent = r.morning_score;
+            scoreEl.classList.remove('score-high', 'score-medium', 'score-low');
+            if (r.morning_score >= 70) scoreEl.classList.add('score-high');
+            else if (r.morning_score >= 40) scoreEl.classList.add('score-medium');
+            else scoreEl.classList.add('score-low');
+        } else {
+            scoreEl.textContent = '--';
+        }
+        
+        // Energy
+        document.getElementById('summaryEnergy').textContent = `⚡ ${r.energy || '--'}`;
+        
+        // Mood
+        const moodEmojis = { 1: '😔', 2: '😐', 3: '😊' };
+        document.getElementById('summaryMood').textContent = moodEmojis[r.mood] || '😐';
+        
+        // Fatigue
+        const fatigueLabels = { 1: 'Low', 2: 'Med', 3: 'High' };
+        document.getElementById('summaryFatigue').textContent = `💪 ${fatigueLabels[r.muscle_fatigue] || '--'}`;
+        
+        // HRV Status
+        const hrvArrows = { '-1': '↓', 0: '→', 1: '↑' };
+        document.getElementById('summaryHrv').textContent = `HRV ${hrvArrows[r.hrv_status] || '→'}`;
+        
+        // RHR Status
+        document.getElementById('summaryRhr').textContent = `RHR ${hrvArrows[r.rhr_status] || '→'}`;
+        
+        // Symptoms
+        const symptomsEl = document.getElementById('summarySymptoms');
+        symptomsEl.style.display = r.symptoms_flag ? 'inline-flex' : 'none';
+    }
+    
+    // Update the date label in the header
+    function updateDateLabel(dateStr) {
+        const label = document.getElementById('readinessDateLabel');
+        if (dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dateOnly = new Date(dateStr + 'T00:00:00');
+            
+            if (dateOnly.getTime() === today.getTime()) {
+                label.textContent = '(Today)';
+            } else {
+                label.textContent = `(${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+            }
+        }
+    }
+
+    // Load full readiness data for a date
+    async function loadFullReadinessData(date) {
         try {
-            const response = await fetch(`/cycling-readiness/api/cardio-status?date=${date}`);
+            const response = await fetch(`/cycling-readiness/api/readiness/full?date=${date}`);
             const data = await response.json();
             
             if (data.success) {
+                currentReadinessData = data;
                 hasCardioData = data.has_cardio;
                 
+                updateDateLabel(date);
+                
+                const card = document.getElementById('morningReadinessCard');
                 const cardioDisplay = document.getElementById('cardioDataDisplay');
                 const manualInput = document.getElementById('manualCardioInput');
                 const hrvAutoLabel = document.getElementById('hrvAutoLabel');
                 const rhrAutoLabel = document.getElementById('rhrAutoLabel');
                 
+                // Store original cardio values
+                if (data.cardio) {
+                    originalRhrBpm = data.cardio.rhr_bpm;
+                    originalHrvLow = data.cardio.hrv_low_ms;
+                    originalHrvHigh = data.cardio.hrv_high_ms;
+                    rhrManualOverride = data.cardio.rhr_manual_override;
+                    hrvManualOverride = data.cardio.hrv_manual_override;
+                }
+                
                 if (data.has_cardio) {
-                    // Show cardio data display
                     cardioDisplay.style.display = 'block';
                     manualInput.style.display = 'none';
                     
                     // Display RHR
                     const rhrDisplay = document.getElementById('displayRhrBpm');
-                    if (data.cardio.rhr_bpm) {
-                        rhrDisplay.textContent = `${data.cardio.rhr_bpm} bpm`;
-                    } else {
-                        rhrDisplay.textContent = '--';
-                    }
+                    rhrDisplay.textContent = data.cardio.rhr_bpm ? `${data.cardio.rhr_bpm} bpm` : '--';
                     
                     // Display HRV
                     const hrvDisplay = document.getElementById('displayHrv');
@@ -2550,70 +2912,314 @@ document.addEventListener('DOMContentLoaded', function() {
                         hrvDisplay.textContent = '--';
                     }
                     
-                    // Auto-select status buttons if calculated
+                    // Update override chips
+                    updateOverrideChip('rhr', data.cardio.rhr_manual_override);
+                    updateOverrideChip('hrv', data.cardio.hrv_manual_override);
+                    
+                    // Auto-select status buttons
                     autoHrvStatus = data.calculated_status.hrv_status;
                     autoRhrStatus = data.calculated_status.rhr_status;
                     
                     if (autoHrvStatus !== null) {
-                        const hrvRadio = document.querySelector(`[name="hrv_status"][value="${autoHrvStatus}"]`);
-                        if (hrvRadio) {
-                            hrvRadio.checked = true;
-                            hrvRadio.closest('.status-option').classList.add('selected');
-                        }
+                        selectStatusButton('hrv_status', autoHrvStatus);
                         hrvAutoLabel.style.display = 'inline';
                     }
                     
                     if (autoRhrStatus !== null) {
-                        const rhrRadio = document.querySelector(`[name="rhr_status"][value="${autoRhrStatus}"]`);
-                        if (rhrRadio) {
-                            rhrRadio.checked = true;
-                            rhrRadio.closest('.status-option').classList.add('selected');
-                        }
+                        selectStatusButton('rhr_status', autoRhrStatus);
                         rhrAutoLabel.style.display = 'inline';
                     }
                 } else {
-                    // Show manual input fields
                     cardioDisplay.style.display = 'none';
                     manualInput.style.display = 'block';
                     hrvAutoLabel.style.display = 'none';
                     rhrAutoLabel.style.display = 'none';
                 }
                 
-                // If there's existing readiness data, use those status values instead
-                if (data.existing_readiness) {
-                    const er = data.existing_readiness;
-                    if (er.hrv_status !== null && er.hrv_status !== undefined) {
-                        const hrvRadio = document.querySelector(`[name="hrv_status"][value="${er.hrv_status}"]`);
-                        if (hrvRadio) {
-                            document.querySelectorAll('[name="hrv_status"]').forEach(r => {
-                                r.checked = false;
-                                r.closest('.status-option').classList.remove('selected');
-                            });
-                            hrvRadio.checked = true;
-                            hrvRadio.closest('.status-option').classList.add('selected');
-                        }
-                    }
-                    if (er.rhr_status !== null && er.rhr_status !== undefined) {
-                        const rhrRadio = document.querySelector(`[name="rhr_status"][value="${er.rhr_status}"]`);
-                        if (rhrRadio) {
-                            document.querySelectorAll('[name="rhr_status"]').forEach(r => {
-                                r.checked = false;
-                                r.closest('.status-option').classList.remove('selected');
-                            });
-                            rhrRadio.checked = true;
-                            rhrRadio.closest('.status-option').classList.add('selected');
-                        }
-                    }
+                // If there's existing readiness data, prefill the form
+                if (data.has_readiness && data.readiness) {
+                    prefillReadinessForm(data.readiness);
+                    updateReadinessSummary(data);
+                    // Collapse the form by default
+                    card.classList.add('collapsed');
+                    document.getElementById('readinessSummary').style.display = 'flex';
+                } else {
+                    // Clear form and expand
+                    clearReadinessForm();
+                    card.classList.remove('collapsed');
+                    document.getElementById('readinessSummary').style.display = 'none';
                 }
             }
         } catch (err) {
-            console.error('Error loading cardio status:', err);
+            console.error('Error loading full readiness data:', err);
         }
     }
-
-    // Load cardio status on page load
+    
+    // Helper to select a status button
+    function selectStatusButton(name, value) {
+        const radio = document.querySelector(`[name="${name}"][value="${value}"]`);
+        if (radio) {
+            document.querySelectorAll(`[name="${name}"]`).forEach(r => {
+                r.checked = false;
+                r.closest('.status-option').classList.remove('selected');
+            });
+            radio.checked = true;
+            radio.closest('.status-option').classList.add('selected');
+        }
+    }
+    
+    // Update override chip display
+    function updateOverrideChip(type, isManual) {
+        const chip = document.getElementById(`${type}AutoChip`);
+        if (chip) {
+            if (isManual) {
+                chip.textContent = 'MANUAL';
+                chip.classList.add('manual');
+            } else {
+                chip.textContent = 'AUTO';
+                chip.classList.remove('manual');
+            }
+        }
+    }
+    
+    // Toggle cardio override mode
+    function toggleCardioOverride(type) {
+        const inputDiv = document.getElementById(`${type}OverrideInput`);
+        const valueSpan = document.getElementById(`display${type === 'rhr' ? 'RhrBpm' : 'Hrv'}`);
+        
+        if (inputDiv.style.display === 'none') {
+            // Show override input
+            inputDiv.style.display = 'block';
+            valueSpan.style.display = 'none';
+            
+            // Pre-fill with current values
+            if (type === 'rhr' && originalRhrBpm) {
+                document.getElementById('overrideRhrBpm').value = originalRhrBpm;
+            } else if (type === 'hrv') {
+                if (originalHrvLow) document.getElementById('overrideHrvLow').value = originalHrvLow;
+                if (originalHrvHigh) document.getElementById('overrideHrvHigh').value = originalHrvHigh;
+            }
+        } else {
+            // Hide override input
+            inputDiv.style.display = 'none';
+            valueSpan.style.display = 'block';
+        }
+    }
+    
+    // Reset cardio value to auto
+    function resetCardioToAuto(type) {
+        const inputDiv = document.getElementById(`${type}OverrideInput`);
+        const valueSpan = document.getElementById(`display${type === 'rhr' ? 'RhrBpm' : 'Hrv'}`);
+        
+        // Hide override input
+        inputDiv.style.display = 'none';
+        valueSpan.style.display = 'block';
+        
+        // Clear override values
+        if (type === 'rhr') {
+            document.getElementById('overrideRhrBpm').value = '';
+            rhrManualOverride = false;
+        } else {
+            document.getElementById('overrideHrvLow').value = '';
+            document.getElementById('overrideHrvHigh').value = '';
+            hrvManualOverride = false;
+        }
+        
+        updateOverrideChip(type, false);
+    }
+    
+    // Prefill the readiness form with existing data
+    function prefillReadinessForm(r) {
+        document.getElementById('readinessEntryId').value = r.id || '';
+        
+        // Energy
+        if (r.energy) {
+            const energyRadio = document.querySelector(`[name="energy"][value="${r.energy}"]`);
+            if (energyRadio) {
+                energyRadio.checked = true;
+                energyRadio.closest('.rating-option').classList.add('selected');
+            }
+        }
+        
+        // Mood
+        if (r.mood) {
+            const moodRadio = document.querySelector(`[name="mood"][value="${r.mood}"]`);
+            if (moodRadio) {
+                moodRadio.checked = true;
+                moodRadio.closest('.rating-option').classList.add('selected');
+            }
+        }
+        
+        // Muscle fatigue
+        if (r.muscle_fatigue) {
+            const fatigueRadio = document.querySelector(`[name="muscle_fatigue"][value="${r.muscle_fatigue}"]`);
+            if (fatigueRadio) {
+                fatigueRadio.checked = true;
+                fatigueRadio.closest('.rating-option').classList.add('selected');
+            }
+        }
+        
+        // HRV Status
+        if (r.hrv_status !== null && r.hrv_status !== undefined) {
+            selectStatusButton('hrv_status', r.hrv_status);
+        }
+        
+        // RHR Status
+        if (r.rhr_status !== null && r.rhr_status !== undefined) {
+            selectStatusButton('rhr_status', r.rhr_status);
+        }
+        
+        // Symptoms
+        document.getElementById('symptomsFlag').checked = r.symptoms_flag || false;
+    }
+    
+    // Clear the readiness form
+    function clearReadinessForm() {
+        document.getElementById('readinessEntryId').value = '';
+        
+        // Clear all radio buttons
+        document.querySelectorAll('#readinessForm input[type="radio"]').forEach(r => {
+            r.checked = false;
+            const opt = r.closest('.rating-option, .status-option');
+            if (opt) opt.classList.remove('selected');
+        });
+        
+        // Clear symptoms
+        document.getElementById('symptomsFlag').checked = false;
+        
+        // Clear manual cardio inputs
+        const manualRhr = document.getElementById('manualRhrBpm');
+        const manualHrvLow = document.getElementById('manualHrvLow');
+        const manualHrvHigh = document.getElementById('manualHrvHigh');
+        if (manualRhr) manualRhr.value = '';
+        if (manualHrvLow) manualHrvLow.value = '';
+        if (manualHrvHigh) manualHrvHigh.value = '';
+    }
+    
+    // ============== Readiness History Table ==============
+    async function loadReadinessHistory() {
+        try {
+            const response = await fetch('/cycling-readiness/api/readiness?limit=14');
+            const data = await response.json();
+            
+            const tbody = document.getElementById('readinessHistoryBody');
+            const emptyState = document.getElementById('readinessHistoryEmpty');
+            const table = document.getElementById('readinessHistoryTable');
+            
+            if (data.entries && data.entries.length > 0) {
+                table.style.display = 'table';
+                emptyState.style.display = 'none';
+                tbody.innerHTML = data.entries.map(e => renderReadinessHistoryRow(e)).join('');
+            } else {
+                table.style.display = 'none';
+                emptyState.style.display = 'block';
+            }
+        } catch (err) {
+            console.error('Error loading readiness history:', err);
+        }
+    }
+    
+    function renderReadinessHistoryRow(e) {
+        const dateStr = e.date;
+        const d = new Date(dateStr + 'T00:00:00');
+        const dateLabel = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
+        
+        // Score badge
+        let scoreBadge = '<span class="val-empty">--</span>';
+        if (e.morning_score) {
+            let scoreClass = e.morning_score >= 70 ? 'score-high' : (e.morning_score >= 40 ? 'score-medium' : 'score-low');
+            scoreBadge = `<span class="score-badge ${scoreClass}">${e.morning_score}</span>`;
+        }
+        
+        // Mood emoji
+        const moodEmojis = { 1: '😔', 2: '😐', 3: '😊' };
+        const moodDisplay = moodEmojis[e.mood] || '<span class="val-empty">--</span>';
+        
+        // Fatigue
+        const fatigueLabels = { 1: 'Lo', 2: 'Med', 3: 'Hi' };
+        const fatigueDisplay = fatigueLabels[e.muscle_fatigue] || '--';
+        
+        // Sleep
+        let sleepDisplay = '<span class="val-empty">--</span>';
+        if (e.sleep_minutes) {
+            sleepDisplay = `${(e.sleep_minutes / 60).toFixed(1)}h`;
+        }
+        
+        // RHR
+        let rhrDisplay = '<span class="val-empty">--</span>';
+        if (e.rhr_bpm) {
+            const rhrClass = e.rhr_manual_override ? 'cardio-value has-override' : 'cardio-value';
+            rhrDisplay = `<span class="${rhrClass}">${e.rhr_bpm}</span>`;
+        }
+        
+        // HRV
+        let hrvDisplay = '<span class="val-empty">--</span>';
+        if (e.hrv_low_ms && e.hrv_high_ms) {
+            const hrvClass = e.hrv_manual_override ? 'cardio-value has-override' : 'cardio-value';
+            if (e.hrv_low_ms === e.hrv_high_ms) {
+                hrvDisplay = `<span class="${hrvClass}">${e.hrv_low_ms}</span>`;
+            } else {
+                hrvDisplay = `<span class="${hrvClass}">${e.hrv_low_ms}-${e.hrv_high_ms}</span>`;
+            }
+        }
+        
+        // Status arrows
+        function statusArrow(val) {
+            if (val === 1) return '<span class="status-arrow positive">↑</span>';
+            if (val === -1) return '<span class="status-arrow negative">↓</span>';
+            return '<span class="status-arrow neutral">→</span>';
+        }
+        
+        // Symptoms
+        const symptomsDisplay = e.symptoms_flag ? '🤒' : '<span class="val-empty">-</span>';
+        
+        return `
+            <tr data-readiness-id="${e.id}" data-date="${dateStr}">
+                <td>${dateLabel}</td>
+                <td>${scoreBadge}</td>
+                <td>${e.energy || '--'}</td>
+                <td class="mood-emoji">${moodDisplay}</td>
+                <td>${fatigueDisplay}</td>
+                <td class="val-time">${sleepDisplay}</td>
+                <td>${rhrDisplay}</td>
+                <td>${hrvDisplay}</td>
+                <td>${statusArrow(e.hrv_status)}</td>
+                <td>${statusArrow(e.rhr_status)}</td>
+                <td>${symptomsDisplay}</td>
+                <td>
+                    <button class="edit-row-btn" onclick="editReadinessFromHistory('${dateStr}')" title="Edit">
+                        <i class="fas fa-pencil-alt"></i>
+                    </button>
+                    <button class="btn-delete btn-delete-readiness" data-id="${e.id}" title="Delete">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+    
+    // Edit readiness from history row
+    function editReadinessFromHistory(dateStr) {
+        // Set the date in the form
+        document.getElementById('readinessDate').value = dateStr;
+        
+        // Load full data for that date
+        loadFullReadinessData(dateStr).then(() => {
+            // Expand the form
+            const card = document.getElementById('morningReadinessCard');
+            card.classList.remove('collapsed');
+            document.getElementById('readinessSummary').style.display = 'none';
+            
+            // Scroll to form
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }
+    
+    // Initial load
     const today = document.getElementById('readinessDate').value;
-    loadCardioStatus(today);
+    updateDateLabel(today);
+    loadFullReadinessData(today);
+    loadReadinessHistory();
 
     // ============== AI Coach Tab ==============
     const DAY_TYPE_LABELS = {
@@ -3086,6 +3692,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const manualRhr = document.getElementById('manualRhrBpm')?.value;
         const manualHrvLow = document.getElementById('manualHrvLow')?.value;
         const manualHrvHigh = document.getElementById('manualHrvHigh')?.value;
+        
+        // Get override cardio values if in override mode
+        const overrideRhr = document.getElementById('overrideRhrBpm')?.value;
+        const overrideHrvLow = document.getElementById('overrideHrvLow')?.value;
+        const overrideHrvHigh = document.getElementById('overrideHrvHigh')?.value;
 
         // Note: Sleep data is now imported via screenshots, not entered manually
         const data = {
@@ -3108,6 +3719,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.manual_hrv_low_ms = parseInt(manualHrvLow);
                 data.manual_hrv_high_ms = parseInt(manualHrvHigh);
             }
+        } else {
+            // Check for override values
+            const rhrOverrideVisible = document.getElementById('rhrOverrideInput').style.display !== 'none';
+            const hrvOverrideVisible = document.getElementById('hrvOverrideInput').style.display !== 'none';
+            
+            if (rhrOverrideVisible && overrideRhr) {
+                data.manual_rhr_bpm = parseInt(overrideRhr);
+                data.rhr_manual_override = true;
+            }
+            if (hrvOverrideVisible && overrideHrvLow && overrideHrvHigh) {
+                data.manual_hrv_low_ms = parseInt(overrideHrvLow);
+                data.manual_hrv_high_ms = parseInt(overrideHrvHigh);
+                data.hrv_manual_override = true;
+            }
         }
 
         // If status not explicitly selected, pass null for auto-calculation
@@ -3129,7 +3754,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (result.success) {
                 showToast(`Saved! Score: ${result.morning_score}`, 'success');
-                setTimeout(() => location.reload(), 1500);
+                
+                // Update local data and UI
+                currentReadinessData = {
+                    has_readiness: true,
+                    readiness: result.readiness,
+                    cardio: result.cardio,
+                    calculated_status: {
+                        hrv_status: result.hrv_status,
+                        rhr_status: result.rhr_status
+                    }
+                };
+                
+                // Update the summary display
+                updateReadinessSummary(currentReadinessData);
+                
+                // Collapse the form
+                const card = document.getElementById('morningReadinessCard');
+                card.classList.add('collapsed');
+                document.getElementById('readinessSummary').style.display = 'flex';
+                
+                // Reload history table
+                loadReadinessHistory();
             } else {
                 showToast(result.error || 'Failed to save', 'error');
             }
@@ -3193,8 +3839,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.success) {
                 showToast(successMessage, 'success');
-                // Reload page after short delay to update stats and charts
-                setTimeout(() => location.reload(), 500);
+                
+                // For readiness entries, reload history table and update form state
+                if (deleteType === 'readiness') {
+                    loadReadinessHistory();
+                    // Reload form data for current date
+                    const currentDate = document.getElementById('readinessDate').value;
+                    loadFullReadinessData(currentDate);
+                } else {
+                    // For workouts and sleep, reload page to update stats and charts
+                    setTimeout(() => location.reload(), 500);
+                }
             } else {
                 showToast(data.error || 'Failed to delete', 'error');
             }
@@ -3212,12 +3867,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Readiness delete buttons
-    document.querySelectorAll('.btn-delete-readiness').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+    // Readiness delete buttons (using event delegation for dynamically generated table)
+    document.getElementById('readinessHistoryBody').addEventListener('click', function(e) {
+        const deleteBtn = e.target.closest('.btn-delete-readiness');
+        if (deleteBtn) {
             e.stopPropagation();
-            showConfirmModal('readiness', this.dataset.id);
-        });
+            showConfirmModal('readiness', deleteBtn.dataset.id);
+        }
     });
 
     document.getElementById('confirmModal').addEventListener('click', function(e) {

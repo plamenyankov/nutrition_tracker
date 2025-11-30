@@ -1089,23 +1089,35 @@ def create_readiness():
         service = get_service()
         date = data['date']
         
-        # Handle manual cardio input (when no screenshot data exists)
+        # Handle manual cardio input (when no screenshot data exists or user overrides)
         manual_rhr = data.get('manual_rhr_bpm')
         manual_hrv_low = data.get('manual_hrv_low_ms')
         manual_hrv_high = data.get('manual_hrv_high_ms')
+        rhr_manual_override = data.get('rhr_manual_override', False)
+        hrv_manual_override = data.get('hrv_manual_override', False)
         
         if manual_rhr is not None or manual_hrv_low is not None:
             # Save manual cardio values to cardio_daily_metrics
             cardio_updates = {}
             if manual_rhr is not None:
                 cardio_updates['rhr_bpm'] = int(manual_rhr)
+                cardio_updates['rhr_manual_override'] = True
             if manual_hrv_low is not None and manual_hrv_high is not None:
                 cardio_updates['hrv_low_ms'] = int(manual_hrv_low)
                 cardio_updates['hrv_high_ms'] = int(manual_hrv_high)
+                cardio_updates['hrv_manual_override'] = True
             
             if cardio_updates:
                 service.upsert_cardio_metrics(date, **cardio_updates)
                 logger.info(f"[READINESS] Saved manual cardio for {date}: {cardio_updates}")
+        
+        # Handle "reset to auto" - if user explicitly clears manual override
+        if data.get('reset_rhr_to_auto'):
+            service.upsert_cardio_metrics(date, rhr_manual_override=False)
+            logger.info(f"[READINESS] Reset RHR to auto for {date}")
+        if data.get('reset_hrv_to_auto'):
+            service.upsert_cardio_metrics(date, hrv_manual_override=False)
+            logger.info(f"[READINESS] Reset HRV to auto for {date}")
         
         # Determine HRV/RHR status
         # If explicitly provided in request, use those values
@@ -1139,16 +1151,23 @@ def create_readiness():
             evening_note=data.get('evening_note')
         )
 
+        # Get full readiness data for the response
+        full_data = service.get_full_readiness_data(date)
+        
         return jsonify({
             'success': True,
             'entry_id': entry_id,
             'morning_score': morning_score,
             'hrv_status': int(hrv_status),
-            'rhr_status': int(rhr_status)
+            'rhr_status': int(rhr_status),
+            'readiness': serialize_for_json(full_data.get('readiness')),
+            'cardio': full_data.get('cardio')
         })
 
     except Exception as e:
         logger.error(f"Error saving readiness: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': 'Failed to save readiness entry'}), 500
 
 
@@ -1156,7 +1175,7 @@ def create_readiness():
 @login_required
 def get_readiness_entries():
     """
-    Get readiness entries list.
+    Get readiness entries list with cardio data.
     ---
     tags:
       - Readiness
@@ -1167,18 +1186,60 @@ def get_readiness_entries():
         default: 14
     responses:
       200:
-        description: List of readiness entries
+        description: List of readiness entries with cardio metrics
     """
     limit = request.args.get('limit', 14, type=int)
     service = get_service()
-    entries = service.get_readiness_entries(limit=limit)
+    
+    # Use new method that includes cardio data
+    entries = service.get_readiness_entries_with_cardio(limit=limit)
 
-    # Convert dates to strings for JSON serialization
+    # Convert dates and handle serialization
     for e in entries:
         if e.get('date'):
             e['date'] = e['date'].strftime('%Y-%m-%d') if hasattr(e['date'], 'strftime') else str(e['date'])
+        # Ensure boolean flags are properly typed
+        e['rhr_manual_override'] = bool(e.get('rhr_manual_override', False))
+        e['hrv_manual_override'] = bool(e.get('hrv_manual_override', False))
+        e['symptoms_flag'] = bool(e.get('symptoms_flag', False))
 
     return jsonify({'entries': entries})
+
+
+@cycling_readiness_bp.route('/api/readiness/full', methods=['GET'])
+@login_required
+def get_full_readiness():
+    """
+    Get full readiness data for a date including cardio metrics.
+    Used for populating the Morning Readiness form.
+    ---
+    tags:
+      - Readiness
+    parameters:
+      - name: date
+        in: query
+        type: string
+        format: date
+        required: true
+    responses:
+      200:
+        description: Full readiness data for the date
+    """
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Date parameter required'}), 400
+    
+    service = get_service()
+    data = service.get_full_readiness_data(date_str)
+    
+    # Serialize for JSON
+    if data.get('readiness'):
+        data['readiness'] = serialize_for_json(data['readiness'])
+    
+    return jsonify({
+        'success': True,
+        **data
+    })
 
 
 @cycling_readiness_bp.route('/api/cardio-status', methods=['GET'])

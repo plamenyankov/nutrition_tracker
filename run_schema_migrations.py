@@ -49,6 +49,12 @@ def run_all_migrations():
     except ImportError as e:
         logger.warning(f"Could not import add_training_recommendations: {e}")
     
+    try:
+        from migrations.add_cardio_manual_override import run_migration as migrate_cardio_override
+        migrations.append(('add_cardio_manual_override', migrate_cardio_override))
+    except ImportError as e:
+        logger.warning(f"Could not import add_cardio_manual_override: {e}")
+    
     # Run migrations
     logger.info(f"Running {len(migrations)} schema migrations...")
     

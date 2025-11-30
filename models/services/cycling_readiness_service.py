@@ -597,6 +597,82 @@ class CyclingReadinessService:
             ''', (self.user_id, date))
             return cursor.fetchone()
 
+    def get_full_readiness_data(self, date: str) -> Dict:
+        """
+        Get full readiness data for a date including cardio metrics.
+        Used for populating the Morning Readiness form and Readiness History.
+        
+        Returns:
+            Dict with readiness entry, cardio metrics, calculated status, and flags
+        """
+        readiness = self.get_readiness_by_date(date)
+        cardio = self.get_cardio_metrics_for_date(date)
+        status = self.calculate_hrv_rhr_status(date)
+        
+        result = {
+            'date': date,
+            'has_readiness': readiness is not None,
+            'has_cardio': cardio is not None,
+            'readiness': readiness,
+            'cardio': {
+                'rhr_bpm': cardio.get('rhr_bpm') if cardio else None,
+                'hrv_low_ms': cardio.get('hrv_low_ms') if cardio else None,
+                'hrv_high_ms': cardio.get('hrv_high_ms') if cardio else None,
+                'rhr_manual_override': cardio.get('rhr_manual_override', False) if cardio else False,
+                'hrv_manual_override': cardio.get('hrv_manual_override', False) if cardio else False
+            },
+            'calculated_status': {
+                'hrv_status': status.get('hrv_status'),
+                'rhr_status': status.get('rhr_status'),
+                'baseline_rhr': status.get('baseline_rhr'),
+                'baseline_hrv': status.get('baseline_hrv')
+            }
+        }
+        
+        return result
+
+    def get_readiness_entries_with_cardio(self, limit: int = 14) -> List[Dict]:
+        """
+        Get recent readiness entries with cardio metrics joined.
+        Returns all fields needed for Readiness History table.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            if self.user_id:
+                cursor.execute('''
+                    SELECT 
+                        r.*,
+                        c.rhr_bpm,
+                        c.hrv_low_ms,
+                        c.hrv_high_ms,
+                        c.rhr_manual_override,
+                        c.hrv_manual_override
+                    FROM readiness_entries r
+                    LEFT JOIN cardio_daily_metrics c 
+                        ON r.user_id = c.user_id AND r.date = c.date
+                    WHERE r.user_id = %s
+                    ORDER BY r.date DESC
+                    LIMIT %s
+                ''', (self.user_id, limit))
+            else:
+                cursor.execute('''
+                    SELECT 
+                        r.*,
+                        c.rhr_bpm,
+                        c.hrv_low_ms,
+                        c.hrv_high_ms,
+                        c.rhr_manual_override,
+                        c.hrv_manual_override
+                    FROM readiness_entries r
+                    LEFT JOIN cardio_daily_metrics c 
+                        ON r.date = c.date
+                    ORDER BY r.date DESC
+                    LIMIT %s
+                ''', (limit,))
+            
+            return cursor.fetchall()
+
     def delete_readiness_entry(self, entry_id: int) -> bool:
         """Delete a readiness entry by ID"""
         with self.get_connection() as conn:
@@ -826,7 +902,8 @@ class CyclingReadinessService:
         
         Args:
             date: Date string (YYYY-MM-DD)
-            **kwargs: rhr_bpm (single value), hrv_low_ms, hrv_high_ms
+            **kwargs: rhr_bpm (single value), hrv_low_ms, hrv_high_ms,
+                      rhr_manual_override, hrv_manual_override
         
         Returns:
             ID of the record (created or updated)
@@ -834,7 +911,7 @@ class CyclingReadinessService:
         if not kwargs:
             return None
         
-        allowed_fields = ['rhr_bpm', 'hrv_low_ms', 'hrv_high_ms']
+        allowed_fields = ['rhr_bpm', 'hrv_low_ms', 'hrv_high_ms', 'rhr_manual_override', 'hrv_manual_override']
         updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
         
         if not updates:
