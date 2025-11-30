@@ -90,7 +90,7 @@ else\n\
 fi\n\
 \n\
 echo "Starting application..."\n\
-exec gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 120 app:app' > /app/entrypoint.sh && \
+exec gunicorn --bind 0.0.0.0:5000 --workers 1 --threads 2 --timeout 180 --max-requests 50 --max-requests-jitter 10 app:app' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 # Run with the entrypoint script
