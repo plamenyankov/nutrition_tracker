@@ -23,6 +23,28 @@ class CyclingReadinessService:
 
     # ============== Morning Readiness Score Calculation ==============
 
+    # Formula explanation for UI tooltip
+    SCORE_FORMULA_EXPLANATION = """
+    **Readiness Score (0-100)** is calculated from:
+    
+    **Subjective Inputs (40 pts max):**
+    • Energy Level (1-5): up to 20 pts
+    • Mood (1-3): up to 10 pts
+    • Muscle Fatigue (1-3): up to 10 pts (low fatigue = high score)
+    
+    **Recovery Indicators (25 pts max):**
+    • HRV Status: up to 10 pts (↑ = good)
+    • RHR Status: up to 10 pts (↓ = good)
+    • Min HR Status: up to 5 pts (lower = better recovery)
+    
+    **Sleep Quality (25 pts max):**
+    • Sleep Duration: up to 10 pts (7-9h optimal)
+    • Deep Sleep: up to 10 pts (60-120min optimal)
+    • Awake Time: up to 5 pts (less = better)
+    
+    **Symptoms:** -10 pts if experiencing symptoms
+    """
+
     @staticmethod
     def calculate_morning_score(
         energy: int,
@@ -33,9 +55,8 @@ class CyclingReadinessService:
         min_hr_status: int,
         sleep_minutes: int,
         deep_sleep_minutes: int,
-        wakeups_count: int,
-        stress_level: int,
-        symptoms_flag: bool
+        awake_minutes: int = None,
+        symptoms_flag: bool = False
     ) -> int:
         """
         Calculate morning readiness score (0-100) based on inputs.
@@ -48,28 +69,35 @@ class CyclingReadinessService:
         - RHR status (-1/0/1): 10 points max
         - Min HR status (-1/0/1): 5 points max
         - Sleep quality: 20 points max (based on duration and deep sleep)
-        - Wakeups: 5 points max (fewer = better)
-        - Stress level (1-3): 5 points max (inverted)
+        - Awake time: 5 points max (less awake time = better)
         - Symptoms: -10 points if true
+        
+        Note: stress_level is no longer used in scoring (removed from form).
         """
         score = 0
 
         # Energy: 1-5 → 0-20 points
+        energy = energy or 3  # Default to neutral
         score += (energy - 1) * 5  # 0, 5, 10, 15, 20
 
         # Mood: 1-3 → 0-10 points
+        mood = mood or 2  # Default to neutral
         score += (mood - 1) * 5  # 0, 5, 10
 
         # Muscle fatigue: 1-3 → inverted (1=no fatigue=10pts, 3=high fatigue=0pts)
+        muscle_fatigue = muscle_fatigue or 2  # Default to moderate
         score += (3 - muscle_fatigue) * 5  # 10, 5, 0
 
         # HRV status: -1/0/1 → 0/5/10 points
+        hrv_status = hrv_status or 0
         score += (hrv_status + 1) * 5  # 0, 5, 10
 
         # RHR status: -1/0/1 → 0/5/10 points
+        rhr_status = rhr_status or 0
         score += (rhr_status + 1) * 5  # 0, 5, 10
 
         # Min HR status: -1/0/1 → 0/2.5/5 points
+        min_hr_status = min_hr_status or 0
         score += (min_hr_status + 1) * 2.5  # 0, 2.5, 5
 
         # Sleep quality: up to 20 points
@@ -96,16 +124,13 @@ class CyclingReadinessService:
                 else:
                     score += 2
 
-        # Wakeups: 0-1 = 5pts, 2 = 3pts, 3+ = 0pts
-        if wakeups_count is not None:
-            if wakeups_count <= 1:
+        # Awake time during sleep: less is better (0-30min = 5pts, 30-60 = 3pts, >60 = 0pts)
+        if awake_minutes is not None:
+            if awake_minutes <= 30:
                 score += 5
-            elif wakeups_count == 2:
+            elif awake_minutes <= 60:
                 score += 3
             # else: 0 points
-
-        # Stress level: 1-3 → inverted (1=low stress=5pts, 3=high stress=0pts)
-        score += (3 - stress_level) * 2.5  # 5, 2.5, 0
 
         # Symptoms penalty
         if symptoms_flag:
@@ -450,29 +475,53 @@ class CyclingReadinessService:
         energy: int,
         mood: int,
         muscle_fatigue: int,
-        hrv_status: int,
-        rhr_status: int,
-        min_hr_status: int,
-        sleep_minutes: int,
-        deep_sleep_minutes: int,
-        wakeups_count: int,
-        stress_level: int,
-        symptoms_flag: bool,
+        hrv_status: int = 0,
+        rhr_status: int = 0,
+        min_hr_status: int = 0,
+        sleep_minutes: int = None,
+        deep_sleep_minutes: int = None,
+        awake_minutes: int = None,
+        symptoms_flag: bool = False,
         evening_note: str = None
     ) -> Tuple[int, int]:
         """
         Create or update a readiness entry for the given date.
+        Sleep data is preserved from imports if not provided.
         Returns tuple of (entry_id, morning_score)
         """
-        # Calculate morning score
-        morning_score = self.calculate_morning_score(
-            energy, mood, muscle_fatigue,
-            hrv_status, rhr_status, min_hr_status,
-            sleep_minutes, deep_sleep_minutes, wakeups_count,
-            stress_level, symptoms_flag
-        )
-
         with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Check for existing entry to preserve sleep data
+            cursor.execute('''
+                SELECT * FROM readiness_entries 
+                WHERE user_id = %s AND date = %s
+            ''', (self.user_id, date))
+            existing = cursor.fetchone()
+            
+            # Use existing sleep data if new values not provided
+            if existing:
+                if sleep_minutes is None:
+                    sleep_minutes = existing.get('sleep_minutes')
+                if deep_sleep_minutes is None:
+                    deep_sleep_minutes = existing.get('deep_sleep_minutes')
+                if awake_minutes is None:
+                    awake_minutes = existing.get('awake_minutes')
+            
+            # Calculate morning score
+            morning_score = self.calculate_morning_score(
+                energy=energy,
+                mood=mood,
+                muscle_fatigue=muscle_fatigue,
+                hrv_status=hrv_status,
+                rhr_status=rhr_status,
+                min_hr_status=min_hr_status,
+                sleep_minutes=sleep_minutes or 0,
+                deep_sleep_minutes=deep_sleep_minutes or 0,
+                awake_minutes=awake_minutes,
+                symptoms_flag=symptoms_flag
+            )
+
             cursor = conn.cursor()
 
             # Try to update existing entry first
@@ -480,15 +529,17 @@ class CyclingReadinessService:
                 UPDATE readiness_entries SET
                     energy = %s, mood = %s, muscle_fatigue = %s,
                     hrv_status = %s, rhr_status = %s, min_hr_status = %s,
-                    sleep_minutes = %s, deep_sleep_minutes = %s, wakeups_count = %s,
-                    stress_level = %s, symptoms_flag = %s, morning_score = %s,
+                    sleep_minutes = COALESCE(%s, sleep_minutes),
+                    deep_sleep_minutes = COALESCE(%s, deep_sleep_minutes),
+                    awake_minutes = COALESCE(%s, awake_minutes),
+                    symptoms_flag = %s, morning_score = %s,
                     evening_note = COALESCE(%s, evening_note)
                 WHERE user_id = %s AND date = %s
             ''', (
                 energy, mood, muscle_fatigue,
                 hrv_status, rhr_status, min_hr_status,
-                sleep_minutes, deep_sleep_minutes, wakeups_count,
-                stress_level, symptoms_flag, morning_score,
+                sleep_minutes, deep_sleep_minutes, awake_minutes,
+                symptoms_flag, morning_score,
                 evening_note, self.user_id, date
             ))
 
@@ -507,14 +558,14 @@ class CyclingReadinessService:
                 INSERT INTO readiness_entries (
                     user_id, date, energy, mood, muscle_fatigue,
                     hrv_status, rhr_status, min_hr_status,
-                    sleep_minutes, deep_sleep_minutes, wakeups_count,
-                    stress_level, symptoms_flag, morning_score, evening_note
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    sleep_minutes, deep_sleep_minutes, awake_minutes,
+                    symptoms_flag, morning_score, evening_note
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 self.user_id, date, energy, mood, muscle_fatigue,
                 hrv_status, rhr_status, min_hr_status,
-                sleep_minutes, deep_sleep_minutes, wakeups_count,
-                stress_level, symptoms_flag, morning_score, evening_note
+                sleep_minutes, deep_sleep_minutes, awake_minutes,
+                symptoms_flag, morning_score, evening_note
             ))
             conn.commit()
             return cursor.lastrowid, morning_score
@@ -749,4 +800,208 @@ class CyclingReadinessService:
                 'energy': [r['energy'] for r in results],
                 'sleep_hours': [round(r['sleep_minutes'] / 60, 1) if r['sleep_minutes'] else None for r in results]
             }
+
+    # ============== Readiness Update Method ==============
+
+    def update_readiness_entry(self, entry_id: int, **kwargs) -> bool:
+        """
+        Update a readiness entry with partial data.
+        Only updates fields that are provided.
+        """
+        if not kwargs:
+            return False
+
+        # Build dynamic update query
+        allowed_fields = [
+            'energy', 'mood', 'muscle_fatigue',
+            'hrv_status', 'rhr_status', 'min_hr_status',
+            'symptoms_flag', 'evening_note', 'morning_score'
+        ]
+        
+        set_clauses = []
+        values = []
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                set_clauses.append(f"{key} = %s")
+                values.append(value)
+
+        if not set_clauses:
+            return False
+
+        values.append(entry_id)
+        query = f"UPDATE readiness_entries SET {', '.join(set_clauses)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, values)
+            conn.commit()
+            return cursor.rowcount > 0
+
+    def get_readiness_entry_by_id(self, entry_id: int) -> Optional[Dict]:
+        """Get a specific readiness entry by ID"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute('SELECT * FROM readiness_entries WHERE id = %s', (entry_id,))
+            return cursor.fetchone()
+
+    # ============== Expanded Table Data ==============
+
+    def get_expanded_data(self, days: int = 90, from_date: str = None, to_date: str = None) -> List[Dict]:
+        """
+        Get all data for expanded table view.
+        Returns one row per date with cycling, readiness, and sleep data combined.
+        
+        Args:
+            days: Number of days to look back (default 90)
+            from_date: Optional start date (YYYY-MM-DD)
+            to_date: Optional end date (YYYY-MM-DD)
+        
+        Returns:
+            List of dicts with combined data per date
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Determine date range
+            if from_date and to_date:
+                start_date = from_date
+                end_date = to_date
+            else:
+                end_date = datetime.now().strftime('%Y-%m-%d')
+                start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+            
+            # Get all unique dates from all three tables
+            cursor.execute('''
+                SELECT DISTINCT date FROM (
+                    SELECT date FROM cycling_workouts WHERE date BETWEEN %s AND %s
+                    UNION
+                    SELECT date FROM readiness_entries WHERE date BETWEEN %s AND %s
+                    UNION
+                    SELECT date FROM sleep_summaries WHERE date BETWEEN %s AND %s
+                ) AS all_dates
+                ORDER BY date DESC
+            ''', (start_date, end_date, start_date, end_date, start_date, end_date))
+            
+            dates = [row['date'] for row in cursor.fetchall()]
+            
+            result = []
+            for d in dates:
+                date_str = d.strftime('%Y-%m-%d') if hasattr(d, 'strftime') else str(d)
+                
+                # Get cycling data
+                if self.user_id:
+                    cursor.execute('''
+                        SELECT * FROM cycling_workouts WHERE user_id = %s AND date = %s LIMIT 1
+                    ''', (self.user_id, d))
+                else:
+                    cursor.execute('SELECT * FROM cycling_workouts WHERE date = %s LIMIT 1', (d,))
+                cycling = cursor.fetchone()
+                
+                # Get readiness data
+                if self.user_id:
+                    cursor.execute('''
+                        SELECT * FROM readiness_entries WHERE user_id = %s AND date = %s LIMIT 1
+                    ''', (self.user_id, d))
+                else:
+                    cursor.execute('SELECT * FROM readiness_entries WHERE date = %s LIMIT 1', (d,))
+                readiness = cursor.fetchone()
+                
+                # Get sleep data
+                if self.user_id:
+                    cursor.execute('''
+                        SELECT * FROM sleep_summaries WHERE user_id = %s AND date = %s LIMIT 1
+                    ''', (self.user_id, d))
+                else:
+                    cursor.execute('SELECT * FROM sleep_summaries WHERE date = %s LIMIT 1', (d,))
+                sleep = cursor.fetchone()
+                
+                # Combine into single row with prefixed keys
+                row = {
+                    'date': date_str,
+                    'has_cycling': cycling is not None,
+                    'has_readiness': readiness is not None,
+                    'has_sleep': sleep is not None,
+                    # Cycling fields
+                    'c_id': cycling.get('id') if cycling else None,
+                    'c_duration_sec': cycling.get('duration_sec') if cycling else None,
+                    'c_distance_km': cycling.get('distance_km') if cycling else None,
+                    'c_avg_power_w': cycling.get('avg_power_w') if cycling else None,
+                    'c_max_power_w': cycling.get('max_power_w') if cycling else None,
+                    'c_normalized_power_w': cycling.get('normalized_power_w') if cycling else None,
+                    'c_intensity_factor': cycling.get('intensity_factor') if cycling else None,
+                    'c_tss': cycling.get('tss') if cycling else None,
+                    'c_avg_heart_rate': cycling.get('avg_heart_rate') if cycling else None,
+                    'c_max_heart_rate': cycling.get('max_heart_rate') if cycling else None,
+                    'c_avg_cadence': cycling.get('avg_cadence') if cycling else None,
+                    'c_kcal_active': cycling.get('kcal_active') if cycling else None,
+                    'c_kcal_total': cycling.get('kcal_total') if cycling else None,
+                    'c_source': cycling.get('source') if cycling else None,
+                    'c_notes': cycling.get('notes') if cycling else None,
+                    # Readiness fields
+                    'r_id': readiness.get('id') if readiness else None,
+                    'r_energy': readiness.get('energy') if readiness else None,
+                    'r_mood': readiness.get('mood') if readiness else None,
+                    'r_muscle_fatigue': readiness.get('muscle_fatigue') if readiness else None,
+                    'r_hrv_status': readiness.get('hrv_status') if readiness else None,
+                    'r_rhr_status': readiness.get('rhr_status') if readiness else None,
+                    'r_min_hr_status': readiness.get('min_hr_status') if readiness else None,
+                    'r_symptoms_flag': readiness.get('symptoms_flag') if readiness else None,
+                    'r_morning_score': readiness.get('morning_score') if readiness else None,
+                    'r_sleep_minutes': readiness.get('sleep_minutes') if readiness else None,
+                    'r_deep_sleep_minutes': readiness.get('deep_sleep_minutes') if readiness else None,
+                    'r_awake_minutes': readiness.get('awake_minutes') if readiness else None,
+                    # Sleep fields
+                    's_id': sleep.get('id') if sleep else None,
+                    's_total_sleep_minutes': sleep.get('total_sleep_minutes') if sleep else None,
+                    's_deep_sleep_minutes': sleep.get('deep_sleep_minutes') if sleep else None,
+                    's_awake_minutes': sleep.get('awake_minutes') if sleep else None,
+                    's_min_heart_rate': sleep.get('min_heart_rate') if sleep else None,
+                    's_max_heart_rate': sleep.get('max_heart_rate') if sleep else None,
+                    's_avg_heart_rate': sleep.get('avg_heart_rate') if sleep else None,
+                    's_sleep_start': str(sleep.get('sleep_start_time')) if sleep and sleep.get('sleep_start_time') else None,
+                    's_sleep_end': str(sleep.get('sleep_end_time')) if sleep and sleep.get('sleep_end_time') else None,
+                }
+                
+                # Add missing field flags
+                row['missing_cycling'] = self._get_missing_cycling_fields(cycling) if cycling else []
+                row['missing_readiness'] = self._get_missing_readiness_fields(readiness) if readiness else []
+                row['missing_sleep'] = self._get_missing_sleep_fields(sleep) if sleep else []
+                
+                result.append(row)
+            
+            return result
+
+    def _get_missing_cycling_fields(self, data: Dict) -> List[str]:
+        """Check which cycling fields are missing (null or 0)"""
+        important_fields = [
+            'duration_sec', 'avg_power_w', 'max_power_w', 
+            'avg_heart_rate', 'max_heart_rate', 'tss'
+        ]
+        missing = []
+        for f in important_fields:
+            val = data.get(f)
+            if val is None or val == 0:
+                missing.append(f)
+        return missing
+
+    def _get_missing_readiness_fields(self, data: Dict) -> List[str]:
+        """Check which readiness fields are missing"""
+        important_fields = ['energy', 'mood', 'muscle_fatigue', 'morning_score']
+        missing = []
+        for f in important_fields:
+            if data.get(f) is None:
+                missing.append(f)
+        return missing
+
+    def _get_missing_sleep_fields(self, data: Dict) -> List[str]:
+        """Check which sleep fields are missing"""
+        important_fields = [
+            'total_sleep_minutes', 'deep_sleep_minutes', 
+            'min_heart_rate', 'max_heart_rate'
+        ]
+        missing = []
+        for f in important_fields:
+            if data.get(f) is None:
+                missing.append(f)
+        return missing
 

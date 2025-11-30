@@ -120,6 +120,229 @@ def dashboard():
     )
 
 
+@cycling_readiness_bp.route('/expanded')
+@login_required
+def expanded_table():
+    """
+    Expanded table view showing all data across all dates.
+    Displays cycling, readiness, and sleep data in a horizontal date-oriented table.
+    """
+    # Get query parameters for date range
+    days = request.args.get('days', 90, type=int)
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    
+    return render_template(
+        'cycling_readiness/expanded_table.html',
+        days=days,
+        from_date=from_date,
+        to_date=to_date
+    )
+
+
+# ============== Expanded Table API ==============
+
+@cycling_readiness_bp.route('/api/expanded-data', methods=['GET'])
+@login_required
+def get_expanded_data():
+    """
+    Get all data for expanded table view.
+    Returns combined cycling, readiness, and sleep data per date.
+    
+    Query params:
+        days: Number of days to look back (default 90)
+        from: Start date (YYYY-MM-DD)
+        to: End date (YYYY-MM-DD)
+        missing_only: If true, only return days with missing data
+    """
+    days = request.args.get('days', 90, type=int)
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    missing_only = request.args.get('missing_only', 'false').lower() == 'true'
+    
+    service = get_service()
+    data = service.get_expanded_data(days=days, from_date=from_date, to_date=to_date)
+    
+    # Filter to only days with missing data if requested
+    if missing_only:
+        data = [
+            row for row in data 
+            if row['missing_cycling'] or row['missing_readiness'] or row['missing_sleep']
+            or not row['has_cycling'] or not row['has_readiness'] or not row['has_sleep']
+        ]
+    
+    return jsonify({
+        'success': True,
+        'data': serialize_for_json(data),
+        'count': len(data)
+    })
+
+
+@cycling_readiness_bp.route('/api/expanded-export', methods=['GET'])
+@login_required
+def export_expanded_csv():
+    """
+    Export expanded data as CSV file.
+    
+    Query params same as expanded-data endpoint.
+    """
+    import csv
+    from io import StringIO
+    from flask import Response
+    
+    days = request.args.get('days', 90, type=int)
+    from_date = request.args.get('from')
+    to_date = request.args.get('to')
+    
+    service = get_service()
+    data = service.get_expanded_data(days=days, from_date=from_date, to_date=to_date)
+    
+    # Create CSV in memory
+    output = StringIO()
+    
+    # Define columns
+    fieldnames = [
+        'date',
+        # Cycling columns
+        'c_duration_sec', 'c_distance_km', 'c_avg_power_w', 'c_max_power_w',
+        'c_normalized_power_w', 'c_intensity_factor', 'c_tss',
+        'c_avg_heart_rate', 'c_max_heart_rate', 'c_avg_cadence',
+        'c_kcal_active', 'c_kcal_total', 'c_source',
+        # Readiness columns
+        'r_energy', 'r_mood', 'r_muscle_fatigue',
+        'r_hrv_status', 'r_rhr_status', 'r_min_hr_status',
+        'r_symptoms_flag', 'r_morning_score',
+        # Sleep columns
+        's_total_sleep_minutes', 's_deep_sleep_minutes', 's_awake_minutes',
+        's_min_heart_rate', 's_max_heart_rate', 's_sleep_start', 's_sleep_end'
+    ]
+    
+    writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
+    writer.writeheader()
+    
+    for row in data:
+        writer.writerow(row)
+    
+    # Return as CSV response
+    output.seek(0)
+    filename = f"zyra_cycle_data_{datetime.now().strftime('%Y%m%d')}.csv"
+    
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+
+# ============== Readiness Update API ==============
+
+@cycling_readiness_bp.route('/api/readiness/<int:entry_id>', methods=['PUT', 'PATCH'])
+@login_required
+def update_readiness_entry(entry_id):
+    """
+    Update an existing readiness entry.
+    Used for editing from Readiness History table.
+    
+    Accepts partial updates - only provided fields will be updated.
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    service = get_service()
+    
+    # Check entry exists
+    existing = service.get_readiness_entry_by_id(entry_id)
+    if not existing:
+        return jsonify({'error': 'Readiness entry not found'}), 404
+    
+    # Build update dict from allowed fields
+    allowed_fields = [
+        'energy', 'mood', 'muscle_fatigue',
+        'hrv_status', 'rhr_status', 'min_hr_status',
+        'symptoms_flag', 'evening_note'
+    ]
+    
+    updates = {}
+    for field in allowed_fields:
+        if field in data:
+            value = data[field]
+            if value == '' or value == 'null':
+                value = None
+            updates[field] = value
+    
+    if not updates:
+        return jsonify({'error': 'No valid fields to update'}), 400
+    
+    # Recalculate morning score if we have the necessary data
+    merged = {**existing, **updates}
+    if merged.get('energy') and merged.get('mood') and merged.get('muscle_fatigue'):
+        from models.services.cycling_readiness_service import CyclingReadinessService
+        new_score = CyclingReadinessService.calculate_morning_score(
+            energy=merged.get('energy') or 3,
+            mood=merged.get('mood') or 2,
+            muscle_fatigue=merged.get('muscle_fatigue') or 2,
+            hrv_status=merged.get('hrv_status') or 0,
+            rhr_status=merged.get('rhr_status') or 0,
+            min_hr_status=merged.get('min_hr_status') or 0,
+            sleep_minutes=merged.get('sleep_minutes') or 0,
+            deep_sleep_minutes=merged.get('deep_sleep_minutes') or 0,
+            awake_minutes=merged.get('awake_minutes'),
+            symptoms_flag=merged.get('symptoms_flag') or False
+        )
+        updates['morning_score'] = new_score
+    
+    # Perform update
+    success = service.update_readiness_entry(entry_id, **updates)
+    
+    if success:
+        updated = service.get_readiness_entry_by_id(entry_id)
+        return jsonify({
+            'success': True,
+            'entry': serialize_for_json(updated)
+        })
+    
+    return jsonify({'error': 'Failed to update entry'}), 500
+
+
+@cycling_readiness_bp.route('/api/readiness/<int:entry_id>', methods=['GET'])
+@login_required
+def get_readiness_entry(entry_id):
+    """Get a single readiness entry by ID"""
+    service = get_service()
+    entry = service.get_readiness_entry_by_id(entry_id)
+    
+    if not entry:
+        return jsonify({'error': 'Readiness entry not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'entry': serialize_for_json(entry)
+    })
+
+
+@cycling_readiness_bp.route('/api/score-formula', methods=['GET'])
+@login_required
+def get_score_formula():
+    """Get the readiness score formula explanation for UI tooltip"""
+    from models.services.cycling_readiness_service import CyclingReadinessService
+    return jsonify({
+        'success': True,
+        'formula': CyclingReadinessService.SCORE_FORMULA_EXPLANATION
+    })
+    readiness_chart = service.get_readiness_chart_data(days=30)
+
+    return render_template(
+        'cycling_readiness/dashboard.html',
+        cycling_workouts=cycling_workouts,
+        readiness_entries=readiness_entries,
+        cycling_stats=cycling_stats,
+        cycling_chart=cycling_chart,
+        readiness_chart=readiness_chart,
+        today=datetime.now().strftime('%Y-%m-%d')
+    )
+
+
 # ============== Cycling Workout API Routes ==============
 
 @cycling_readiness_bp.route('/api/cycling/import-image', methods=['POST'])
@@ -793,6 +1016,8 @@ def create_readiness():
 
     try:
         service = get_service()
+        # Note: sleep data is imported from screenshots, not entered via form
+        # If sleep values are provided, they will be used; otherwise preserved from imports
         entry_id, morning_score = service.create_or_update_readiness(
             date=data['date'],
             energy=int(data['energy']),
@@ -801,10 +1026,9 @@ def create_readiness():
             hrv_status=int(data.get('hrv_status', 0)),
             rhr_status=int(data.get('rhr_status', 0)),
             min_hr_status=int(data.get('min_hr_status', 0)),
-            sleep_minutes=int(data.get('sleep_minutes', 0)) if data.get('sleep_minutes') else 0,
-            deep_sleep_minutes=int(data.get('deep_sleep_minutes', 0)) if data.get('deep_sleep_minutes') else 0,
-            wakeups_count=int(data.get('wakeups_count', 0)) if data.get('wakeups_count') else 0,
-            stress_level=int(data.get('stress_level', 2)),
+            sleep_minutes=int(data.get('sleep_minutes')) if data.get('sleep_minutes') else None,
+            deep_sleep_minutes=int(data.get('deep_sleep_minutes')) if data.get('deep_sleep_minutes') else None,
+            awake_minutes=int(data.get('awake_minutes')) if data.get('awake_minutes') else None,
             symptoms_flag=bool(data.get('symptoms_flag', False)),
             evening_note=data.get('evening_note')
         )

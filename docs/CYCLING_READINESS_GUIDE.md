@@ -1097,13 +1097,119 @@ The morning readiness score is calculated using a weighted formula:
 
 ---
 
+## Expanded Table View
+
+### Overview
+
+The **Expanded Table View** (`/cycling-readiness/expanded`) provides a comprehensive date-oriented view of all data across:
+- Cycling workouts
+- Readiness entries
+- Sleep summaries
+
+### Features
+
+1. **Date-Based View**: One row per date showing all available data
+2. **Grouped Columns**: Separate column groups for Cycling, Readiness, and Sleep
+3. **Missing Data Indicators**: Yellow highlighting for missing/null values
+4. **Filtering**:
+   - Date range (from/to)
+   - Preset periods (30, 60, 90, 180 days, 1 year)
+   - "Missing data only" toggle
+5. **CSV Export**: Download data as CSV file
+
+### API Endpoint
+
+```
+GET /api/cycling-readiness/expanded-data
+  ?days=90
+  &from=2025-01-01
+  &to=2025-03-31
+  &missing_only=true
+```
+
+Returns JSON array with combined data per date.
+
+### Access
+
+Click "Expanded View" button in the dashboard header to open.
+
+---
+
+## Sleep Schema Updates
+
+### awake_minutes Field
+
+The `wakeups_count` field has been replaced with `awake_minutes` in both:
+- `sleep_summaries` table
+- `readiness_entries` table
+
+**Reason**: Real sleep data shows "awake time" in minutes, not count of wake-up events.
+
+### Schema Changes
+
+| Old Field | New Field | Description |
+|-----------|-----------|-------------|
+| `wakeups_count` | `awake_minutes` | Time spent awake during the night (minutes) |
+
+**Note**: `wakeups_count` is retained for backward compatibility but no longer used.
+
+### Heart Rate Fields
+
+The following fields remain in `sleep_summaries`:
+- `min_heart_rate`: Minimum HR during sleep
+- `max_heart_rate`: Maximum HR during sleep  
+- `avg_heart_rate`: Average HR (optional, kept for sources that provide it)
+
+---
+
+## Morning Readiness Form
+
+### Simplified Form
+
+The Morning Readiness form now focuses on **subjective inputs only**:
+
+**Included:**
+- Energy Level (1-5)
+- Mood (1-3)
+- Muscle Fatigue (1-3)
+- HRV Status (-1/0/1)
+- RHR Status (-1/0/1)
+- Symptoms checkbox
+
+**Removed:**
+- Sleep hours (imported via screenshots)
+- Deep sleep (imported via screenshots)
+- Wakeups (imported via screenshots)
+- Stress level (redundant with energy/mood/fatigue)
+
+### Sleep Data
+
+Sleep data should be imported from screenshots using the bundle import feature. This data automatically updates the readiness entry for the corresponding date.
+
+### Readiness Score Formula
+
+The score is calculated from:
+
+| Category | Max Points | Components |
+|----------|------------|------------|
+| Subjective | 40 pts | Energy (20), Mood (10), Fatigue (10) |
+| Recovery | 25 pts | HRV (10), RHR (10), Min HR (5) |
+| Sleep | 25 pts | Duration (10), Deep Sleep (10), Awake Time (5) |
+| Symptoms | -10 pts | If symptoms present |
+
+**Total: 0-100 points**
+
+A tooltip explaining this formula is available in the Readiness History section.
+
+---
+
 ## Future Enhancements
 
 ### Planned Features
 
-1. **Batch API Calls**: Optimize to use single API call for multiple images
+1. ~~**Batch API Calls**: Optimize to use single API call for multiple images~~ ✅ Implemented
 2. **Parallel Processing**: Process images concurrently for faster results
-3. **Export Functionality**: Export workouts/readiness data to CSV/JSON
+3. ~~**Export Functionality**: Export workouts/readiness data to CSV/JSON~~ ✅ Implemented
 4. **Advanced Analytics**: More detailed performance analysis
 5. **Workout Templates**: Save and reuse workout templates
 6. **Integration**: Connect with Strava, Garmin Connect APIs
@@ -1132,8 +1238,10 @@ The morning readiness score is calculated using a weighted formula:
 **Routes**: `models/blueprints/cycling_readiness/routes.py`  
 **Service**: `models/services/cycling_readiness_service.py`  
 **OpenAI Integration**: `models/services/openai_extraction.py`  
-**Frontend**: `templates/cycling_readiness/dashboard.html`  
-**Migration**: `migrations/add_cycling_readiness_tables.py`
+**Frontend - Dashboard**: `templates/cycling_readiness/dashboard.html`  
+**Frontend - Expanded Table**: `templates/cycling_readiness/expanded_table.html`  
+**Migration - Initial**: `migrations/add_cycling_readiness_tables.py`  
+**Migration - Sleep Schema**: `migrations/update_sleep_schema.py`
 
 ### Related Documentation
 
@@ -1154,6 +1262,14 @@ For issues or questions:
 ---
 
 **Last Updated**: November 30, 2025  
-**Version**: 1.0  
+**Version**: 2.0  
 **Author**: Zyra Development Team
+
+### Changelog v2.0
+- Added Expanded Table View page with CSV export
+- Added Edit functionality for Readiness History
+- Added awake_minutes field (replacing wakeups_count)
+- Simplified Morning Readiness form (removed manual sleep inputs)
+- Added score formula tooltip
+- Added readiness entry update API
 

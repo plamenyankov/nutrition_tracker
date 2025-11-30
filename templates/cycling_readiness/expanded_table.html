@@ -1,0 +1,726 @@
+{% extends 'layout.html' %}
+
+{% block title %}Zyra Cycle - Expanded Data Table{% endblock %}
+
+{% block head %}
+<style>
+    :root {
+        --color-teal: #00FFC6;
+        --color-blue: #0077FF;
+        --color-green: #00E676;
+        --color-red: #FF5252;
+        --color-yellow: #FFC107;
+        --color-muted: rgba(255, 255, 255, 0.4);
+        --color-muted-light: rgba(255, 255, 255, 0.6);
+    }
+
+    .expanded-container {
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    /* Header */
+    .page-header {
+        background: linear-gradient(135deg, rgba(0, 119, 255, 0.12) 0%, rgba(0, 255, 198, 0.08) 100%);
+        border-radius: 12px;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(0, 255, 198, 0.15);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    .page-header h1 {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 800;
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, var(--color-blue) 0%, var(--color-teal) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin: 0;
+    }
+
+    .page-header .back-link {
+        color: var(--color-muted-light);
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+
+    .page-header .back-link:hover {
+        color: var(--color-teal);
+    }
+
+    /* Filters */
+    .filters-bar {
+        background: rgba(26, 26, 26, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        color: var(--color-muted-light);
+    }
+
+    .filter-group input[type="date"],
+    .filter-group select {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        color: white;
+        font-size: 0.85rem;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--color-teal);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: auto;
+    }
+
+    .btn-filter {
+        background: linear-gradient(135deg, var(--color-teal), var(--color-green));
+        border: none;
+        color: #0a0a0a;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-export {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+    }
+
+    .btn-export:hover {
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Toggle switch */
+    .toggle-group {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .toggle-switch {
+        position: relative;
+        width: 40px;
+        height: 20px;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        transition: 0.3s;
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        border-radius: 50%;
+        transition: 0.3s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+        background: var(--color-teal);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+        transform: translateX(20px);
+    }
+
+    /* Stats bar */
+    .stats-bar {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-item {
+        background: rgba(26, 26, 26, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .stat-item .label {
+        color: var(--color-muted);
+    }
+
+    .stat-item .value {
+        color: white;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+
+    /* Table container */
+    .table-container {
+        background: rgba(26, 26, 26, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    /* Expanded table */
+    .expanded-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.8rem;
+    }
+
+    .expanded-table th,
+    .expanded-table td {
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .expanded-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .expanded-table thead th {
+        background: rgba(0, 0, 0, 0.5);
+        color: var(--color-muted-light);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        letter-spacing: 0.5px;
+    }
+
+    /* Column group headers */
+    .expanded-table .col-group {
+        text-align: center;
+        border-bottom: 2px solid;
+        padding: 0.75rem 0.5rem;
+    }
+
+    .col-group.cycling {
+        color: var(--color-green);
+        border-color: var(--color-green);
+        background: rgba(0, 230, 118, 0.1);
+    }
+
+    .col-group.readiness {
+        color: var(--color-teal);
+        border-color: var(--color-teal);
+        background: rgba(0, 255, 198, 0.1);
+    }
+
+    .col-group.sleep {
+        color: var(--color-blue);
+        border-color: var(--color-blue);
+        background: rgba(0, 119, 255, 0.1);
+    }
+
+    /* Date column */
+    .expanded-table .date-col {
+        position: sticky;
+        left: 0;
+        background: rgba(26, 26, 26, 0.98);
+        z-index: 5;
+        font-weight: 600;
+        color: white;
+    }
+
+    .expanded-table tbody tr:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .expanded-table tbody tr:hover .date-col {
+        background: rgba(40, 40, 40, 0.98);
+    }
+
+    /* Value styles */
+    .val-present {
+        color: white;
+    }
+
+    .val-missing {
+        color: var(--color-yellow);
+        font-style: italic;
+    }
+
+    .val-empty {
+        color: var(--color-muted);
+    }
+
+    .val-good {
+        color: var(--color-green);
+    }
+
+    .val-hr {
+        color: var(--color-red);
+    }
+
+    .val-sleep {
+        color: var(--color-blue);
+    }
+
+    /* Score badge */
+    .score-badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+
+    .score-badge.high {
+        background: rgba(0, 230, 118, 0.2);
+        color: var(--color-green);
+    }
+
+    .score-badge.medium {
+        background: rgba(255, 193, 7, 0.2);
+        color: var(--color-yellow);
+    }
+
+    .score-badge.low {
+        background: rgba(255, 82, 82, 0.2);
+        color: var(--color-red);
+    }
+
+    /* Status indicators */
+    .has-data {
+        color: var(--color-green);
+    }
+
+    .no-data {
+        color: var(--color-muted);
+    }
+
+    /* Loading state */
+    .loading-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--color-muted);
+    }
+
+    .loading-state i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: var(--color-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .filters-bar {
+            flex-direction: column;
+        }
+
+        .filter-actions {
+            margin-left: 0;
+            width: 100%;
+        }
+
+        .filter-actions button {
+            flex: 1;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="expanded-container">
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-table me-2"></i>Expanded Data View</h1>
+            <a href="{{ url_for('cycling_readiness.dashboard') }}" class="back-link">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <label>From Date</label>
+            <input type="date" id="filterFromDate" value="{{ from_date or '' }}">
+        </div>
+        <div class="filter-group">
+            <label>To Date</label>
+            <input type="date" id="filterToDate" value="{{ to_date or '' }}">
+        </div>
+        <div class="filter-group">
+            <label>Days</label>
+            <select id="filterDays">
+                <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="60" {% if days == 60 %}selected{% endif %}>Last 60 days</option>
+                <option value="90" {% if days == 90 or not days %}selected{% endif %}>Last 90 days</option>
+                <option value="180">Last 180 days</option>
+                <option value="365">Last year</option>
+            </select>
+        </div>
+        <div class="toggle-group">
+            <label class="toggle-switch">
+                <input type="checkbox" id="missingOnlyToggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <span style="font-size: 0.85rem; color: var(--color-muted-light);">Missing data only</span>
+        </div>
+        <div class="filter-actions">
+            <button class="btn-filter" onclick="loadData()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+            <button class="btn-export" onclick="exportCSV()">
+                <i class="fas fa-download me-1"></i>Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="statsBar">
+        <div class="stat-item">
+            <span class="label">Total Days:</span>
+            <span class="value" id="statTotalDays">-</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">With Workouts:</span>
+            <span class="value" id="statWithWorkouts">-</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">With Sleep Data:</span>
+            <span class="value" id="statWithSleep">-</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Missing Data:</span>
+            <span class="value" id="statMissing">-</span>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+        <div class="table-scroll">
+            <table class="expanded-table" id="expandedTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="date-col">Date</th>
+                        <th colspan="10" class="col-group cycling">Cycling</th>
+                        <th colspan="7" class="col-group readiness">Readiness</th>
+                        <th colspan="6" class="col-group sleep">Sleep</th>
+                    </tr>
+                    <tr>
+                        <!-- Cycling columns -->
+                        <th>Duration</th>
+                        <th>Distance</th>
+                        <th>Avg W</th>
+                        <th>Max W</th>
+                        <th>NP</th>
+                        <th>IF</th>
+                        <th>TSS</th>
+                        <th>Avg HR</th>
+                        <th>Max HR</th>
+                        <th>Cadence</th>
+                        <!-- Readiness columns -->
+                        <th>Score</th>
+                        <th>Energy</th>
+                        <th>Mood</th>
+                        <th>Fatigue</th>
+                        <th>HRV</th>
+                        <th>RHR</th>
+                        <th>Symptoms</th>
+                        <!-- Sleep columns -->
+                        <th>Total</th>
+                        <th>Deep</th>
+                        <th>Awake</th>
+                        <th>Min HR</th>
+                        <th>Max HR</th>
+                        <th>Times</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="24" class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading data...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();
+    
+    // Auto-load when filters change
+    document.getElementById('filterDays').addEventListener('change', loadData);
+    document.getElementById('missingOnlyToggle').addEventListener('change', loadData);
+});
+
+async function loadData() {
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="24" class="loading-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading data...</p>
+            </td>
+        </tr>
+    `;
+    
+    // Build query params
+    const params = new URLSearchParams();
+    
+    const fromDate = document.getElementById('filterFromDate').value;
+    const toDate = document.getElementById('filterToDate').value;
+    const days = document.getElementById('filterDays').value;
+    const missingOnly = document.getElementById('missingOnlyToggle').checked;
+    
+    if (fromDate) params.append('from', fromDate);
+    if (toDate) params.append('to', toDate);
+    if (!fromDate && !toDate) params.append('days', days);
+    if (missingOnly) params.append('missing_only', 'true');
+    
+    try {
+        const response = await fetch(`/cycling-readiness/api/expanded-data?${params}`);
+        const result = await response.json();
+        
+        if (result.success) {
+            renderTable(result.data);
+            updateStats(result.data);
+        } else {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="24" class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load data</p>
+                    </td>
+                </tr>
+            `;
+        }
+    } catch (err) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="24" class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Error loading data</p>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('tableBody');
+    
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="24" class="empty-state">
+                    <i class="fas fa-calendar-times"></i>
+                    <p>No data found for the selected period</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = data.map(row => {
+        const hasCycling = row.has_cycling;
+        const hasReadiness = row.has_readiness;
+        const hasSleep = row.has_sleep;
+        
+        return `
+            <tr>
+                <td class="date-col">${formatDate(row.date)}</td>
+                
+                <!-- Cycling -->
+                <td>${formatDuration(row.c_duration_sec, hasCycling)}</td>
+                <td>${formatVal(row.c_distance_km, hasCycling, 'km')}</td>
+                <td class="val-good">${formatVal(row.c_avg_power_w, hasCycling, 'W')}</td>
+                <td class="val-good">${formatVal(row.c_max_power_w, hasCycling, 'W')}</td>
+                <td class="val-good">${formatVal(row.c_normalized_power_w, hasCycling, 'W')}</td>
+                <td>${formatVal(row.c_intensity_factor, hasCycling, '', 2)}</td>
+                <td>${formatVal(row.c_tss, hasCycling)}</td>
+                <td class="val-hr">${formatVal(row.c_avg_heart_rate, hasCycling)}</td>
+                <td class="val-hr">${formatVal(row.c_max_heart_rate, hasCycling)}</td>
+                <td>${formatVal(row.c_avg_cadence, hasCycling)}</td>
+                
+                <!-- Readiness -->
+                <td>${formatScore(row.r_morning_score, hasReadiness)}</td>
+                <td>${formatVal(row.r_energy, hasReadiness, '/5')}</td>
+                <td>${formatMood(row.r_mood, hasReadiness)}</td>
+                <td>${formatVal(row.r_muscle_fatigue, hasReadiness, '/3')}</td>
+                <td>${formatStatus(row.r_hrv_status, hasReadiness)}</td>
+                <td>${formatStatus(row.r_rhr_status, hasReadiness, true)}</td>
+                <td>${formatSymptoms(row.r_symptoms_flag, hasReadiness)}</td>
+                
+                <!-- Sleep -->
+                <td class="val-sleep">${formatSleepTime(row.s_total_sleep_minutes, hasSleep)}</td>
+                <td class="val-sleep">${formatVal(row.s_deep_sleep_minutes, hasSleep, 'min')}</td>
+                <td>${formatVal(row.s_awake_minutes, hasSleep, 'min')}</td>
+                <td class="val-hr">${formatVal(row.s_min_heart_rate, hasSleep)}</td>
+                <td class="val-hr">${formatVal(row.s_max_heart_rate, hasSleep)}</td>
+                <td>${formatSleepTimes(row.s_sleep_start, row.s_sleep_end, hasSleep)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateStats(data) {
+    document.getElementById('statTotalDays').textContent = data.length;
+    document.getElementById('statWithWorkouts').textContent = data.filter(d => d.has_cycling).length;
+    document.getElementById('statWithSleep').textContent = data.filter(d => d.has_sleep).length;
+    
+    // Count days with any missing data
+    const missingCount = data.filter(d => 
+        (d.missing_cycling && d.missing_cycling.length > 0) ||
+        (d.missing_readiness && d.missing_readiness.length > 0) ||
+        (d.missing_sleep && d.missing_sleep.length > 0)
+    ).length;
+    document.getElementById('statMissing').textContent = missingCount;
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '--';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatVal(val, hasRecord, suffix = '', decimals = 0) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (val === null || val === undefined) return '<span class="val-missing">--</span>';
+    if (val === 0 && ['W', ''].includes(suffix)) return '<span class="val-missing">0</span>';
+    const formatted = decimals > 0 ? parseFloat(val).toFixed(decimals) : Math.round(val);
+    return `<span class="val-present">${formatted}${suffix}</span>`;
+}
+
+function formatDuration(seconds, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (!seconds) return '<span class="val-missing">--</span>';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `<span class="val-present">${mins}:${secs.toString().padStart(2, '0')}</span>`;
+}
+
+function formatScore(score, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (score === null || score === undefined) return '<span class="val-missing">--</span>';
+    const cls = score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low';
+    return `<span class="score-badge ${cls}">${score}</span>`;
+}
+
+function formatMood(mood, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (mood === null) return '<span class="val-missing">--</span>';
+    const icons = {1: '😔', 2: '😐', 3: '😊'};
+    return icons[mood] || mood;
+}
+
+function formatStatus(status, hasRecord, invertColor = false) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (status === null || status === undefined) return '<span class="val-missing">--</span>';
+    const arrows = {'-1': '↓', '0': '→', '1': '↑'};
+    const colors = {
+        '-1': invertColor ? 'var(--color-green)' : 'var(--color-red)',
+        '0': 'var(--color-muted-light)',
+        '1': invertColor ? 'var(--color-red)' : 'var(--color-green)'
+    };
+    return `<span style="color: ${colors[status]}">${arrows[status] || status}</span>`;
+}
+
+function formatSymptoms(flag, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    return flag ? '<span style="color: var(--color-red)">Yes</span>' : '<span style="color: var(--color-green)">No</span>';
+}
+
+function formatSleepTime(minutes, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (!minutes) return '<span class="val-missing">--</span>';
+    const hours = (minutes / 60).toFixed(1);
+    return `<span class="val-present">${hours}h</span>`;
+}
+
+function formatSleepTimes(start, end, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (!start && !end) return '<span class="val-missing">--</span>';
+    const s = start ? start.substring(0, 5) : '?';
+    const e = end ? end.substring(0, 5) : '?';
+    return `<span class="val-present">${s}-${e}</span>`;
+}
+
+function exportCSV() {
+    const params = new URLSearchParams();
+    
+    const fromDate = document.getElementById('filterFromDate').value;
+    const toDate = document.getElementById('filterToDate').value;
+    const days = document.getElementById('filterDays').value;
+    
+    if (fromDate) params.append('from', fromDate);
+    if (toDate) params.append('to', toDate);
+    if (!fromDate && !toDate) params.append('days', days);
+    
+    window.location.href = `/cycling-readiness/api/expanded-export?${params}`;
+}
+</script>
+{% endblock %}
+
