@@ -2778,8 +2778,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let originalHrvLow = null;
     let originalHrvHigh = null;
 
-    // Toggle collapse/expand of Morning Readiness form
-    function toggleReadinessForm() {
+    // Toggle collapse/expand of Morning Readiness form (global for onclick)
+    window.toggleReadinessForm = function() {
         const card = document.getElementById('morningReadinessCard');
         const summary = document.getElementById('readinessSummary');
         const formBody = document.getElementById('readinessFormBody');
@@ -2795,16 +2795,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 summary.style.display = 'flex';
             }
         }
-    }
+    };
     
-    // Edit readiness for current date
-    function editReadinessForDate() {
+    // Edit readiness for current date (global for onclick)
+    window.editReadinessForDate = function() {
         const card = document.getElementById('morningReadinessCard');
         card.classList.remove('collapsed');
         document.getElementById('readinessSummary').style.display = 'none';
         // Scroll to form
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    };
     
     // Update the summary pills display
     function updateReadinessSummary(data) {
@@ -2982,8 +2982,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Toggle cardio override mode
-    function toggleCardioOverride(type) {
+    // Toggle cardio override mode (global for onclick)
+    window.toggleCardioOverride = function(type) {
         const inputDiv = document.getElementById(`${type}OverrideInput`);
         const valueSpan = document.getElementById(`display${type === 'rhr' ? 'RhrBpm' : 'Hrv'}`);
         
@@ -3004,10 +3004,10 @@ document.addEventListener('DOMContentLoaded', function() {
             inputDiv.style.display = 'none';
             valueSpan.style.display = 'block';
         }
-    }
+    };
     
-    // Reset cardio value to auto
-    function resetCardioToAuto(type) {
+    // Reset cardio value to auto (global for onclick)
+    window.resetCardioToAuto = function(type) {
         const inputDiv = document.getElementById(`${type}OverrideInput`);
         const valueSpan = document.getElementById(`display${type === 'rhr' ? 'RhrBpm' : 'Hrv'}`);
         
@@ -3026,7 +3026,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         updateOverrideChip(type, false);
-    }
+    };
     
     // Prefill the readiness form with existing data
     function prefillReadinessForm(r) {
@@ -3198,8 +3198,8 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
     
-    // Edit readiness from history row
-    function editReadinessFromHistory(dateStr) {
+    // Edit readiness from history row (global for onclick)
+    window.editReadinessFromHistory = function(dateStr) {
         // Set the date in the form
         document.getElementById('readinessDate').value = dateStr;
         
@@ -3213,7 +3213,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Scroll to form
             card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
-    }
+    };
     
     // Initial load
     const today = document.getElementById('readinessDate').value;
