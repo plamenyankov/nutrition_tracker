@@ -88,11 +88,12 @@ class TrainingRecommendation:
 TRAINING_COACH_SYSTEM_PROMPT = """You are an experienced endurance cycling coach specializing in Norwegian-style polarized training.
 
 You will receive a JSON object called "training_context" containing:
-- today: Current day's readiness score, sleep quality, cardio metrics (RHR, HRV), and any workout done
-- last_7_days: Daily summaries of training load, readiness, and recovery metrics
-- baseline_30_days: Rolling 30-day averages for comparison
+- evaluation_date: The date for which to provide a recommendation (YYYY-MM-DD)
+- day: Current day's readiness, sleep, and cardio metrics (NO workout data - you're recommending WHAT to do)
+- history_7d: Daily summaries for the 7 days BEFORE evaluation_date, including workouts done, readiness, and recovery
+- baseline_30d: Rolling 30-day averages for RHR, HRV, sleep, readiness, and training load
 
-Your task: Recommend the safest and most effective training for TODAY.
+Your task: Recommend the safest and most effective training for the evaluation_date.
 
 ## Decision Framework
 

@@ -1317,54 +1317,52 @@ class CyclingReadinessService:
         This function aggregates data from all relevant tables to create a context
         object that can be sent to OpenAI for daily training recommendations.
         
+        The structure is designed to work for any evaluation date D, not just "today".
+        
         Args:
-            target_date: The date to build context for (typically today)
+            target_date: The date to build context for (any date)
         
         Returns:
-            Dict with three main sections:
-            - today: Current day's complete data
-            - last_7_days: Summary of previous 7 days
-            - baseline_30_days: Rolling statistics for last 30 days
+            Dict with standardized structure:
+            - evaluation_date: The target date (YYYY-MM-DD)
+            - day: Readiness, sleep, and cardio data for target_date (NO workout data)
+            - history_7d: Summary of the 7 days BEFORE target_date (D-7 to D-1)
+            - baseline_30d: Aggregated stats from 30 days before target_date (D-30 to D-1)
         """
         target_date_str = target_date.strftime('%Y-%m-%d') if isinstance(target_date, date) else str(target_date)
         
         return {
-            'today': self._get_today_context(target_date_str),
-            'last_7_days': self._get_last_7_days_context(target_date_str),
-            'baseline_30_days': self._get_baseline_30_days(target_date_str)
+            'evaluation_date': target_date_str,
+            'day': self._get_day_context(target_date_str),
+            'history_7d': self._get_history_7d(target_date_str),
+            'baseline_30d': self._get_baseline_30d(target_date_str)
         }
 
-    def _get_today_context(self, target_date: str) -> Dict[str, Any]:
+    def _get_day_context(self, target_date: str) -> Dict[str, Any]:
         """
-        Get complete context for the target date.
+        Get readiness, sleep, and cardio context for the target date.
+        
+        NOTE: Does NOT include cycling_workouts - those are used later to compare
+        planned vs actual training.
         
         Args:
             target_date: Date string (YYYY-MM-DD)
         
         Returns:
-            Dict with readiness, sleep, cardio, and workout data for the day
+            Dict with date, readiness, sleep, and cardio data
         """
-        # Get data from all tables for this date
+        # Get data from readiness, sleep, and cardio tables (NOT workout)
         readiness = self.get_readiness_by_date(target_date)
         sleep = self.get_sleep_summary_by_date(target_date)
         cardio = self.get_cardio_metrics_for_date(target_date)
-        workout = self.get_cycling_workout_by_date(target_date)
-        
-        # Map mood value to label
-        mood_map = {1: 'low', 2: 'neutral', 3: 'high'}
-        # Map muscle fatigue to label
-        fatigue_map = {1: 'low', 2: 'med', 3: 'high'}
-        
-        # Determine workout type from source or notes
-        workout_type = self._determine_workout_type(workout) if workout else 'rest'
         
         return {
             'date': target_date,
             'readiness': {
                 'score': readiness.get('morning_score') if readiness else None,
                 'energy': readiness.get('energy') if readiness else None,
-                'mood': mood_map.get(readiness.get('mood')) if readiness and readiness.get('mood') else None,
-                'muscle_fatigue': fatigue_map.get(readiness.get('muscle_fatigue')) if readiness and readiness.get('muscle_fatigue') else None,
+                'mood': readiness.get('mood') if readiness else None,
+                'muscle_fatigue': readiness.get('muscle_fatigue') if readiness else None,
                 'hrv_status': readiness.get('hrv_status') if readiness else None,
                 'rhr_status': readiness.get('rhr_status') if readiness else None,
                 'symptoms': readiness.get('symptoms_flag') if readiness else None
@@ -1380,14 +1378,6 @@ class CyclingReadinessService:
                 'rhr_bpm': cardio.get('rhr_bpm') if cardio else None,
                 'hrv_low_ms': cardio.get('hrv_low_ms') if cardio else None,
                 'hrv_high_ms': cardio.get('hrv_high_ms') if cardio else None
-            },
-            'workout': {
-                'has_workout': workout is not None,
-                'type': workout_type,
-                'duration_minutes': int(workout.get('duration_sec') / 60) if workout and workout.get('duration_sec') else None,
-                'avg_power_w': workout.get('avg_power_w') if workout else None,
-                'tss': workout.get('tss') if workout else None,
-                'intensity_factor': workout.get('intensity_factor') if workout else None
             }
         }
 
@@ -1432,20 +1422,25 @@ class CyclingReadinessService:
         
         return 'other'
 
-    def _get_last_7_days_context(self, target_date: str) -> List[Dict[str, Any]]:
+    def _get_history_7d(self, target_date: str) -> List[Dict[str, Any]]:
         """
-        Get summary data for the 7 days before target_date.
+        Get summary data for the 7 days BEFORE target_date (D-7 to D-1 inclusive).
+        
+        Combines data from:
+        - readiness_entries → readiness_score
+        - cycling_workouts → workout_type, workout_duration_minutes, tss
+        - cardio_daily_metrics → rhr_bpm, hrv_avg_ms
         
         Args:
             target_date: Date string (YYYY-MM-DD)
         
         Returns:
-            List of daily summaries, ordered oldest to newest
+            List of 7 daily summaries, ordered oldest (D-7) to newest (D-1)
         """
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             
-            # Query all tables for the 7 days before target_date
+            # Query all tables for the 7 days before target_date (D-7 to D-1)
             query = '''
                 WITH date_range AS (
                     SELECT DATE_SUB(%s, INTERVAL n DAY) as date
@@ -1481,7 +1476,7 @@ class CyclingReadinessService:
                 if row['hrv_low_ms'] is not None and row['hrv_high_ms'] is not None:
                     hrv_avg = (row['hrv_low_ms'] + row['hrv_high_ms']) / 2
                 
-                # Determine workout type
+                # Determine workout type (None if no workout)
                 workout_type = None
                 if row['workout_duration_minutes']:
                     # Build a fake workout dict for type determination
@@ -1492,8 +1487,6 @@ class CyclingReadinessService:
                         'duration_sec': (row['workout_duration_minutes'] or 0) * 60
                     }
                     workout_type = self._determine_workout_type(fake_workout)
-                else:
-                    workout_type = 'rest'
                 
                 result.append({
                     'date': row['date'].strftime('%Y-%m-%d') if hasattr(row['date'], 'strftime') else str(row['date']),
@@ -1507,28 +1500,36 @@ class CyclingReadinessService:
             
             return result
 
-    def _get_baseline_30_days(self, target_date: str) -> Dict[str, Any]:
+    def _get_baseline_30d(self, target_date: str) -> Dict[str, Any]:
         """
-        Calculate rolling statistics for the 30 days before target_date.
+        Calculate aggregated statistics for the 30 days BEFORE target_date (D-30 to D-1).
+        
+        Uses data from:
+        - cardio_daily_metrics → avg RHR, HRV
+        - sleep_summaries → avg sleep_minutes, deep_sleep_minutes
+        - readiness_entries → avg readiness_score
+        - cycling_workouts → avg_workouts_per_week, avg_tss_per_week
+        
+        Ignores None values when averaging; if no data at all for a metric → None.
         
         Args:
             target_date: Date string (YYYY-MM-DD)
         
         Returns:
-            Dict with aggregated statistics
+            Dict with aggregated statistics matching the standardized schema
         """
         with self.get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             
-            # Calculate date range (30 days before target_date, not including target)
+            # Date range: D-30 to D-1 (not including target_date)
             end_date = target_date
             
-            # Get cardio averages
+            # Get cardio averages (only rows where data exists)
             cursor.execute('''
                 SELECT 
-                    COUNT(*) as days_with_rhr,
                     AVG(rhr_bpm) as avg_rhr,
-                    AVG((hrv_low_ms + hrv_high_ms) / 2) as avg_hrv
+                    AVG(CASE WHEN hrv_low_ms IS NOT NULL AND hrv_high_ms IS NOT NULL 
+                        THEN (hrv_low_ms + hrv_high_ms) / 2 ELSE NULL END) as avg_hrv
                 FROM cardio_daily_metrics
                 WHERE user_id = %s 
                   AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
@@ -1536,23 +1537,22 @@ class CyclingReadinessService:
             ''', (self.user_id, end_date, end_date))
             cardio_stats = cursor.fetchone()
             
-            # Get sleep averages
+            # Get sleep averages (only rows where data exists)
             cursor.execute('''
                 SELECT 
-                    COUNT(*) as days_with_sleep,
                     AVG(total_sleep_minutes) as avg_sleep,
                     AVG(deep_sleep_minutes) as avg_deep
                 FROM sleep_summaries
                 WHERE user_id = %s 
                   AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
                   AND date < %s
+                  AND total_sleep_minutes IS NOT NULL
             ''', (self.user_id, end_date, end_date))
             sleep_stats = cursor.fetchone()
             
-            # Get readiness averages
+            # Get readiness averages (only rows where score exists)
             cursor.execute('''
                 SELECT 
-                    COUNT(*) as days_with_readiness,
                     AVG(morning_score) as avg_score
                 FROM readiness_entries
                 WHERE user_id = %s 
@@ -1566,7 +1566,7 @@ class CyclingReadinessService:
             cursor.execute('''
                 SELECT 
                     COUNT(*) as workout_count,
-                    SUM(tss) as total_tss
+                    COALESCE(SUM(tss), 0) as total_tss
                 FROM cycling_workouts
                 WHERE user_id = %s 
                   AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
@@ -1579,18 +1579,18 @@ class CyclingReadinessService:
             weeks_in_window = days_in_window / 7.0
             
             workout_count = workout_stats['workout_count'] or 0
-            total_tss = workout_stats['total_tss'] or 0
+            total_tss = float(workout_stats['total_tss'] or 0)
             
-            avg_workouts_per_week = round(workout_count / weeks_in_window, 2) if workout_count > 0 else 0
+            avg_workouts_per_week = round(workout_count / weeks_in_window, 2) if workout_count > 0 else None
             avg_tss_per_week = round(total_tss / weeks_in_window, 1) if total_tss > 0 else None
             
             return {
                 'days_count': days_in_window,
-                'avg_rhr_bpm': round(cardio_stats['avg_rhr'], 1) if cardio_stats and cardio_stats['avg_rhr'] else None,
-                'avg_hrv_ms': round(cardio_stats['avg_hrv'], 1) if cardio_stats and cardio_stats['avg_hrv'] else None,
-                'avg_sleep_minutes': round(sleep_stats['avg_sleep'], 0) if sleep_stats and sleep_stats['avg_sleep'] else None,
-                'avg_deep_sleep_minutes': round(sleep_stats['avg_deep'], 0) if sleep_stats and sleep_stats['avg_deep'] else None,
-                'avg_readiness_score': round(readiness_stats['avg_score'], 1) if readiness_stats and readiness_stats['avg_score'] else None,
+                'avg_rhr_bpm': round(float(cardio_stats['avg_rhr']), 1) if cardio_stats and cardio_stats['avg_rhr'] else None,
+                'avg_hrv_ms': round(float(cardio_stats['avg_hrv']), 1) if cardio_stats and cardio_stats['avg_hrv'] else None,
+                'avg_sleep_minutes': int(round(float(sleep_stats['avg_sleep']))) if sleep_stats and sleep_stats['avg_sleep'] else None,
+                'avg_deep_sleep_minutes': int(round(float(sleep_stats['avg_deep']))) if sleep_stats and sleep_stats['avg_deep'] else None,
+                'avg_readiness_score': round(float(readiness_stats['avg_score']), 1) if readiness_stats and readiness_stats['avg_score'] else None,
                 'avg_workouts_per_week': avg_workouts_per_week,
                 'avg_tss_per_week': avg_tss_per_week
             }

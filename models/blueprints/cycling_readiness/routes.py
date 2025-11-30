@@ -1285,8 +1285,11 @@ def get_training_context():
     """
     Get comprehensive training context for AI recommendations.
     
-    Aggregates data from cycling workouts, readiness entries, sleep summaries,
-    and cardio metrics to build a context object for the specified date.
+    Aggregates data from readiness entries, sleep summaries, cardio metrics,
+    and historical workout data to build a context object for any evaluation date.
+    
+    Note: The 'day' section does NOT include cycling workouts for the evaluation date,
+    as those are used later to compare planned vs actual training.
     
     ---
     tags:
@@ -1297,10 +1300,10 @@ def get_training_context():
         type: string
         format: date
         required: false
-        description: Target date (YYYY-MM-DD). Defaults to today.
+        description: Target/evaluation date (YYYY-MM-DD). Defaults to today.
     responses:
       200:
-        description: Training context object with today, last_7_days, and baseline_30_days
+        description: Training context object with standardized structure
         schema:
           type: object
           properties:
@@ -1312,12 +1315,17 @@ def get_training_context():
             context:
               type: object
               properties:
-                today:
+                evaluation_date:
+                  type: string
+                day:
                   type: object
-                last_7_days:
+                  description: Readiness, sleep, and cardio for evaluation_date (no workout)
+                history_7d:
                   type: array
-                baseline_30_days:
+                  description: Summary of D-7 to D-1
+                baseline_30d:
                   type: object
+                  description: Aggregated stats from D-30 to D-1
       400:
         description: Invalid date format
     """
