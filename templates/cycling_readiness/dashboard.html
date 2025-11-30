@@ -489,6 +489,12 @@
         color: var(--color-teal);
     }
 
+    .interval-targets {
+        font-size: 0.6rem;
+        color: var(--color-muted);
+        margin-left: auto;
+    }
+
     .training-rec-flags {
         display: flex;
         flex-wrap: wrap;
@@ -540,6 +546,45 @@
     .btn-refresh-rec:hover {
         background: rgba(255, 193, 7, 0.1);
         border-color: var(--color-yellow);
+    }
+
+    /* AI Coach Button */
+    .btn-coach {
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.1) 100%);
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        color: var(--color-yellow);
+        padding: 0.25rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-coach:hover {
+        background: rgba(255, 193, 7, 0.25);
+        border-color: var(--color-yellow);
+        transform: translateY(-1px);
+    }
+
+    .btn-outline-zyra {
+        background: transparent;
+        border: 1px solid rgba(0, 255, 198, 0.3);
+        color: var(--color-teal);
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-outline-zyra:hover {
+        background: rgba(0, 255, 198, 0.1);
+        border-color: var(--color-teal);
+    }
+
+    .coach-date-selector {
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 193, 7, 0.1);
     }
 
     /* Training Recommendation Mini (Day View) */
@@ -1733,6 +1778,9 @@
         <button class="cycle-tab" data-tab="readiness">
             <i class="fas fa-moon"></i>Readiness & Sleep
         </button>
+        <button class="cycle-tab" data-tab="coach">
+            <i class="fas fa-brain"></i>AI Coach
+        </button>
     </div>
 
     <!-- Tab: Workouts -->
@@ -1778,6 +1826,7 @@
                                     <th>Avg HR</th>
                                     <th>Max HR</th>
                                     <th>TSS</th>
+                                    <th>Coach</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -1794,6 +1843,11 @@
                                     <td class="val-hr">{{ workout.avg_heart_rate if workout.avg_heart_rate else '<span class="val-empty">--</span>' | safe }}{{ ' bpm' if workout.avg_heart_rate else '' }}</td>
                                     <td class="val-hr">{{ workout.max_heart_rate if workout.max_heart_rate else '<span class="val-empty">--</span>' | safe }}{{ ' bpm' if workout.max_heart_rate else '' }}</td>
                                     <td class="val-tss">{{ "%.0f"|format(workout.tss) if workout.tss else '<span class="val-empty">--</span>' | safe }}</td>
+                                    <td>
+                                        <button class="btn-coach" data-date="{{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}" title="Get AI Coach recommendation">
+                                            <i class="fas fa-brain"></i>
+                                        </button>
+                                    </td>
                                     <td>
                                         <button class="btn-edit btn-edit-workout" data-id="{{ workout.id }}" title="Edit Workout">
                                             <i class="fas fa-pencil-alt"></i>
@@ -1841,73 +1895,6 @@
     <div id="readinessTab" class="tab-content">
         <div class="flex-layout">
             <div class="flex-col-main">
-                <!-- Training Recommendation Card -->
-                <div class="section-card training-rec-card" id="trainingRecommendationCard">
-                    <h3 class="section-title training">
-                        <i class="fas fa-dumbbell"></i>Today's Training
-                        <button class="btn-suggest" id="suggestWorkoutBtn" title="Get AI suggestion">
-                            <i class="fas fa-magic"></i> Suggest
-                        </button>
-                    </h3>
-                    
-                    <!-- Loading State -->
-                    <div id="trainingRecLoading" class="training-rec-loading" style="display: none;">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <span>Analyzing your data...</span>
-                    </div>
-                    
-                    <!-- Empty State -->
-                    <div id="trainingRecEmpty" class="training-rec-empty">
-                        <i class="fas fa-lightbulb"></i>
-                        <p>Click "Suggest" to get AI-powered training recommendation based on your readiness, sleep, and recent workouts.</p>
-                    </div>
-                    
-                    <!-- Recommendation Content -->
-                    <div id="trainingRecContent" class="training-rec-content" style="display: none;">
-                        <div class="training-rec-header">
-                            <span class="day-type-badge" id="recDayTypeBadge">--</span>
-                            <span class="intensity-tag" id="recIntensityTag">--</span>
-                        </div>
-                        
-                        <div class="training-rec-details">
-                            <div class="rec-detail">
-                                <i class="fas fa-clock"></i>
-                                <span id="recDuration">--</span>
-                            </div>
-                            <div class="rec-detail">
-                                <i class="fas fa-heartbeat"></i>
-                                <span id="recZone">--</span>
-                            </div>
-                        </div>
-                        
-                        <div class="training-rec-reason" id="recReason">
-                            <!-- Reason text will be inserted here -->
-                        </div>
-                        
-                        <div class="training-rec-intervals" id="recIntervals" style="display: none;">
-                            <div class="intervals-header">
-                                <i class="fas fa-list-ol"></i> Session Plan
-                            </div>
-                            <div class="intervals-list" id="recIntervalsList">
-                                <!-- Intervals will be inserted here -->
-                            </div>
-                        </div>
-                        
-                        <div class="training-rec-flags" id="recFlags" style="display: none;">
-                            <!-- Flags will be inserted here -->
-                        </div>
-                        
-                        <div class="training-rec-footer">
-                            <span class="rec-cached-label" id="recCachedLabel" style="display: none;">
-                                <i class="fas fa-database"></i> Cached
-                            </span>
-                            <button class="btn-refresh-rec" id="refreshRecBtn" title="Refresh recommendation">
-                                <i class="fas fa-sync-alt"></i> Refresh
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Morning Readiness Form -->
                 <div class="section-card">
                     <h3 class="section-title sleep">
@@ -2139,6 +2126,105 @@
             </div>
         </div>
     </div>
+
+    <!-- Tab: AI Coach -->
+    <div id="coachTab" class="tab-content">
+        <div class="section-card training-rec-card">
+            <h3 class="section-title training">
+                <i class="fas fa-brain"></i>AI Training Coach
+            </h3>
+            
+            <!-- Date Selector -->
+            <div class="coach-date-selector mb-3">
+                <label class="form-label" style="font-size: 0.75rem; color: var(--color-muted-light);">
+                    Select date to analyze
+                </label>
+                <div class="d-flex gap-2 align-items-center">
+                    <input type="date" class="form-control form-control-sm" id="coachDate" 
+                           value="{{ today }}" style="max-width: 180px; font-size: 0.8rem;">
+                    <button class="btn btn-zyra" id="analyzeBtn" style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+                        <i class="fas fa-magic me-1"></i>Analyze This Day
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Loading State -->
+            <div id="coachLoading" class="training-rec-loading" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Analyzing your data...</span>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="coachEmpty" class="training-rec-empty">
+                <i class="fas fa-lightbulb"></i>
+                <p>Select a date and click "Analyze This Day" to get AI-powered training recommendations based on your readiness, sleep, and workout history.</p>
+            </div>
+            
+            <!-- Recommendation Content -->
+            <div id="coachContent" class="training-rec-content" style="display: none;">
+                <div class="training-rec-header">
+                    <span class="day-type-badge" id="coachDayTypeBadge">--</span>
+                    <span class="intensity-tag" id="coachIntensityTag">--</span>
+                    <button class="btn-refresh-rec ms-auto" id="coachRefreshBtn" title="Refresh recommendation">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+                
+                <div class="training-rec-details">
+                    <div class="rec-detail">
+                        <i class="fas fa-clock"></i>
+                        <span id="coachDuration">--</span>
+                    </div>
+                    <div class="rec-detail">
+                        <i class="fas fa-heartbeat"></i>
+                        <span id="coachZone">--</span>
+                    </div>
+                    <div class="rec-detail">
+                        <i class="fas fa-calendar"></i>
+                        <span id="coachDateLabel">--</span>
+                    </div>
+                </div>
+                
+                <div class="training-rec-reason" id="coachReason">
+                    <!-- Reason text will be inserted here -->
+                </div>
+                
+                <div class="training-rec-intervals" id="coachIntervals" style="display: none;">
+                    <div class="intervals-header">
+                        <i class="fas fa-list-ol"></i> Session Plan
+                    </div>
+                    <div class="intervals-list" id="coachIntervalsList">
+                        <!-- Intervals will be inserted here -->
+                    </div>
+                </div>
+                
+                <div class="training-rec-flags" id="coachFlags" style="display: none;">
+                    <!-- Flags will be inserted here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent AI Recommendations -->
+        <div class="section-card mt-3">
+            <h3 class="section-title">
+                <i class="fas fa-history"></i>Quick Access
+            </h3>
+            <p class="text-muted small mb-2" style="font-size: 0.7rem;">
+                Click on a date from Recent Workouts or Expanded Table to analyze that day.
+            </p>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-zyra btn-sm quick-date-btn" data-date="{{ today }}">
+                    Today
+                </button>
+                {% for workout in cycling_workouts[:5] %}
+                <button class="btn btn-outline-zyra btn-sm quick-date-btn" 
+                        data-date="{{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}">
+                    {{ workout.date if workout.date is string else workout.date.strftime('%m/%d') if workout.date else '--' }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -2303,7 +2389,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const today = document.getElementById('readinessDate').value;
     loadCardioStatus(today);
 
-    // ============== Training Recommendation ==============
+    // ============== AI Coach Tab ==============
     const DAY_TYPE_LABELS = {
         'rest': 'Rest Day',
         'recovery_spin_z1': 'Recovery Z1',
@@ -2324,18 +2410,41 @@ document.addEventListener('DOMContentLoaded', function() {
         'other': ''
     };
 
-    async function fetchTrainingRecommendation(date, refresh = false) {
-        const loadingEl = document.getElementById('trainingRecLoading');
-        const emptyEl = document.getElementById('trainingRecEmpty');
-        const contentEl = document.getElementById('trainingRecContent');
-        const suggestBtn = document.getElementById('suggestWorkoutBtn');
+    // Switch to AI Coach tab and optionally set date
+    function switchToCoachTab(targetDate = null) {
+        // Switch tabs
+        document.querySelectorAll('.cycle-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector('[data-tab="coach"]').classList.add('active');
+        document.getElementById('coachTab').classList.add('active');
+        
+        // Set date if provided
+        if (targetDate) {
+            document.getElementById('coachDate').value = targetDate;
+        }
+        
+        // Update URL without reload
+        const url = new URL(window.location);
+        url.searchParams.set('tab', 'coach');
+        if (targetDate) {
+            url.searchParams.set('date', targetDate);
+        }
+        window.history.replaceState({}, '', url);
+    }
+
+    // Fetch and display AI Coach recommendation
+    async function fetchCoachRecommendation(date, refresh = false) {
+        const loadingEl = document.getElementById('coachLoading');
+        const emptyEl = document.getElementById('coachEmpty');
+        const contentEl = document.getElementById('coachContent');
+        const analyzeBtn = document.getElementById('analyzeBtn');
         
         // Show loading state
         loadingEl.style.display = 'flex';
         emptyEl.style.display = 'none';
         contentEl.style.display = 'none';
-        suggestBtn.disabled = true;
-        suggestBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Analyzing...';
         
         try {
             let url = `/cycling-readiness/api/training-recommendation?date=${date}`;
@@ -2347,11 +2456,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
             
             loadingEl.style.display = 'none';
-            suggestBtn.disabled = false;
-            suggestBtn.innerHTML = '<i class="fas fa-magic"></i> Suggest';
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Analyze This Day';
             
             if (data.success && data.recommendation) {
-                renderTrainingRecommendation(data.recommendation, data.cached);
+                renderCoachRecommendation(data.recommendation, date);
                 contentEl.style.display = 'block';
             } else {
                 emptyEl.style.display = 'block';
@@ -2360,23 +2469,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         } catch (err) {
-            console.error('Error fetching training recommendation:', err);
+            console.error('Error fetching AI Coach recommendation:', err);
             loadingEl.style.display = 'none';
             emptyEl.style.display = 'block';
-            suggestBtn.disabled = false;
-            suggestBtn.innerHTML = '<i class="fas fa-magic"></i> Suggest';
-            showToast('Could not load training suggestion', 'error');
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Analyze This Day';
+            showToast('Could not load AI Coach recommendation', 'error');
         }
     }
 
-    function renderTrainingRecommendation(rec, isCached) {
+    function renderCoachRecommendation(rec, dateStr) {
         // Day type badge
-        const dayTypeBadge = document.getElementById('recDayTypeBadge');
+        const dayTypeBadge = document.getElementById('coachDayTypeBadge');
         dayTypeBadge.textContent = DAY_TYPE_LABELS[rec.day_type] || rec.day_type;
         dayTypeBadge.className = 'day-type-badge ' + (DAY_TYPE_CLASSES[rec.day_type] || '');
         
         // Intensity tag
-        const intensityTag = document.getElementById('recIntensityTag');
+        const intensityTag = document.getElementById('coachIntensityTag');
         if (rec.session_plan && rec.session_plan.overall_intensity) {
             intensityTag.textContent = rec.session_plan.overall_intensity.replace('_', ' ');
             intensityTag.className = 'intensity-tag ' + rec.session_plan.overall_intensity;
@@ -2386,7 +2495,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Duration
-        const durationEl = document.getElementById('recDuration');
+        const durationEl = document.getElementById('coachDuration');
         if (rec.session_plan && rec.session_plan.duration_minutes) {
             durationEl.textContent = rec.session_plan.duration_minutes + ' min';
         } else if (rec.day_type === 'rest') {
@@ -2396,19 +2505,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Zone
-        const zoneEl = document.getElementById('recZone');
+        const zoneEl = document.getElementById('coachZone');
         if (rec.session_plan && rec.session_plan.primary_zone) {
             zoneEl.textContent = rec.session_plan.primary_zone;
         } else {
             zoneEl.textContent = '--';
         }
         
+        // Date label
+        document.getElementById('coachDateLabel').textContent = dateStr;
+        
         // Reason
-        document.getElementById('recReason').textContent = rec.reason_short || '';
+        document.getElementById('coachReason').textContent = rec.reason_short || '';
         
         // Intervals
-        const intervalsContainer = document.getElementById('recIntervals');
-        const intervalsList = document.getElementById('recIntervalsList');
+        const intervalsContainer = document.getElementById('coachIntervals');
+        const intervalsList = document.getElementById('coachIntervalsList');
         if (rec.session_plan && rec.session_plan.intervals && rec.session_plan.intervals.length > 0) {
             intervalsList.innerHTML = rec.session_plan.intervals.map(interval => {
                 let desc = '';
@@ -2420,11 +2532,26 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     desc = `${interval.duration_minutes}min`;
                 }
+                
+                // Add HR targets if available
+                let targets = [];
+                if (interval.target_hr_bpm_min && interval.target_hr_bpm_max) {
+                    targets.push(`${interval.target_hr_bpm_min}-${interval.target_hr_bpm_max} bpm`);
+                } else if (interval.expected_avg_hr_bpm) {
+                    targets.push(`~${interval.expected_avg_hr_bpm} bpm`);
+                }
+                if (interval.target_power_w_min && interval.target_power_w_max) {
+                    targets.push(`${interval.target_power_w_min}-${interval.target_power_w_max}W`);
+                }
+                
+                let targetsHtml = targets.length > 0 ? `<span class="interval-targets">${targets.join(' ')}</span>` : '';
+                
                 return `
                     <div class="interval-item">
                         <span class="interval-kind">${interval.kind}</span>
                         <span>${desc}</span>
                         <span class="interval-zone">${interval.target_zone}</span>
+                        ${targetsHtml}
                     </div>
                 `;
             }).join('');
@@ -2434,7 +2561,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Flags
-        const flagsContainer = document.getElementById('recFlags');
+        const flagsContainer = document.getElementById('coachFlags');
         if (rec.flags && Object.keys(rec.flags).length > 0) {
             const flagsHtml = Object.entries(rec.flags)
                 .filter(([_, v]) => v)
@@ -2456,37 +2583,60 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             flagsContainer.style.display = 'none';
         }
-        
-        // Cached label
-        document.getElementById('recCachedLabel').style.display = isCached ? 'inline' : 'none';
     }
 
-    // Suggest button click handler
-    document.getElementById('suggestWorkoutBtn').addEventListener('click', function() {
-        const date = document.getElementById('readinessDate').value;
-        fetchTrainingRecommendation(date, false);
+    // Analyze button click handler
+    document.getElementById('analyzeBtn').addEventListener('click', function() {
+        const date = document.getElementById('coachDate').value;
+        fetchCoachRecommendation(date, false);
     });
 
     // Refresh button click handler
-    document.getElementById('refreshRecBtn').addEventListener('click', function() {
-        const date = document.getElementById('readinessDate').value;
-        fetchTrainingRecommendation(date, true);
+    document.getElementById('coachRefreshBtn').addEventListener('click', function() {
+        const date = document.getElementById('coachDate').value;
+        fetchCoachRecommendation(date, true);
     });
 
-    // Load existing recommendation on page load (silent, no error toast)
-    (async function() {
-        try {
-            const response = await fetch(`/cycling-readiness/api/training-recommendation?date=${today}`);
-            const data = await response.json();
-            
-            if (data.success && data.recommendation && data.cached) {
-                renderTrainingRecommendation(data.recommendation, true);
-                document.getElementById('trainingRecEmpty').style.display = 'none';
-                document.getElementById('trainingRecContent').style.display = 'block';
+    // Quick date buttons
+    document.querySelectorAll('.quick-date-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const date = this.dataset.date;
+            if (date) {
+                document.getElementById('coachDate').value = date;
+                fetchCoachRecommendation(date, false);
             }
-        } catch (err) {
-            // Silently fail on page load - don't show error
-            console.log('No cached recommendation available');
+        });
+    });
+
+    // AI Coach buttons in workouts table
+    document.querySelectorAll('.btn-coach').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const date = this.dataset.date;
+            if (date) {
+                switchToCoachTab(date);
+                fetchCoachRecommendation(date, false);
+            }
+        });
+    });
+
+    // Open AI Coach for a specific date (used from Day View modal)
+    window.openCoachForDate = function(dateStr) {
+        closeDayViewModal();  // Close the day view modal first
+        switchToCoachTab(dateStr);
+        fetchCoachRecommendation(dateStr, false);
+    };
+
+    // Handle URL params on page load
+    (function handleUrlParams() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tab = urlParams.get('tab');
+        const date = urlParams.get('date');
+        
+        if (tab === 'coach') {
+            switchToCoachTab(date || today);
+            if (date) {
+                fetchCoachRecommendation(date, false);
+            }
         }
     })();
 
@@ -3198,7 +3348,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Training Recommendation Panel
         html += `<div class="day-panel">
             <div class="day-panel-header">
-                <div class="day-panel-title" style="color: var(--color-yellow);"><i class="fas fa-dumbbell me-2"></i>Training Recommendation</div>
+                <div class="day-panel-title" style="color: var(--color-yellow);"><i class="fas fa-brain me-2"></i>AI Coach</div>
+                <button class="btn-coach" onclick="openCoachForDate('${data.date}')" title="Open in AI Coach">
+                    <i class="fas fa-external-link-alt"></i>
+                </button>
             </div>`;
         
         if (data.training_recommendation) {
@@ -3231,7 +3384,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             `;
         } else {
-            html += `<p class="empty-note">No recommendation saved for this date.</p>`;
+            html += `
+                <p class="empty-note mb-2">No recommendation saved for this date.</p>
+                <button class="btn btn-outline-zyra btn-sm" onclick="openCoachForDate('${data.date}')">
+                    <i class="fas fa-magic me-1"></i>Get AI Recommendation
+                </button>
+            `;
         }
         html += `</div>`;
         
