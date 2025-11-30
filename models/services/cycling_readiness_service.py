@@ -1328,6 +1328,7 @@ class CyclingReadinessService:
             - day: Readiness, sleep, and cardio data for target_date (NO workout data)
             - history_7d: Summary of the 7 days BEFORE target_date (D-7 to D-1)
             - baseline_30d: Aggregated stats from 30 days before target_date (D-30 to D-1)
+            - athlete_profile: Typical power & HR per zone from last 30 days
         """
         target_date_str = target_date.strftime('%Y-%m-%d') if isinstance(target_date, date) else str(target_date)
         
@@ -1335,7 +1336,8 @@ class CyclingReadinessService:
             'evaluation_date': target_date_str,
             'day': self._get_day_context(target_date_str),
             'history_7d': self._get_history_7d(target_date_str),
-            'baseline_30d': self._get_baseline_30d(target_date_str)
+            'baseline_30d': self._get_baseline_30d(target_date_str),
+            'athlete_profile': self._get_athlete_profile(target_date_str)
         }
 
     def _get_day_context(self, target_date: str) -> Dict[str, Any]:
@@ -1594,4 +1596,136 @@ class CyclingReadinessService:
                 'avg_workouts_per_week': avg_workouts_per_week,
                 'avg_tss_per_week': avg_tss_per_week
             }
+
+    def _get_athlete_profile(self, target_date: str) -> Dict[str, Any]:
+        """
+        Build athlete profile with typical power & HR per zone from the last 30 days.
+        
+        This provides the AI with concrete numbers for setting interval targets:
+        - max_hr_bpm: Maximum HR observed in any workout
+        - resting_hr_bpm_30d_avg: Average resting HR from cardio metrics
+        - zones: Power and HR statistics per workout type (z1, z2, norwegian_4x4)
+        
+        Args:
+            target_date: Date string (YYYY-MM-DD)
+        
+        Returns:
+            Dict with athlete profile data
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            end_date = target_date
+            
+            # Get max HR from all workouts in window
+            cursor.execute('''
+                SELECT MAX(max_heart_rate) as max_hr
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
+                  AND date < %s
+                  AND max_heart_rate IS NOT NULL
+                  AND max_heart_rate > 0
+            ''', (self.user_id, end_date, end_date))
+            hr_result = cursor.fetchone()
+            max_hr_bpm = int(hr_result['max_hr']) if hr_result and hr_result['max_hr'] else None
+            
+            # Get average resting HR from cardio metrics
+            cursor.execute('''
+                SELECT AVG(rhr_bpm) as avg_rhr
+                FROM cardio_daily_metrics
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
+                  AND date < %s
+                  AND rhr_bpm IS NOT NULL
+            ''', (self.user_id, end_date, end_date))
+            rhr_result = cursor.fetchone()
+            resting_hr_bpm_30d_avg = round(float(rhr_result['avg_rhr']), 1) if rhr_result and rhr_result['avg_rhr'] else None
+            
+            # Get all workouts in the window with their classified types
+            cursor.execute('''
+                SELECT 
+                    source,
+                    notes,
+                    intensity_factor,
+                    duration_sec,
+                    avg_power_w,
+                    avg_heart_rate
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
+                  AND date < %s
+            ''', (self.user_id, end_date, end_date))
+            workouts = cursor.fetchall()
+            
+            # Classify workouts and collect stats per zone
+            zone_workouts = {
+                'z1': [],
+                'z2': [],
+                'norwegian_4x4': []
+            }
+            
+            for workout in workouts:
+                workout_type = self._determine_workout_type(workout)
+                if workout_type in zone_workouts:
+                    zone_workouts[workout_type].append(workout)
+            
+            # Build zone statistics
+            zones = {}
+            
+            # Z1 zone stats
+            zones['z1'] = self._compute_zone_stats(zone_workouts['z1'])
+            
+            # Z2 zone stats
+            zones['z2'] = self._compute_zone_stats(zone_workouts['z2'])
+            
+            # Norwegian 4x4 stats (simpler structure)
+            n4x4_workouts = zone_workouts['norwegian_4x4']
+            if n4x4_workouts:
+                powers = [w['avg_power_w'] for w in n4x4_workouts if w.get('avg_power_w')]
+                hrs = [w['avg_heart_rate'] for w in n4x4_workouts if w.get('avg_heart_rate')]
+                zones['norwegian_4x4'] = {
+                    'avg_power_w': int(round(sum(powers) / len(powers))) if powers else None,
+                    'avg_hr_bpm': int(round(sum(hrs) / len(hrs))) if hrs else None
+                }
+            else:
+                zones['norwegian_4x4'] = {
+                    'avg_power_w': None,
+                    'avg_hr_bpm': None
+                }
+            
+            return {
+                'window_days': 30,
+                'max_hr_bpm': max_hr_bpm,
+                'resting_hr_bpm_30d_avg': resting_hr_bpm_30d_avg,
+                'zones': zones
+            }
+
+    def _compute_zone_stats(self, workouts: list) -> Dict[str, Any]:
+        """
+        Compute power and HR statistics for a set of workouts in the same zone.
+        
+        Args:
+            workouts: List of workout dicts from the database
+        
+        Returns:
+            Dict with avg_power_w, min_power_w, max_power_w, avg_hr_bpm
+        """
+        if not workouts:
+            return {
+                'avg_power_w': None,
+                'min_power_w': None,
+                'max_power_w': None,
+                'avg_hr_bpm': None
+            }
+        
+        powers = [w['avg_power_w'] for w in workouts if w.get('avg_power_w') and w['avg_power_w'] > 0]
+        hrs = [w['avg_heart_rate'] for w in workouts if w.get('avg_heart_rate') and w['avg_heart_rate'] > 0]
+        
+        return {
+            'avg_power_w': int(round(sum(powers) / len(powers))) if powers else None,
+            'min_power_w': int(min(powers)) if powers else None,
+            'max_power_w': int(max(powers)) if powers else None,
+            'avg_hr_bpm': int(round(sum(hrs) / len(hrs))) if hrs else None
+        }
 
