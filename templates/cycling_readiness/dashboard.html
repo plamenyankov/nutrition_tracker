@@ -299,6 +299,296 @@
 
     .section-title.power i { color: var(--color-green); }
     .section-title.sleep i { color: var(--color-blue); }
+    .section-title.training i { color: var(--color-yellow); }
+
+    /* ============== Training Recommendation Card ============== */
+    .training-rec-card {
+        border: 1px solid rgba(255, 193, 7, 0.2);
+        background: linear-gradient(135deg, rgba(255, 193, 7, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%);
+    }
+
+    .section-title .btn-suggest {
+        float: right;
+        font-size: 0.7rem;
+        padding: 0.25rem 0.6rem;
+        background: linear-gradient(135deg, var(--color-yellow) 0%, #FF9800 100%);
+        border: none;
+        border-radius: 4px;
+        color: #1a1a2e;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .section-title .btn-suggest:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.4);
+    }
+
+    .section-title .btn-suggest:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .training-rec-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1.5rem;
+        color: var(--color-yellow);
+        font-size: 0.8rem;
+    }
+
+    .training-rec-empty {
+        text-align: center;
+        padding: 1rem;
+        color: var(--color-muted);
+    }
+
+    .training-rec-empty i {
+        font-size: 1.5rem;
+        color: var(--color-yellow);
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .training-rec-empty p {
+        font-size: 0.75rem;
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    .training-rec-content {
+        padding: 0.5rem 0;
+    }
+
+    .training-rec-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .day-type-badge {
+        background: var(--color-yellow);
+        color: #1a1a2e;
+        padding: 0.3rem 0.75rem;
+        border-radius: 15px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .day-type-badge.rest {
+        background: var(--color-blue);
+        color: white;
+    }
+
+    .day-type-badge.z1 {
+        background: #4CAF50;
+        color: white;
+    }
+
+    .day-type-badge.z2 {
+        background: var(--color-green);
+        color: #1a1a2e;
+    }
+
+    .day-type-badge.hard {
+        background: var(--color-red);
+        color: white;
+    }
+
+    .intensity-tag {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--color-muted-light);
+        text-transform: capitalize;
+    }
+
+    .intensity-tag.very_easy { color: #81C784; }
+    .intensity-tag.easy { color: #4CAF50; }
+    .intensity-tag.moderate { color: var(--color-yellow); }
+    .intensity-tag.hard { color: var(--color-red); }
+
+    .training-rec-details {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .rec-detail {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+        color: var(--color-muted-light);
+    }
+
+    .rec-detail i {
+        color: var(--color-teal);
+        font-size: 0.7rem;
+    }
+
+    .training-rec-reason {
+        font-size: 0.75rem;
+        line-height: 1.5;
+        color: var(--color-muted-light);
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 4px;
+        margin-bottom: 0.75rem;
+        border-left: 2px solid var(--color-yellow);
+    }
+
+    .training-rec-intervals {
+        margin-bottom: 0.75rem;
+    }
+
+    .intervals-header {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--color-teal);
+        margin-bottom: 0.5rem;
+    }
+
+    .intervals-list {
+        font-size: 0.7rem;
+        color: var(--color-muted-light);
+    }
+
+    .interval-item {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .interval-item:last-child {
+        border-bottom: none;
+    }
+
+    .interval-kind {
+        color: var(--color-yellow);
+        font-weight: 500;
+        min-width: 70px;
+    }
+
+    .interval-zone {
+        font-weight: 600;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        background: rgba(0, 255, 198, 0.2);
+        color: var(--color-teal);
+    }
+
+    .training-rec-flags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .rec-flag {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    .rec-flag.positive {
+        background: rgba(0, 230, 118, 0.2);
+        color: var(--color-green);
+    }
+
+    .rec-flag.warning {
+        background: rgba(255, 82, 82, 0.2);
+        color: var(--color-red);
+    }
+
+    .training-rec-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .rec-cached-label {
+        font-size: 0.6rem;
+        color: var(--color-muted);
+    }
+
+    .btn-refresh-rec {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.5rem;
+        background: transparent;
+        border: 1px solid rgba(255, 193, 7, 0.3);
+        border-radius: 3px;
+        color: var(--color-yellow);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-refresh-rec:hover {
+        background: rgba(255, 193, 7, 0.1);
+        border-color: var(--color-yellow);
+    }
+
+    /* Training Recommendation Mini (Day View) */
+    .training-rec-mini {
+        padding: 0.5rem;
+    }
+
+    .rec-mini-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .rec-mini-details {
+        font-size: 0.75rem;
+        color: var(--color-muted-light);
+    }
+
+    .rec-mini-details i {
+        color: var(--color-teal);
+    }
+
+    .rec-mini-reason {
+        font-size: 0.75rem;
+        color: var(--color-muted-light);
+        line-height: 1.4;
+        margin: 0 0 0.5rem 0;
+        padding: 0.4rem;
+        background: rgba(255, 193, 7, 0.05);
+        border-left: 2px solid var(--color-yellow);
+        border-radius: 2px;
+    }
+
+    .rec-mini-intervals {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }
+
+    .interval-chip {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.4rem;
+        background: rgba(0, 255, 198, 0.1);
+        border: 1px solid rgba(0, 255, 198, 0.2);
+        border-radius: 3px;
+        color: var(--color-teal);
+    }
 
     /* ============== Grid Layouts ============== */
     .flex-layout {
@@ -545,6 +835,41 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 6px;
         background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* ============== Cardio Display ============== */
+    .cardio-metric-display {
+        background: rgba(255, 82, 82, 0.1);
+        border: 1px solid rgba(255, 82, 82, 0.2);
+        border-radius: 6px;
+        padding: 0.4rem 0.5rem;
+        text-align: center;
+    }
+
+    .cardio-metric-display .metric-label {
+        display: block;
+        font-size: 0.65rem;
+        color: var(--color-muted-light);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .cardio-metric-display .metric-value {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--color-red);
+    }
+
+    .auto-badge {
+        font-size: 0.55rem;
+        background: var(--color-teal);
+        color: white;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        margin-left: 0.3rem;
+        text-transform: uppercase;
+        vertical-align: middle;
         cursor: pointer;
         text-align: center;
         transition: all 0.2s ease;
@@ -1242,9 +1567,28 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="editReadinessId">
+                <input type="hidden" id="editReadinessDate">
                 <p style="color: var(--color-muted); font-size: 0.75rem; margin-bottom: 1rem;">
-                    Edit subjective readiness inputs. Sleep data is managed via screenshot imports.
+                    Edit subjective readiness inputs. Sleep/cardio data is managed via screenshot imports.
                 </p>
+                
+                <!-- Cardio Data Display in Edit Modal -->
+                <div id="editCardioDisplay" style="display: none; margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
+                        <div class="cardio-metric-display" style="flex: 1;">
+                            <span class="metric-label">Resting HR</span>
+                            <span class="metric-value" id="editDisplayRhr">--</span>
+                        </div>
+                        <div class="cardio-metric-display" style="flex: 1;">
+                            <span class="metric-label">HRV</span>
+                            <span class="metric-value" id="editDisplayHrv">--</span>
+                        </div>
+                    </div>
+                    <p style="color: var(--color-muted); font-size: 0.65rem; text-align: center;">
+                        <i class="fas fa-magic me-1"></i>Status auto-calculated from 14-day baseline
+                    </p>
+                </div>
+                
                 <div class="modal-form-grid">
                     <div class="modal-field">
                         <label>Energy (1-5)</label>
@@ -1276,7 +1620,7 @@
                         </select>
                     </div>
                     <div class="modal-field">
-                        <label>HRV Status</label>
+                        <label>HRV Status <span id="editHrvAutoLabel" class="auto-badge" style="display: none;">auto</span></label>
                         <select id="editReadinessHRV" class="form-select">
                             <option value="">--</option>
                             <option value="-1">↓ Below Baseline</option>
@@ -1285,7 +1629,7 @@
                         </select>
                     </div>
                     <div class="modal-field">
-                        <label>RHR Status</label>
+                        <label>RHR Status <span id="editRhrAutoLabel" class="auto-badge" style="display: none;">auto</span></label>
                         <select id="editReadinessRHR" class="form-select">
                             <option value="">--</option>
                             <option value="-1">↓ Below Normal (good)</option>
@@ -1497,6 +1841,73 @@
     <div id="readinessTab" class="tab-content">
         <div class="flex-layout">
             <div class="flex-col-main">
+                <!-- Training Recommendation Card -->
+                <div class="section-card training-rec-card" id="trainingRecommendationCard">
+                    <h3 class="section-title training">
+                        <i class="fas fa-dumbbell"></i>Today's Training
+                        <button class="btn-suggest" id="suggestWorkoutBtn" title="Get AI suggestion">
+                            <i class="fas fa-magic"></i> Suggest
+                        </button>
+                    </h3>
+                    
+                    <!-- Loading State -->
+                    <div id="trainingRecLoading" class="training-rec-loading" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Analyzing your data...</span>
+                    </div>
+                    
+                    <!-- Empty State -->
+                    <div id="trainingRecEmpty" class="training-rec-empty">
+                        <i class="fas fa-lightbulb"></i>
+                        <p>Click "Suggest" to get AI-powered training recommendation based on your readiness, sleep, and recent workouts.</p>
+                    </div>
+                    
+                    <!-- Recommendation Content -->
+                    <div id="trainingRecContent" class="training-rec-content" style="display: none;">
+                        <div class="training-rec-header">
+                            <span class="day-type-badge" id="recDayTypeBadge">--</span>
+                            <span class="intensity-tag" id="recIntensityTag">--</span>
+                        </div>
+                        
+                        <div class="training-rec-details">
+                            <div class="rec-detail">
+                                <i class="fas fa-clock"></i>
+                                <span id="recDuration">--</span>
+                            </div>
+                            <div class="rec-detail">
+                                <i class="fas fa-heartbeat"></i>
+                                <span id="recZone">--</span>
+                            </div>
+                        </div>
+                        
+                        <div class="training-rec-reason" id="recReason">
+                            <!-- Reason text will be inserted here -->
+                        </div>
+                        
+                        <div class="training-rec-intervals" id="recIntervals" style="display: none;">
+                            <div class="intervals-header">
+                                <i class="fas fa-list-ol"></i> Session Plan
+                            </div>
+                            <div class="intervals-list" id="recIntervalsList">
+                                <!-- Intervals will be inserted here -->
+                            </div>
+                        </div>
+                        
+                        <div class="training-rec-flags" id="recFlags" style="display: none;">
+                            <!-- Flags will be inserted here -->
+                        </div>
+                        
+                        <div class="training-rec-footer">
+                            <span class="rec-cached-label" id="recCachedLabel" style="display: none;">
+                                <i class="fas fa-database"></i> Cached
+                            </span>
+                            <button class="btn-refresh-rec" id="refreshRecBtn" title="Refresh recommendation">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Morning Readiness Form -->
                 <div class="section-card">
                     <h3 class="section-title sleep">
@@ -1535,22 +1946,73 @@
                             </div>
                         </div>
 
-                        <!-- HRV & RHR -->
-                        <div class="row mb-2">
-                            <div class="col-6">
-                                <label class="form-label">HRV Status</label>
-                                <div class="status-selector" data-field="hrv_status">
-                                    <label class="status-option negative"><input type="radio" name="hrv_status" value="-1">↓</label>
-                                    <label class="status-option neutral"><input type="radio" name="hrv_status" value="0">→</label>
-                                    <label class="status-option positive"><input type="radio" name="hrv_status" value="1">↑</label>
+                        <!-- HRV & RHR Section -->
+                        <div class="cardio-status-section mb-3" id="cardioStatusSection">
+                            <!-- Cardio Data Display (shown when data exists) -->
+                            <div id="cardioDataDisplay" style="display: none;">
+                                <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
+                                    <i class="fas fa-heartbeat me-1" style="color: var(--color-red);"></i>Cardio metrics from Apple Health
+                                </p>
+                                <div class="row mb-2">
+                                    <div class="col-6">
+                                        <div class="cardio-metric-display">
+                                            <span class="metric-label">Resting HR</span>
+                                            <span class="metric-value" id="displayRhrBpm">--</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="cardio-metric-display">
+                                            <span class="metric-label">HRV</span>
+                                            <span class="metric-value" id="displayHrv">--</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-6">
-                                <label class="form-label">RHR Status</label>
-                                <div class="status-selector" data-field="rhr_status">
-                                    <label class="status-option positive"><input type="radio" name="rhr_status" value="-1">↓</label>
-                                    <label class="status-option neutral"><input type="radio" name="rhr_status" value="0">→</label>
-                                    <label class="status-option negative"><input type="radio" name="rhr_status" value="1">↑</label>
+                            
+                            <!-- Manual Cardio Input (shown when no data) -->
+                            <div id="manualCardioInput" style="display: none;">
+                                <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
+                                    <i class="fas fa-edit me-1"></i>No cardio data - enter manually (optional)
+                                </p>
+                                <div class="row mb-2">
+                                    <div class="col-4">
+                                        <input type="number" class="form-control form-control-sm" id="manualRhrBpm" 
+                                               placeholder="RHR (bpm)" min="40" max="120" style="font-size: 0.75rem;">
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="number" class="form-control form-control-sm" id="manualHrvLow" 
+                                               placeholder="HRV low" min="1" max="200" style="font-size: 0.75rem;">
+                                    </div>
+                                    <div class="col-4">
+                                        <input type="number" class="form-control form-control-sm" id="manualHrvHigh" 
+                                               placeholder="HRV high" min="1" max="200" style="font-size: 0.75rem;">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Status Selectors -->
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    <label class="form-label">
+                                        HRV Status
+                                        <span class="auto-badge" id="hrvAutoLabel" style="display: none;">auto</span>
+                                    </label>
+                                    <div class="status-selector" data-field="hrv_status">
+                                        <label class="status-option negative"><input type="radio" name="hrv_status" value="-1">↓</label>
+                                        <label class="status-option neutral"><input type="radio" name="hrv_status" value="0">→</label>
+                                        <label class="status-option positive"><input type="radio" name="hrv_status" value="1">↑</label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">
+                                        RHR Status
+                                        <span class="auto-badge" id="rhrAutoLabel" style="display: none;">auto</span>
+                                    </label>
+                                    <div class="status-selector" data-field="rhr_status">
+                                        <label class="status-option positive"><input type="radio" name="rhr_status" value="-1">↓</label>
+                                        <label class="status-option neutral"><input type="radio" name="rhr_status" value="0">→</label>
+                                        <label class="status-option negative"><input type="radio" name="rhr_status" value="1">↑</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1733,6 +2195,301 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // ============== Cardio Status Auto-Fill ==============
+    let hasCardioData = false;
+    let autoHrvStatus = null;
+    let autoRhrStatus = null;
+
+    async function loadCardioStatus(date) {
+        try {
+            const response = await fetch(`/cycling-readiness/api/cardio-status?date=${date}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                hasCardioData = data.has_cardio;
+                
+                const cardioDisplay = document.getElementById('cardioDataDisplay');
+                const manualInput = document.getElementById('manualCardioInput');
+                const hrvAutoLabel = document.getElementById('hrvAutoLabel');
+                const rhrAutoLabel = document.getElementById('rhrAutoLabel');
+                
+                if (data.has_cardio) {
+                    // Show cardio data display
+                    cardioDisplay.style.display = 'block';
+                    manualInput.style.display = 'none';
+                    
+                    // Display RHR
+                    const rhrDisplay = document.getElementById('displayRhrBpm');
+                    if (data.cardio.rhr_bpm) {
+                        rhrDisplay.textContent = `${data.cardio.rhr_bpm} bpm`;
+                    } else {
+                        rhrDisplay.textContent = '--';
+                    }
+                    
+                    // Display HRV
+                    const hrvDisplay = document.getElementById('displayHrv');
+                    if (data.cardio.hrv_low_ms && data.cardio.hrv_high_ms) {
+                        if (data.cardio.hrv_low_ms === data.cardio.hrv_high_ms) {
+                            hrvDisplay.textContent = `${data.cardio.hrv_low_ms} ms`;
+                        } else {
+                            hrvDisplay.textContent = `${data.cardio.hrv_low_ms}–${data.cardio.hrv_high_ms} ms`;
+                        }
+                    } else {
+                        hrvDisplay.textContent = '--';
+                    }
+                    
+                    // Auto-select status buttons if calculated
+                    autoHrvStatus = data.calculated_status.hrv_status;
+                    autoRhrStatus = data.calculated_status.rhr_status;
+                    
+                    if (autoHrvStatus !== null) {
+                        const hrvRadio = document.querySelector(`[name="hrv_status"][value="${autoHrvStatus}"]`);
+                        if (hrvRadio) {
+                            hrvRadio.checked = true;
+                            hrvRadio.closest('.status-option').classList.add('selected');
+                        }
+                        hrvAutoLabel.style.display = 'inline';
+                    }
+                    
+                    if (autoRhrStatus !== null) {
+                        const rhrRadio = document.querySelector(`[name="rhr_status"][value="${autoRhrStatus}"]`);
+                        if (rhrRadio) {
+                            rhrRadio.checked = true;
+                            rhrRadio.closest('.status-option').classList.add('selected');
+                        }
+                        rhrAutoLabel.style.display = 'inline';
+                    }
+                } else {
+                    // Show manual input fields
+                    cardioDisplay.style.display = 'none';
+                    manualInput.style.display = 'block';
+                    hrvAutoLabel.style.display = 'none';
+                    rhrAutoLabel.style.display = 'none';
+                }
+                
+                // If there's existing readiness data, use those status values instead
+                if (data.existing_readiness) {
+                    const er = data.existing_readiness;
+                    if (er.hrv_status !== null && er.hrv_status !== undefined) {
+                        const hrvRadio = document.querySelector(`[name="hrv_status"][value="${er.hrv_status}"]`);
+                        if (hrvRadio) {
+                            document.querySelectorAll('[name="hrv_status"]').forEach(r => {
+                                r.checked = false;
+                                r.closest('.status-option').classList.remove('selected');
+                            });
+                            hrvRadio.checked = true;
+                            hrvRadio.closest('.status-option').classList.add('selected');
+                        }
+                    }
+                    if (er.rhr_status !== null && er.rhr_status !== undefined) {
+                        const rhrRadio = document.querySelector(`[name="rhr_status"][value="${er.rhr_status}"]`);
+                        if (rhrRadio) {
+                            document.querySelectorAll('[name="rhr_status"]').forEach(r => {
+                                r.checked = false;
+                                r.closest('.status-option').classList.remove('selected');
+                            });
+                            rhrRadio.checked = true;
+                            rhrRadio.closest('.status-option').classList.add('selected');
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error loading cardio status:', err);
+        }
+    }
+
+    // Load cardio status on page load
+    const today = document.getElementById('readinessDate').value;
+    loadCardioStatus(today);
+
+    // ============== Training Recommendation ==============
+    const DAY_TYPE_LABELS = {
+        'rest': 'Rest Day',
+        'recovery_spin_z1': 'Recovery Z1',
+        'easy_endurance_z1': 'Easy Z1',
+        'steady_endurance_z2': 'Endurance Z2',
+        'norwegian_4x4': '4×4 VO2max',
+        'hybrid_endurance': 'Hybrid',
+        'other': 'Training'
+    };
+
+    const DAY_TYPE_CLASSES = {
+        'rest': 'rest',
+        'recovery_spin_z1': 'z1',
+        'easy_endurance_z1': 'z1',
+        'steady_endurance_z2': 'z2',
+        'norwegian_4x4': 'hard',
+        'hybrid_endurance': 'z2',
+        'other': ''
+    };
+
+    async function fetchTrainingRecommendation(date, refresh = false) {
+        const loadingEl = document.getElementById('trainingRecLoading');
+        const emptyEl = document.getElementById('trainingRecEmpty');
+        const contentEl = document.getElementById('trainingRecContent');
+        const suggestBtn = document.getElementById('suggestWorkoutBtn');
+        
+        // Show loading state
+        loadingEl.style.display = 'flex';
+        emptyEl.style.display = 'none';
+        contentEl.style.display = 'none';
+        suggestBtn.disabled = true;
+        suggestBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+        
+        try {
+            let url = `/cycling-readiness/api/training-recommendation?date=${date}`;
+            if (refresh) {
+                url += '&refresh=true';
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            loadingEl.style.display = 'none';
+            suggestBtn.disabled = false;
+            suggestBtn.innerHTML = '<i class="fas fa-magic"></i> Suggest';
+            
+            if (data.success && data.recommendation) {
+                renderTrainingRecommendation(data.recommendation, data.cached);
+                contentEl.style.display = 'block';
+            } else {
+                emptyEl.style.display = 'block';
+                if (data.error) {
+                    showToast(data.error, 'error');
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching training recommendation:', err);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+            suggestBtn.disabled = false;
+            suggestBtn.innerHTML = '<i class="fas fa-magic"></i> Suggest';
+            showToast('Could not load training suggestion', 'error');
+        }
+    }
+
+    function renderTrainingRecommendation(rec, isCached) {
+        // Day type badge
+        const dayTypeBadge = document.getElementById('recDayTypeBadge');
+        dayTypeBadge.textContent = DAY_TYPE_LABELS[rec.day_type] || rec.day_type;
+        dayTypeBadge.className = 'day-type-badge ' + (DAY_TYPE_CLASSES[rec.day_type] || '');
+        
+        // Intensity tag
+        const intensityTag = document.getElementById('recIntensityTag');
+        if (rec.session_plan && rec.session_plan.overall_intensity) {
+            intensityTag.textContent = rec.session_plan.overall_intensity.replace('_', ' ');
+            intensityTag.className = 'intensity-tag ' + rec.session_plan.overall_intensity;
+            intensityTag.style.display = 'inline';
+        } else {
+            intensityTag.style.display = 'none';
+        }
+        
+        // Duration
+        const durationEl = document.getElementById('recDuration');
+        if (rec.session_plan && rec.session_plan.duration_minutes) {
+            durationEl.textContent = rec.session_plan.duration_minutes + ' min';
+        } else if (rec.day_type === 'rest') {
+            durationEl.textContent = 'Rest';
+        } else {
+            durationEl.textContent = '--';
+        }
+        
+        // Zone
+        const zoneEl = document.getElementById('recZone');
+        if (rec.session_plan && rec.session_plan.primary_zone) {
+            zoneEl.textContent = rec.session_plan.primary_zone;
+        } else {
+            zoneEl.textContent = '--';
+        }
+        
+        // Reason
+        document.getElementById('recReason').textContent = rec.reason_short || '';
+        
+        // Intervals
+        const intervalsContainer = document.getElementById('recIntervals');
+        const intervalsList = document.getElementById('recIntervalsList');
+        if (rec.session_plan && rec.session_plan.intervals && rec.session_plan.intervals.length > 0) {
+            intervalsList.innerHTML = rec.session_plan.intervals.map(interval => {
+                let desc = '';
+                if (interval.repeats) {
+                    desc = `${interval.repeats}× ${interval.work_minutes || interval.duration_minutes}min`;
+                    if (interval.rest_minutes) {
+                        desc += ` / ${interval.rest_minutes}min rest`;
+                    }
+                } else {
+                    desc = `${interval.duration_minutes}min`;
+                }
+                return `
+                    <div class="interval-item">
+                        <span class="interval-kind">${interval.kind}</span>
+                        <span>${desc}</span>
+                        <span class="interval-zone">${interval.target_zone}</span>
+                    </div>
+                `;
+            }).join('');
+            intervalsContainer.style.display = 'block';
+        } else {
+            intervalsContainer.style.display = 'none';
+        }
+        
+        // Flags
+        const flagsContainer = document.getElementById('recFlags');
+        if (rec.flags && Object.keys(rec.flags).length > 0) {
+            const flagsHtml = Object.entries(rec.flags)
+                .filter(([_, v]) => v)
+                .map(([key, _]) => {
+                    const isPositive = ['ok_to_push'].includes(key);
+                    const isWarning = ['consider_rest_day', 'prioritize_sleep', 'monitor_hrv'].includes(key);
+                    const className = isPositive ? 'positive' : (isWarning ? 'warning' : '');
+                    const label = key.replace(/_/g, ' ');
+                    return `<span class="rec-flag ${className}">${label}</span>`;
+                })
+                .join('');
+            
+            if (flagsHtml) {
+                flagsContainer.innerHTML = flagsHtml;
+                flagsContainer.style.display = 'flex';
+            } else {
+                flagsContainer.style.display = 'none';
+            }
+        } else {
+            flagsContainer.style.display = 'none';
+        }
+        
+        // Cached label
+        document.getElementById('recCachedLabel').style.display = isCached ? 'inline' : 'none';
+    }
+
+    // Suggest button click handler
+    document.getElementById('suggestWorkoutBtn').addEventListener('click', function() {
+        const date = document.getElementById('readinessDate').value;
+        fetchTrainingRecommendation(date, false);
+    });
+
+    // Refresh button click handler
+    document.getElementById('refreshRecBtn').addEventListener('click', function() {
+        const date = document.getElementById('readinessDate').value;
+        fetchTrainingRecommendation(date, true);
+    });
+
+    // Load existing recommendation on page load (silent, no error toast)
+    (async function() {
+        try {
+            const response = await fetch(`/cycling-readiness/api/training-recommendation?date=${today}`);
+            const data = await response.json();
+            
+            if (data.success && data.recommendation && data.cached) {
+                renderTrainingRecommendation(data.recommendation, true);
+                document.getElementById('trainingRecEmpty').style.display = 'none';
+                document.getElementById('trainingRecContent').style.display = 'block';
+            }
+        } catch (err) {
+            // Silently fail on page load - don't show error
+            console.log('No cached recommendation available');
+        }
+    })();
+
     // ============== Multi-file Upload ==============
     const bundleZone = document.getElementById('bundleUploadZone');
     const bundleInput = document.getElementById('bundleImageInput');
@@ -1877,17 +2634,37 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('readinessForm').addEventListener('submit', async function(e) {
         e.preventDefault();
 
+        // Get manual cardio values if no screenshot data exists
+        const manualRhr = document.getElementById('manualRhrBpm')?.value;
+        const manualHrvLow = document.getElementById('manualHrvLow')?.value;
+        const manualHrvHigh = document.getElementById('manualHrvHigh')?.value;
+
         // Note: Sleep data is now imported via screenshots, not entered manually
         const data = {
             date: document.getElementById('readinessDate').value,
             energy: document.querySelector('[name="energy"]:checked')?.value,
             mood: document.querySelector('[name="mood"]:checked')?.value,
             muscle_fatigue: document.querySelector('[name="muscle_fatigue"]:checked')?.value,
-            hrv_status: document.querySelector('[name="hrv_status"]:checked')?.value || 0,
-            rhr_status: document.querySelector('[name="rhr_status"]:checked')?.value || 0,
+            hrv_status: document.querySelector('[name="hrv_status"]:checked')?.value,
+            rhr_status: document.querySelector('[name="rhr_status"]:checked')?.value,
             min_hr_status: 0,
             symptoms_flag: document.getElementById('symptomsFlag').checked
         };
+
+        // Include manual cardio values if entered (when no screenshot data)
+        if (!hasCardioData) {
+            if (manualRhr) {
+                data.manual_rhr_bpm = parseInt(manualRhr);
+            }
+            if (manualHrvLow && manualHrvHigh) {
+                data.manual_hrv_low_ms = parseInt(manualHrvLow);
+                data.manual_hrv_high_ms = parseInt(manualHrvHigh);
+            }
+        }
+
+        // If status not explicitly selected, pass null for auto-calculation
+        if (data.hrv_status === undefined) data.hrv_status = null;
+        if (data.rhr_status === undefined) data.rhr_status = null;
 
         if (!data.energy || !data.mood || !data.muscle_fatigue) {
             showToast('Please fill Energy, Mood, and Fatigue', 'error');
@@ -2128,6 +2905,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success && data.entry) {
                 const e = data.entry;
                 document.getElementById('editReadinessId').value = e.id;
+                document.getElementById('editReadinessDate').value = e.date;
                 document.getElementById('editReadinessEnergy').value = e.energy || '';
                 document.getElementById('editReadinessMood').value = e.mood || '';
                 document.getElementById('editReadinessFatigue').value = e.muscle_fatigue || '';
@@ -2136,6 +2914,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('editReadinessMinHR').value = e.min_hr_status !== null ? e.min_hr_status : '';
                 document.getElementById('editReadinessSymptoms').checked = e.symptoms_flag || false;
                 document.getElementById('editReadinessNotes').value = e.evening_note || '';
+                
+                // Load cardio status for this date
+                const cardioDisplay = document.getElementById('editCardioDisplay');
+                const hrvAutoLabel = document.getElementById('editHrvAutoLabel');
+                const rhrAutoLabel = document.getElementById('editRhrAutoLabel');
+                
+                cardioDisplay.style.display = 'none';
+                hrvAutoLabel.style.display = 'none';
+                rhrAutoLabel.style.display = 'none';
+                
+                try {
+                    const cardioRes = await fetch(`/cycling-readiness/api/cardio-status?date=${e.date}`);
+                    const cardioData = await cardioRes.json();
+                    
+                    if (cardioData.success && cardioData.has_cardio) {
+                        cardioDisplay.style.display = 'block';
+                        
+                        // Display RHR
+                        const rhrDisplay = document.getElementById('editDisplayRhr');
+                        if (cardioData.cardio.rhr_bpm) {
+                            rhrDisplay.textContent = `${cardioData.cardio.rhr_bpm} bpm`;
+                        } else {
+                            rhrDisplay.textContent = '--';
+                        }
+                        
+                        // Display HRV
+                        const hrvDisplay = document.getElementById('editDisplayHrv');
+                        if (cardioData.cardio.hrv_low_ms && cardioData.cardio.hrv_high_ms) {
+                            if (cardioData.cardio.hrv_low_ms === cardioData.cardio.hrv_high_ms) {
+                                hrvDisplay.textContent = `${cardioData.cardio.hrv_low_ms} ms`;
+                            } else {
+                                hrvDisplay.textContent = `${cardioData.cardio.hrv_low_ms}–${cardioData.cardio.hrv_high_ms} ms`;
+                            }
+                        } else {
+                            hrvDisplay.textContent = '--';
+                        }
+                        
+                        // Show auto labels if status was calculated
+                        if (cardioData.calculated_status.hrv_status !== null) {
+                            hrvAutoLabel.style.display = 'inline';
+                        }
+                        if (cardioData.calculated_status.rhr_status !== null) {
+                            rhrAutoLabel.style.display = 'inline';
+                        }
+                    }
+                } catch (cardioErr) {
+                    console.error('Error loading cardio status:', cardioErr);
+                }
                 
                 document.getElementById('editReadinessModal').classList.add('active');
             } else {
@@ -2331,6 +3157,81 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>`;
         } else {
             html += `<p class="empty-note">No sleep data for this date.</p>`;
+        }
+        html += `</div>`;
+        
+        // Cardio Metrics Panel
+        html += `<div class="day-panel">
+            <div class="day-panel-header">
+                <div class="day-panel-title" style="color: var(--color-red);"><i class="fas fa-heartbeat me-2"></i>Cardio Metrics</div>
+            </div>`;
+        
+        if (data.cardio_metrics) {
+            const c = data.cardio_metrics;
+            const missingCardio = data.missing?.cardio || [];
+            
+            // Format RHR (single value)
+            let rhrDisplay = null;
+            if (c.rhr_bpm !== null && c.rhr_bpm !== undefined) {
+                rhrDisplay = `${c.rhr_bpm} bpm`;
+            }
+            
+            // Format HRV range
+            let hrvDisplay = null;
+            if (c.hrv_low_ms !== null && c.hrv_high_ms !== null) {
+                if (c.hrv_low_ms === c.hrv_high_ms) {
+                    hrvDisplay = `${c.hrv_low_ms} ms`;
+                } else {
+                    hrvDisplay = `${c.hrv_low_ms}–${c.hrv_high_ms} ms`;
+                }
+            }
+            
+            html += `<div class="day-data-grid">
+                ${renderDayDataItem('Resting HR', rhrDisplay, missingCardio.includes('rhr_bpm'), 'hr')}
+                ${renderDayDataItem('HRV', hrvDisplay, missingCardio.includes('hrv_low_ms') || missingCardio.includes('hrv_high_ms'))}
+            </div>`;
+        } else {
+            html += `<p class="empty-note">No cardio metrics for this date.</p>`;
+        }
+        html += `</div>`;
+        
+        // Training Recommendation Panel
+        html += `<div class="day-panel">
+            <div class="day-panel-header">
+                <div class="day-panel-title" style="color: var(--color-yellow);"><i class="fas fa-dumbbell me-2"></i>Training Recommendation</div>
+            </div>`;
+        
+        if (data.training_recommendation) {
+            const rec = data.training_recommendation;
+            const dayTypeLabel = DAY_TYPE_LABELS[rec.day_type] || rec.day_type;
+            const dayTypeClass = DAY_TYPE_CLASSES[rec.day_type] || '';
+            
+            html += `
+                <div class="training-rec-mini">
+                    <div class="rec-mini-header">
+                        <span class="day-type-badge ${dayTypeClass}">${dayTypeLabel}</span>
+                        ${rec.session_plan ? `
+                            <span class="rec-mini-details">
+                                <i class="fas fa-clock"></i> ${rec.session_plan.duration_minutes}min
+                                <i class="fas fa-heartbeat ms-2"></i> ${rec.session_plan.primary_zone}
+                            </span>
+                        ` : ''}
+                    </div>
+                    <p class="rec-mini-reason">${rec.reason_short}</p>
+                    ${rec.session_plan && rec.session_plan.intervals ? `
+                        <div class="rec-mini-intervals">
+                            ${rec.session_plan.intervals.map(interval => {
+                                let desc = interval.repeats 
+                                    ? `${interval.repeats}× ${interval.work_minutes || interval.duration_minutes}min`
+                                    : `${interval.duration_minutes}min`;
+                                return `<span class="interval-chip">${interval.kind} ${desc} ${interval.target_zone}</span>`;
+                            }).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            html += `<p class="empty-note">No recommendation saved for this date.</p>`;
         }
         html += `</div>`;
         

@@ -315,6 +315,15 @@
         color: var(--color-blue);
     }
 
+    .val-z1 {
+        color: #81C784;
+    }
+
+    .val-hard {
+        color: var(--color-red);
+        font-weight: 700;
+    }
+
     /* Score badge */
     .score-badge {
         display: inline-block;
@@ -464,6 +473,8 @@
                         <th colspan="10" class="col-group cycling">Cycling</th>
                         <th colspan="7" class="col-group readiness">Readiness</th>
                         <th colspan="6" class="col-group sleep">Sleep</th>
+                        <th colspan="2" class="col-group" style="color: var(--color-red); border-color: var(--color-red); background: rgba(255, 82, 82, 0.1);">Cardio</th>
+                        <th rowspan="2" class="col-group" style="color: var(--color-yellow); border-color: var(--color-yellow); background: rgba(255, 193, 7, 0.1);">Coach</th>
                     </tr>
                     <tr>
                         <!-- Cycling columns -->
@@ -492,11 +503,14 @@
                         <th>Min HR</th>
                         <th>Max HR</th>
                         <th>Times</th>
+                        <!-- Cardio columns -->
+                        <th>RHR</th>
+                        <th>HRV</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
                     <tr>
-                        <td colspan="24" class="loading-state">
+                        <td colspan="27" class="loading-state">
                             <i class="fas fa-spinner fa-spin"></i>
                             <p>Loading data...</p>
                         </td>
@@ -520,7 +534,7 @@ async function loadData() {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = `
         <tr>
-            <td colspan="24" class="loading-state">
+            <td colspan="27" class="loading-state">
                 <i class="fas fa-spinner fa-spin"></i>
                 <p>Loading data...</p>
             </td>
@@ -550,7 +564,7 @@ async function loadData() {
         } else {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="24" class="empty-state">
+                    <td colspan="27" class="empty-state">
                         <i class="fas fa-exclamation-triangle"></i>
                         <p>Failed to load data</p>
                     </td>
@@ -560,7 +574,7 @@ async function loadData() {
     } catch (err) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="24" class="empty-state">
+                <td colspan="27" class="empty-state">
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>Error loading data</p>
                 </td>
@@ -575,7 +589,7 @@ function renderTable(data) {
     if (!data || data.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="24" class="empty-state">
+                <td colspan="27" class="empty-state">
                     <i class="fas fa-calendar-times"></i>
                     <p>No data found for the selected period</p>
                 </td>
@@ -621,9 +635,43 @@ function renderTable(data) {
                 <td class="val-hr">${formatVal(row.s_min_heart_rate, hasSleep)}</td>
                 <td class="val-hr">${formatVal(row.s_max_heart_rate, hasSleep)}</td>
                 <td>${formatSleepTimes(row.s_sleep_start, row.s_sleep_end, hasSleep)}</td>
+                
+                <!-- Cardio -->
+                <td class="val-hr">${formatRhr(row.cardio_rhr_bpm, row.has_cardio)}</td>
+                <td>${formatCardioRange(row.cardio_hrv_low, row.cardio_hrv_high, row.has_cardio, 'ms')}</td>
+                
+                <!-- Coach Recommendation -->
+                <td>${formatCoachPlan(row.tr_day_type, row.has_training_rec)}</td>
             </tr>
         `;
     }).join('');
+}
+
+const COACH_PLAN_LABELS = {
+    'rest': 'Rest',
+    'recovery_spin_z1': 'Z1',
+    'easy_endurance_z1': 'Z1',
+    'steady_endurance_z2': 'Z2',
+    'norwegian_4x4': '4×4',
+    'hybrid_endurance': 'Hybrid',
+    'other': '?'
+};
+
+const COACH_PLAN_CLASSES = {
+    'rest': 'val-sleep',
+    'recovery_spin_z1': 'val-z1',
+    'easy_endurance_z1': 'val-z1',
+    'steady_endurance_z2': 'val-good',
+    'norwegian_4x4': 'val-hard',
+    'hybrid_endurance': 'val-good',
+    'other': ''
+};
+
+function formatCoachPlan(dayType, hasRec) {
+    if (!hasRec || !dayType) return '<span class="val-empty">--</span>';
+    const label = COACH_PLAN_LABELS[dayType] || dayType;
+    const cls = COACH_PLAN_CLASSES[dayType] || '';
+    return `<span class="${cls}" style="font-size: 0.7rem; font-weight: 600;">${label}</span>`;
 }
 
 function updateStats(data) {
@@ -635,7 +683,8 @@ function updateStats(data) {
     const missingCount = data.filter(d => 
         (d.missing_cycling && d.missing_cycling.length > 0) ||
         (d.missing_readiness && d.missing_readiness.length > 0) ||
-        (d.missing_sleep && d.missing_sleep.length > 0)
+        (d.missing_sleep && d.missing_sleep.length > 0) ||
+        (d.missing_cardio && d.missing_cardio.length > 0)
     ).length;
     document.getElementById('statMissing').textContent = missingCount;
 }
@@ -706,6 +755,24 @@ function formatSleepTimes(start, end, hasRecord) {
     const s = start ? start.substring(0, 5) : '?';
     const e = end ? end.substring(0, 5) : '?';
     return `<span class="val-present">${s}-${e}</span>`;
+}
+
+function formatRhr(value, hasRecord) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (value === null || value === undefined) return '<span class="val-missing">--</span>';
+    return `<span class="val-present">${value} bpm</span>`;
+}
+
+function formatCardioRange(low, high, hasRecord, unit) {
+    if (!hasRecord) return '<span class="val-empty">--</span>';
+    if (low === null && high === null) return '<span class="val-missing">--</span>';
+    if (low === high) {
+        return `<span class="val-present">${low} ${unit}</span>`;
+    } else if (low !== null && high !== null) {
+        return `<span class="val-present">${low}–${high} ${unit}</span>`;
+    } else {
+        return `<span class="val-missing">--</span>`;
+    }
 }
 
 function exportCSV() {

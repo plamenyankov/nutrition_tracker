@@ -93,12 +93,49 @@ The **Cycling & Readiness** feature (`/cycling-readiness/`) is an AI-powered fit
 - Sleep start/end dates and times
 - Total sleep minutes
 - Deep sleep minutes
-- Wake-ups count
+- Awake minutes (time spent awake during sleep)
 - Heart rate metrics: Min, Average, Maximum (BPM)
 
 **Automatic Integration:**
 - Sleep data automatically updates readiness entries for the corresponding date
 - Sleep end date is used as the readiness entry date
+
+### 4. AI Training Recommendations
+
+**Overview:**
+AI-powered daily training recommendations based on your readiness, sleep, cardio metrics, and recent training history.
+
+**How It Works:**
+1. Aggregates context from multiple data sources:
+   - Today's readiness entry (energy, mood, fatigue, HRV/RHR status)
+   - Sleep summary (duration, deep sleep, awake time)
+   - Cardio metrics (RHR, HRV vs. 14-day baseline)
+   - Last 7 days of training (workouts, TSS, types)
+   - 30-day baseline statistics (averages)
+2. Sends context to OpenAI with a specialized endurance coach prompt
+3. Returns structured recommendation with session plan
+
+**Recommendation Types:**
+| Day Type | Description | Typical Duration |
+|----------|-------------|------------------|
+| `rest` | Full rest day | None |
+| `recovery_spin_z1` | Very easy recovery spin | 20-45 min |
+| `easy_endurance_z1` | Easy aerobic Zone 1 | 30-60 min |
+| `steady_endurance_z2` | Steady aerobic Zone 2 | 30-75 min |
+| `norwegian_4x4` | High-intensity 4×4 intervals | 40-50 min |
+| `hybrid_endurance` | Mixed zone session | 45-75 min |
+
+**Session Plan Structure:**
+- Duration (minutes)
+- Primary zone (Z1-Z4)
+- Overall intensity (very_easy, easy, moderate, hard)
+- Intervals (warmup, steady, interval blocks, cooldown)
+- Comments and flags
+
+**Caching:**
+- Recommendations are stored in the database
+- Cached recommendations are reused (no extra API call)
+- "Refresh" forces a new generation
 
 ---
 
@@ -246,6 +283,57 @@ Stores sleep data extracted from screenshots.
 - `user_id` (for user filtering)
 - `date` (for date-based queries)
 
+### Table: `cardio_daily_metrics`
+
+Stores daily Apple Health cardio metrics (Resting HR and HRV).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT | Primary key, auto-increment |
+| `user_id` | VARCHAR(100) | Foreign key to users table |
+| `date` | DATE | Metric date (unique per user) |
+| `rhr_bpm` | INT | Resting Heart Rate (single value, BPM) |
+| `hrv_low_ms` | INT | HRV range low (milliseconds) |
+| `hrv_high_ms` | INT | HRV range high (milliseconds) |
+| `created_at` | DATETIME | Record creation timestamp |
+| `updated_at` | DATETIME | Last update timestamp |
+
+**Notes:**
+- RHR is a single value per day (extracted from Apple Health "All Recorded Data" screenshots)
+- HRV is a range (low to high) representing variability throughout the day
+- Uses UPSERT pattern: updating one metric doesn't overwrite the other
+
+**Indexes:**
+- `user_id` + `date` (unique constraint per user per day)
+
+### Table: `training_recommendations`
+
+Stores AI-generated training recommendations per user per day.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT | Primary key, auto-increment |
+| `user_id` | VARCHAR(100) | Foreign key to users table |
+| `date` | DATE | Recommendation date (unique per user) |
+| `day_type` | VARCHAR(50) | Training type (rest, recovery_spin_z1, etc.) |
+| `duration_minutes` | INT | Recommended session duration |
+| `payload_json` | JSON | Full TrainingRecommendation object |
+| `model_name` | VARCHAR(50) | OpenAI model used for generation |
+| `created_at` | DATETIME | Record creation timestamp |
+| `updated_at` | DATETIME | Last update timestamp |
+
+**Day Types:**
+- `rest` - Full rest day
+- `recovery_spin_z1` - Easy recovery spin in Zone 1
+- `easy_endurance_z1` - Easy endurance in Zone 1
+- `steady_endurance_z2` - Steady endurance in Zone 2
+- `norwegian_4x4` - High-intensity 4×4 VO2max intervals
+- `hybrid_endurance` - Mixed zone endurance session
+- `other` - Custom/other training
+
+**Indexes:**
+- `user_id` + `date` (unique constraint per user per day)
+
 ---
 
 ## OpenAI Integration
@@ -275,7 +363,11 @@ Stores sleep data extracted from screenshots.
 
 The system uses a **unified extraction prompt** that:
 
-1. **Classifies** the image type (cycling_workout, sleep_summary, or unknown)
+1. **Classifies** the image type:
+   - `cycling_power` / `watch_workout` - Cycling workout screenshots
+   - `sleep_summary` - Sleep data screenshots
+   - `cardio_series` - Apple Health "All Recorded Data" for RHR or HRV
+   - `unknown` - Unrecognized images
 2. **Extracts** all visible data fields
 3. **Returns** structured JSON matching predefined schemas
 
@@ -284,6 +376,22 @@ The system uses a **unified extraction prompt** that:
 - Guidance for different app formats (Apple Watch, Zwift, TrainerRoad, etc.)
 - Format specifications (dates, times, units)
 - Error handling (use `null` for missing values)
+
+### Cardio Series Detection (RHR/HRV)
+
+The system can detect Apple Health "All Recorded Data" screenshots showing daily metrics:
+
+**Resting Heart Rate (RHR)**:
+- Single value per day (e.g., "73 – 73 30 Nov 2025" where low == high)
+- Detected by: "beats per minute", "BPM", "Resting Heart Rate" in header
+- Or if all rows have identical low/high values
+- Stored as single `rhr_bpm` value
+
+**Heart Rate Variability (HRV)**:
+- Range per day (e.g., "12 – 36 29 Nov 2025" where low != high)
+- Detected by: "ms", "milliseconds", "HRV" in header
+- Or if rows commonly have different low/high values
+- Stored as `hrv_low_ms` and `hrv_high_ms` range
 
 ### Data Extraction Accuracy
 
@@ -546,6 +654,81 @@ Delete a cycling workout.
 }
 ```
 
+### Training Recommendations
+
+#### `GET /api/training-context`
+
+Get the aggregated training context for a date (used internally by recommendation engine).
+
+**Query Parameters**:
+- `date` (required) - Date in YYYY-MM-DD format
+
+**Response**:
+```json
+{
+  "success": true,
+  "context": {
+    "today": {
+      "date": "2025-11-30",
+      "readiness": { "morning_score": 75, "energy": 4, ... },
+      "sleep": { "total_sleep_minutes": 450, ... },
+      "cardio": { "rhr_bpm": 52, "hrv_low_ms": 25, ... },
+      "workout": null
+    },
+    "last_7_days": [ ... ],
+    "baseline_30_days": {
+      "avg_rhr": 53.5,
+      "avg_hrv": 32.0,
+      "avg_sleep_hours": 7.2,
+      "avg_readiness_score": 68,
+      "workouts_per_week": 4.2,
+      "avg_tss_per_week": 280
+    }
+  }
+}
+```
+
+#### `GET /api/training-recommendation`
+
+Get AI-powered training recommendation for a date.
+
+**Query Parameters**:
+- `date` (required) - Date in YYYY-MM-DD format
+- `refresh` (optional) - Set to `true` to force new generation
+
+**Response**:
+```json
+{
+  "success": true,
+  "recommendation": {
+    "date": "2025-11-30",
+    "day_type": "steady_endurance_z2",
+    "reason_short": "Good readiness and well-rested. No hard sessions in the last 2 days. Ideal for steady Zone 2 work.",
+    "session_plan": {
+      "duration_minutes": 60,
+      "primary_zone": "Z2",
+      "overall_intensity": "easy",
+      "intervals": [
+        { "kind": "warmup", "duration_minutes": 10, "target_zone": "Z1" },
+        { "kind": "steady", "duration_minutes": 40, "target_zone": "Z2" },
+        { "kind": "cooldown", "duration_minutes": 10, "target_zone": "Z1" }
+      ],
+      "comments": "Maintain conversational pace throughout"
+    },
+    "flags": {
+      "ok_to_push": true,
+      "consider_rest_day": false
+    }
+  },
+  "cached": true
+}
+```
+
+**Notes:**
+- First call generates recommendation via OpenAI (takes 5-10 seconds)
+- Subsequent calls return cached recommendation (instant)
+- Use `refresh=true` to force regeneration
+
 ---
 
 ## Frontend Components
@@ -578,6 +761,15 @@ The dashboard uses a **tabbed interface** with two main sections:
 - Empty state: "No data yet. Upload screenshots to see your performance trend."
 
 #### Tab 2: Readiness & Sleep
+
+**Training Recommendation Card**:
+- "Suggest" button to generate AI recommendation
+- Day type badge (color-coded by intensity)
+- Duration and primary zone
+- Reason explanation
+- Session plan intervals (expandable)
+- Refresh button for new generation
+- Cached indicator when showing stored recommendation
 
 **Morning Readiness Form**:
 - All readiness input fields
@@ -1237,11 +1429,15 @@ A tooltip explaining this formula is available in the Readiness History section.
 
 **Routes**: `models/blueprints/cycling_readiness/routes.py`  
 **Service**: `models/services/cycling_readiness_service.py`  
+**Training Recommendations**: `models/services/training_recommendation.py`  
 **OpenAI Integration**: `models/services/openai_extraction.py`  
 **Frontend - Dashboard**: `templates/cycling_readiness/dashboard.html`  
 **Frontend - Expanded Table**: `templates/cycling_readiness/expanded_table.html`  
 **Migration - Initial**: `migrations/add_cycling_readiness_tables.py`  
-**Migration - Sleep Schema**: `migrations/update_sleep_schema.py`
+**Migration - Sleep Schema**: `migrations/update_sleep_schema.py`  
+**Migration - Cardio Metrics**: `migrations/add_cardio_daily_metrics.py`  
+**Migration - Cardio Fix**: `migrations/fix_cardio_schema.py`  
+**Migration - Training Recs**: `migrations/add_training_recommendations.py`
 
 ### Related Documentation
 
@@ -1262,8 +1458,19 @@ For issues or questions:
 ---
 
 **Last Updated**: November 30, 2025  
-**Version**: 2.0  
+**Version**: 3.0  
 **Author**: Zyra Development Team
+
+### Changelog v3.0
+- **AI Training Recommendations**: OpenAI-powered daily training suggestions
+  - Training context aggregation (today + 7-day history + 30-day baseline)
+  - Personalized session plans with intervals and zones
+  - Caching to reduce API calls
+  - Integration with Daily Expanded View
+  - Coach column in Expanded Table
+- Added `training_recommendations` database table
+- Added `/api/training-context` and `/api/training-recommendation` endpoints
+- Training recommendation card in Readiness & Sleep tab
 
 ### Changelog v2.0
 - Added Expanded Table View page with CSV export
@@ -1272,4 +1479,6 @@ For issues or questions:
 - Simplified Morning Readiness form (removed manual sleep inputs)
 - Added score formula tooltip
 - Added readiness entry update API
+- Added cardio_daily_metrics table for RHR/HRV tracking
+- Auto-fill HRV/RHR status from cardio data with 14-day baseline
 

@@ -56,7 +56,7 @@ CYCLING_NUMERIC_FIELDS = [
 ]
 
 SLEEP_NUMERIC_FIELDS = [
-    'total_sleep_minutes', 'deep_sleep_minutes', 'wakeups_count',
+    'total_sleep_minutes', 'deep_sleep_minutes', 'awake_minutes',
     'min_heart_rate', 'avg_heart_rate', 'max_heart_rate'
 ]
 
@@ -214,7 +214,9 @@ def export_expanded_csv():
         'r_symptoms_flag', 'r_morning_score',
         # Sleep columns
         's_total_sleep_minutes', 's_deep_sleep_minutes', 's_awake_minutes',
-        's_min_heart_rate', 's_max_heart_rate', 's_sleep_start', 's_sleep_end'
+        's_min_heart_rate', 's_max_heart_rate', 's_sleep_start', 's_sleep_end',
+        # Cardio columns
+        'cardio_rhr_bpm', 'cardio_hrv_low', 'cardio_hrv_high'
     ]
     
     writer = csv.DictWriter(output, fieldnames=fieldnames, extrasaction='ignore')
@@ -330,17 +332,6 @@ def get_score_formula():
         'success': True,
         'formula': CyclingReadinessService.SCORE_FORMULA_EXPLANATION
     })
-    readiness_chart = service.get_readiness_chart_data(days=30)
-
-    return render_template(
-        'cycling_readiness/dashboard.html',
-        cycling_workouts=cycling_workouts,
-        readiness_entries=readiness_entries,
-        cycling_stats=cycling_stats,
-        cycling_chart=cycling_chart,
-        readiness_chart=readiness_chart,
-        today=datetime.now().strftime('%Y-%m-%d')
-    )
 
 
 # ============== Cycling Workout API Routes ==============
@@ -602,12 +593,14 @@ def get_day_summary():
     cycling_workout = service.get_cycling_workout_by_date(date_str)
     readiness_entry = service.get_readiness_by_date(date_str)
     sleep_summary = service.get_sleep_summary_by_date(date_str)
+    cardio_metrics = service.get_cardio_metrics_for_date(date_str)
     
     # Detect missing fields for each
     missing = {
         'cycling': [],
         'readiness': [],
-        'sleep': []
+        'sleep': [],
+        'cardio': []
     }
     
     if cycling_workout:
@@ -620,14 +613,32 @@ def get_day_summary():
     if sleep_summary:
         missing['sleep'] = detect_missing_numeric_fields(sleep_summary, SLEEP_NUMERIC_FIELDS)
     
+    if cardio_metrics:
+        cardio_fields = ['rhr_bpm', 'hrv_low_ms', 'hrv_high_ms']
+        missing['cardio'] = [f for f in cardio_fields if not cardio_metrics.get(f)]
+    
+    # Get training recommendation if exists
+    from datetime import datetime
+    from models.services.training_recommendation import get_training_recommendation as get_rec
+    training_recommendation = None
+    try:
+        target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        rec = get_rec(current_user.id, target_date)
+        if rec:
+            training_recommendation = rec.to_dict()
+    except Exception as e:
+        logger.warning(f"Could not fetch training recommendation for {date_str}: {e}")
+    
     return jsonify({
         'success': True,
         'date': date_str,
         'cycling_workout': serialize_for_json(cycling_workout),
         'readiness_entry': serialize_for_json(readiness_entry),
         'sleep_summary': serialize_for_json(sleep_summary),
+        'cardio_metrics': serialize_for_json(cardio_metrics),
+        'training_recommendation': training_recommendation,
         'missing': missing,
-        'has_data': bool(cycling_workout or readiness_entry or sleep_summary)
+        'has_data': bool(cycling_workout or readiness_entry or sleep_summary or cardio_metrics)
     })
 
 
@@ -756,7 +767,7 @@ def import_bundle():
                 sleep_end_time=cs.sleep_end,
                 total_sleep_minutes=cs.total_sleep_minutes,
                 deep_sleep_minutes=cs.deep_sleep_minutes,
-                wakeups_count=cs.wakeups,
+                awake_minutes=cs.awake_minutes,
                 min_heart_rate=cs.min_hr,
                 avg_heart_rate=cs.avg_hr,
                 max_heart_rate=cs.max_hr,
@@ -768,7 +779,7 @@ def import_bundle():
                 'sleep_end_date': cs.date,
                 'total_sleep_minutes': cs.total_sleep_minutes,
                 'deep_sleep_minutes': cs.deep_sleep_minutes,
-                'wakeups_count': cs.wakeups,
+                'awake_minutes': cs.awake_minutes,
                 'min_heart_rate': cs.min_hr
             }
             
@@ -779,12 +790,70 @@ def import_bundle():
                     readiness['date'] = readiness['date'].strftime('%Y-%m-%d') if hasattr(readiness['date'], 'strftime') else str(readiness['date'])
                 readiness_results.append(readiness)
         
+        # ============== Process cardio_series images ==============
+        cardio_processed = []
+        for img_result in batch_result.image_results:
+            if img_result.type == 'cardio_series':
+                # Extract cardio series data from fields
+                fields = img_result.fields
+                metric = fields.get('metric', '')
+                entries = fields.get('entries', [])
+                
+                logger.info(f"[BUNDLE] Processing cardio_series: metric={metric}, entries={len(entries)}")
+                
+                # Process each entry
+                for entry in entries:
+                    date_str = entry.get('date')
+                    low = entry.get('low')
+                    high = entry.get('high')
+                    
+                    if not date_str:
+                        continue
+                    
+                    try:
+                        if metric == 'resting_heart_rate':
+                            # RHR is a single value per day, use low (which equals high)
+                            rhr_value = int(low) if low is not None else None
+                            service.upsert_cardio_metrics(
+                                date=date_str,
+                                rhr_bpm=rhr_value
+                            )
+                            # Recalculate readiness score if entry exists for this date
+                            service.recalculate_readiness_score(date_str)
+                            cardio_processed.append({
+                                'date': date_str,
+                                'metric': 'rhr',
+                                'value': rhr_value
+                            })
+                            logger.info(f"[BUNDLE] Saved RHR for {date_str}: {rhr_value} bpm")
+                        elif metric == 'hrv':
+                            # HRV is a range (low to high)
+                            hrv_low = int(low) if low is not None else None
+                            hrv_high = int(high) if high is not None else None
+                            service.upsert_cardio_metrics(
+                                date=date_str,
+                                hrv_low_ms=hrv_low,
+                                hrv_high_ms=hrv_high
+                            )
+                            # Recalculate readiness score if entry exists for this date
+                            service.recalculate_readiness_score(date_str)
+                            cardio_processed.append({
+                                'date': date_str,
+                                'metric': 'hrv',
+                                'low': hrv_low,
+                                'high': hrv_high
+                            })
+                            logger.info(f"[BUNDLE] Saved HRV for {date_str}: {hrv_low}-{hrv_high} ms")
+                    except Exception as e:
+                        logger.error(f"[BUNDLE] Error processing cardio entry {date_str}: {e}")
+        
         # ============== Build response ==============
         canonical_date = batch_result.canonical_workout.date or batch_result.canonical_sleep.date or datetime.now().strftime('%Y-%m-%d')
         
         # Count image types
         cycling_count = sum(1 for r in batch_result.image_results if r.type in ['cycling_power', 'watch_workout'])
         sleep_count = sum(1 for r in batch_result.image_results if r.type == 'sleep_summary')
+        cardio_count = sum(1 for r in batch_result.image_results if r.type == 'cardio_series')
         unknown_count = sum(1 for r in batch_result.image_results if r.type == 'unknown')
         
         # Detect missing fields for canonical workout/sleep
@@ -815,7 +884,7 @@ def import_bundle():
             mapped_cs = {
                 'total_sleep_minutes': cs_dict.get('total_sleep_minutes'),
                 'deep_sleep_minutes': cs_dict.get('deep_sleep_minutes'),
-                'wakeups_count': cs_dict.get('wakeups'),
+                'awake_minutes': cs_dict.get('awake_minutes'),
                 'min_heart_rate': cs_dict.get('min_hr'),
                 'avg_heart_rate': cs_dict.get('avg_hr'),
                 'max_heart_rate': cs_dict.get('max_hr')
@@ -846,9 +915,11 @@ def import_bundle():
                 'sleep': sleep_missing
             },
             'has_missing_data': len(workout_missing) > 0 or len(sleep_missing) > 0,
+            'cardio_processed': cardio_processed,
             'summary': {
                 'cycling_images': cycling_count,
                 'sleep_images': sleep_count,
+                'cardio_images': cardio_count,
                 'unknown_images': unknown_count,
                 'errors': len(batch_result.errors),
                 'api_calls': 1  # Single API call!
@@ -917,7 +988,7 @@ def import_sleep_image():
             sleep_end_time=payload.sleep_end_time,
             total_sleep_minutes=payload.total_sleep_minutes,
             deep_sleep_minutes=payload.deep_sleep_minutes,
-            wakeups_count=payload.wakeups_count,
+            awake_minutes=payload.awake_minutes,
             min_heart_rate=payload.min_heart_rate,
             avg_heart_rate=payload.avg_heart_rate,
             max_heart_rate=payload.max_heart_rate,
@@ -1016,15 +1087,50 @@ def create_readiness():
 
     try:
         service = get_service()
+        date = data['date']
+        
+        # Handle manual cardio input (when no screenshot data exists)
+        manual_rhr = data.get('manual_rhr_bpm')
+        manual_hrv_low = data.get('manual_hrv_low_ms')
+        manual_hrv_high = data.get('manual_hrv_high_ms')
+        
+        if manual_rhr is not None or manual_hrv_low is not None:
+            # Save manual cardio values to cardio_daily_metrics
+            cardio_updates = {}
+            if manual_rhr is not None:
+                cardio_updates['rhr_bpm'] = int(manual_rhr)
+            if manual_hrv_low is not None and manual_hrv_high is not None:
+                cardio_updates['hrv_low_ms'] = int(manual_hrv_low)
+                cardio_updates['hrv_high_ms'] = int(manual_hrv_high)
+            
+            if cardio_updates:
+                service.upsert_cardio_metrics(date, **cardio_updates)
+                logger.info(f"[READINESS] Saved manual cardio for {date}: {cardio_updates}")
+        
+        # Determine HRV/RHR status
+        # If explicitly provided in request, use those values
+        # Otherwise, auto-calculate from cardio data
+        hrv_status = data.get('hrv_status')
+        rhr_status = data.get('rhr_status')
+        
+        if hrv_status is None or rhr_status is None:
+            # Auto-calculate from cardio data
+            cardio_status = service.calculate_hrv_rhr_status(date)
+            if hrv_status is None:
+                hrv_status = cardio_status.get('hrv_status') or 0
+            if rhr_status is None:
+                rhr_status = cardio_status.get('rhr_status') or 0
+            logger.info(f"[READINESS] Auto-calculated status for {date}: HRV={hrv_status}, RHR={rhr_status}")
+        
         # Note: sleep data is imported from screenshots, not entered via form
         # If sleep values are provided, they will be used; otherwise preserved from imports
         entry_id, morning_score = service.create_or_update_readiness(
-            date=data['date'],
+            date=date,
             energy=int(data['energy']),
             mood=int(data['mood']),
             muscle_fatigue=int(data['muscle_fatigue']),
-            hrv_status=int(data.get('hrv_status', 0)),
-            rhr_status=int(data.get('rhr_status', 0)),
+            hrv_status=int(hrv_status),
+            rhr_status=int(rhr_status),
             min_hr_status=int(data.get('min_hr_status', 0)),
             sleep_minutes=int(data.get('sleep_minutes')) if data.get('sleep_minutes') else None,
             deep_sleep_minutes=int(data.get('deep_sleep_minutes')) if data.get('deep_sleep_minutes') else None,
@@ -1036,7 +1142,9 @@ def create_readiness():
         return jsonify({
             'success': True,
             'entry_id': entry_id,
-            'morning_score': morning_score
+            'morning_score': morning_score,
+            'hrv_status': int(hrv_status),
+            'rhr_status': int(rhr_status)
         })
 
     except Exception as e:
@@ -1071,6 +1179,56 @@ def get_readiness_entries():
             e['date'] = e['date'].strftime('%Y-%m-%d') if hasattr(e['date'], 'strftime') else str(e['date'])
 
     return jsonify({'entries': entries})
+
+
+@cycling_readiness_bp.route('/api/cardio-status', methods=['GET'])
+@login_required
+def get_cardio_status():
+    """
+    Get cardio metrics and calculated HRV/RHR status for a date.
+    Used by the Morning Readiness form to auto-fill status values.
+    ---
+    tags:
+      - Cardio
+    parameters:
+      - name: date
+        in: query
+        type: string
+        format: date
+        required: true
+    responses:
+      200:
+        description: Cardio status data
+    """
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Date parameter required'}), 400
+    
+    service = get_service()
+    
+    # Get calculated status (includes cardio metrics and baseline comparison)
+    status = service.calculate_hrv_rhr_status(date_str)
+    
+    # Also get existing readiness entry if any
+    readiness = service.get_readiness_by_date(date_str)
+    
+    return jsonify({
+        'success': True,
+        'date': date_str,
+        'has_cardio': status.get('has_cardio', False),
+        'cardio': {
+            'rhr_bpm': status.get('rhr_bpm'),
+            'hrv_low_ms': status.get('hrv_low_ms'),
+            'hrv_high_ms': status.get('hrv_high_ms'),
+            'baseline_rhr': status.get('baseline_rhr'),
+            'baseline_hrv': status.get('baseline_hrv')
+        },
+        'calculated_status': {
+            'hrv_status': status.get('hrv_status'),
+            'rhr_status': status.get('rhr_status')
+        },
+        'existing_readiness': serialize_for_json(readiness) if readiness else None
+    })
 
 
 @cycling_readiness_bp.route('/api/readiness/<int:entry_id>', methods=['DELETE'])
@@ -1118,3 +1276,204 @@ def get_cycling_chart_data():
     chart_data = service.get_cycling_chart_data(days=days)
     return jsonify(chart_data)
 
+
+# ============== Training Context API ==============
+
+@cycling_readiness_bp.route('/api/training-context', methods=['GET'])
+@login_required
+def get_training_context():
+    """
+    Get comprehensive training context for AI recommendations.
+    
+    Aggregates data from cycling workouts, readiness entries, sleep summaries,
+    and cardio metrics to build a context object for the specified date.
+    
+    ---
+    tags:
+      - Training
+    parameters:
+      - name: date
+        in: query
+        type: string
+        format: date
+        required: false
+        description: Target date (YYYY-MM-DD). Defaults to today.
+    responses:
+      200:
+        description: Training context object with today, last_7_days, and baseline_30_days
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            date:
+              type: string
+              format: date
+            context:
+              type: object
+              properties:
+                today:
+                  type: object
+                last_7_days:
+                  type: array
+                baseline_30_days:
+                  type: object
+      400:
+        description: Invalid date format
+    """
+    from datetime import datetime, date as date_type
+    
+    # Get target date from query params (default to today)
+    date_str = request.args.get('date')
+    
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid date format. Use YYYY-MM-DD.'
+            }), 400
+    else:
+        target_date = date_type.today()
+    
+    try:
+        service = get_service()
+        context = service.build_training_context(target_date)
+        
+        return jsonify({
+            'success': True,
+            'date': target_date.strftime('%Y-%m-%d'),
+            'context': context
+        })
+    
+    except Exception as e:
+        logger.error(f"Error building training context: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': 'Failed to build training context'
+        }), 500
+
+
+@cycling_readiness_bp.route('/api/training-recommendation', methods=['GET'])
+@login_required
+def get_training_recommendation_api():
+    """
+    Get AI-generated training recommendation for a specific date.
+    
+    Uses the training context (readiness, sleep, cardio, workout history)
+    to generate a personalized training recommendation via OpenAI.
+    
+    If a recommendation already exists for the date, returns the stored one.
+    Use refresh=true to force regeneration.
+    
+    ---
+    tags:
+      - Training
+    parameters:
+      - name: date
+        in: query
+        type: string
+        format: date
+        required: false
+        description: Target date (YYYY-MM-DD). Defaults to today.
+      - name: refresh
+        in: query
+        type: string
+        required: false
+        description: Set to "true" to force regeneration (ignores stored recommendation)
+    responses:
+      200:
+        description: Training recommendation
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            cached:
+              type: boolean
+              description: True if returned from storage, False if freshly generated
+            recommendation:
+              type: object
+              properties:
+                date:
+                  type: string
+                day_type:
+                  type: string
+                reason_short:
+                  type: string
+                session_plan:
+                  type: object
+                flags:
+                  type: object
+      400:
+        description: Invalid date format
+      500:
+        description: Failed to generate recommendation
+    """
+    from datetime import datetime, date as date_type
+    from models.services.training_recommendation import (
+        generate_training_recommendation,
+        get_training_recommendation,
+        get_recommendation_summary
+    )
+    
+    # Get target date from query params (default to today)
+    date_str = request.args.get('date')
+    
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid date format. Use YYYY-MM-DD.'
+            }), 400
+    else:
+        target_date = date_type.today()
+    
+    # Check if refresh is requested
+    force_refresh = request.args.get('refresh', '').lower() == 'true'
+    
+    try:
+        # Check if we have a cached recommendation (for response metadata)
+        had_cached = False
+        if not force_refresh:
+            existing = get_training_recommendation(current_user.id, target_date)
+            had_cached = existing is not None
+        
+        # Generate or retrieve the recommendation
+        recommendation = generate_training_recommendation(
+            user_id=current_user.id,
+            target_date=target_date,
+            force_refresh=force_refresh
+        )
+        
+        # Get human-readable summary
+        summary = get_recommendation_summary(recommendation)
+        
+        return jsonify({
+            'success': True,
+            'date': target_date.strftime('%Y-%m-%d'),
+            'cached': had_cached and not force_refresh,
+            'recommendation': recommendation.to_dict(),
+            'summary': summary
+        })
+    
+    except ValueError as e:
+        logger.error(f"Recommendation parsing error: {e}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to parse AI response: {str(e)}'
+        }), 500
+    
+    except Exception as e:
+        logger.error(f"Error generating training recommendation: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': f'Failed to generate recommendation: {str(e)}'
+        }), 500

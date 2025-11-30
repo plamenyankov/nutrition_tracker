@@ -60,14 +60,22 @@ if [ "$USE_MYSQL" = "true" ]; then\n\
     }\n\
     echo "MySQL connection successful!"\n\
     \n\
-    # Check if migration is needed\n\
+    # Always run schema migrations (they are idempotent)\n\
+    echo "Running schema migrations..."\n\
+    python run_schema_migrations.py || {\n\
+        echo "Schema migrations failed!"\n\
+        exit 1\n\
+    }\n\
+    echo "Schema migrations completed!"\n\
+    \n\
+    # Check if data migration is needed\n\
     if [ "$RUN_MIGRATION" = "true" ]; then\n\
-        echo "Running MySQL migration..."\n\
+        echo "Running data migration..."\n\
         python migrate_to_mysql.py --env production || {\n\
-            echo "Migration failed!"\n\
+            echo "Data migration failed!"\n\
             exit 1\n\
         }\n\
-        echo "Migration completed successfully!"\n\
+        echo "Data migration completed successfully!"\n\
     fi\n\
     \n\
     # Verify app database configuration\n\
@@ -79,7 +87,6 @@ if [ "$USE_MYSQL" = "true" ]; then\n\
 else\n\
     echo "Using SQLite database"\n\
     python init_db.py\n\
-    python run_all_migrations.py\n\
 fi\n\
 \n\
 echo "Starting application..."\n\

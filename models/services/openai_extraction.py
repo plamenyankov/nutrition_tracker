@@ -88,10 +88,22 @@ class UnknownPayload:
 
 
 @dataclass
+class CardioSeriesPayload:
+    """Payload for Apple Health cardio series (RHR or HRV daily ranges)"""
+    type: str = "cardio_series"
+    metric: str = ""  # "resting_heart_rate" or "hrv"
+    entries: List[Dict[str, Any]] = field(default_factory=list)  # [{date, low, high}, ...]
+    notes: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class ImageResult:
     """Result from processing a single image"""
     filename: str
-    type: str  # cycling_power, watch_workout, sleep_summary, unknown
+    type: str  # cycling_power, watch_workout, sleep_summary, cardio_series, unknown
     fields: Dict[str, Any]
     confidence: float
 
@@ -165,7 +177,7 @@ class BatchExtractionResult:
 
 
 # Type alias for any payload
-ExtractedPayload = Union[CyclingWorkoutPayload, SleepSummaryPayload, UnknownPayload]
+ExtractedPayload = Union[CyclingWorkoutPayload, SleepSummaryPayload, CardioSeriesPayload, UnknownPayload]
 
 
 # ============== Batch Extraction Prompt (1-4 images, single API call) ==============
@@ -193,8 +205,17 @@ For EACH image, classify it as one of:
 - Apple Health sleep analysis
 - Total sleep time with sleep/wake times
 
+"cardio_series" if the image shows:
+- Apple Health "All Recorded Data" list view
+- Multiple rows with date + range format (e.g., "73 – 73 30 Nov 2025", "12 – 36 29 Nov 2025")
+- Pattern: number – number [date]
+- Header may mention "Resting Heart Rate", "Heart Rate Variability", "BPM", or "ms"
+- If header/unit not visible, use range pattern:
+  * If all rows have low == high (e.g., 73–73, 72–72) → metric = "resting_heart_rate"
+  * If rows commonly have low != high (e.g., 12–36, 8–38) → metric = "hrv"
+
 "unknown" ONLY if:
-- The image contains NO cycling metrics AND NO sleep data
+- The image contains NO cycling metrics AND NO sleep data AND NO cardio series data
 - Examples: food photos, random apps, non-fitness screens
 
 CRITICAL: Do NOT classify cycling screenshots as "unknown". If you see ANY power, distance, duration, heart rate, or calories from an exercise, it's likely cycling.
@@ -229,6 +250,19 @@ For sleep (sleep_summary):
 - wakeups: count
 - min_hr, avg_hr, max_hr: BPM
 
+For cardio_series:
+- metric: "resting_heart_rate" or "hrv"
+- entries: array of {date: "YYYY-MM-DD", low: number, high: number}
+- Extract ALL visible rows from the list
+- Normalize dates to YYYY-MM-DD format
+- Return numbers as numeric values (not strings)
+- Classification rules:
+  * If header mentions "BPM", "beats per minute", "Resting Heart Rate" → metric = "resting_heart_rate"
+  * If header mentions "ms", "milliseconds", "HRV", "Heart Rate Variability" → metric = "hrv"
+  * If header not visible:
+    - If all rows have low == high → metric = "resting_heart_rate"
+    - If rows commonly have low != high → metric = "hrv"
+
 === MERGING RULES ===
 
 - Use the latest date across all images as canonical date
@@ -241,7 +275,7 @@ For sleep (sleep_summary):
   "imageResults": [
     {
       "filename": "",
-      "type": "cycling_power | watch_workout | sleep_summary | unknown",
+      "type": "cycling_power | watch_workout | sleep_summary | cardio_series | unknown",
       "fields": { },
       "confidence": 0.0
     }
@@ -300,7 +334,8 @@ You receive ONE screenshot. It can be:
 2) An Apple Watch Indoor Cycle / Outdoor Cycle / Cycling workout summary
 3) An Apple Fitness+ cycling workout
 4) An Apple Health sleep summary
-5) Or something unrelated
+5) An Apple Health "All Recorded Data" list showing RHR or HRV ranges
+6) Or something unrelated
 
 === STEP 1: CLASSIFY THE IMAGE ===
 
@@ -320,9 +355,19 @@ TYPE = "sleep_summary" if:
 - Displays total sleep duration with sleep/wake times
 - Has Apple Health sleep analysis or similar sleep tracking data
 
+TYPE = "cardio_series" if:
+- Shows Apple Health "All Recorded Data" list view
+- Multiple rows with date + range format (e.g., "73 – 73 30 Nov 2025", "12 – 36 29 Nov 2025")
+- Pattern: number – number [date]
+- Header may mention "Resting Heart Rate", "Heart Rate Variability", "BPM", or "ms"
+- If header/unit not visible, use range pattern:
+  * If all rows have low == high (e.g., 73–73, 72–72) → metric = "resting_heart_rate"
+  * If rows commonly have low != high (e.g., 12–36, 8–38) → metric = "hrv"
+
 TYPE = "unknown" ONLY if:
 - The image does NOT contain ANY cycling metrics (watts, distance, cadence, cycling workout)
 - AND does NOT contain ANY sleep data (sleep stages, sleep duration)
+- AND does NOT contain ANY cardio series data (RHR/HRV ranges)
 - For example: a photo of food, a random app, a non-fitness screen
 
 CRITICAL: If you see ANY cycling-related metrics (power, distance, cadence, heart rate during workout, calories burned in exercise), classify as "cycling_workout". Do NOT mark cycling screenshots as "unknown".
@@ -374,6 +419,20 @@ If type = "sleep_summary", extract these fields:
 - avg_heart_rate: average HR during sleep
 - max_heart_rate: maximum HR during sleep
 
+If type = "cardio_series", extract these fields:
+
+- metric: "resting_heart_rate" or "hrv"
+- entries: array of {date: "YYYY-MM-DD", low: number, high: number}
+- Extract ALL visible rows from the list
+- Normalize dates to YYYY-MM-DD format
+- Return numbers as numeric values (not strings)
+- Classification rules:
+  * If header mentions "BPM", "beats per minute", "Resting Heart Rate" → metric = "resting_heart_rate"
+  * If header mentions "ms", "milliseconds", "HRV", "Heart Rate Variability" → metric = "hrv"
+  * If header not visible:
+    - If all rows have low == high → metric = "resting_heart_rate"
+    - If rows commonly have low != high → metric = "hrv"
+
 === STEP 3: OUTPUT FORMAT ===
 
 Return ONLY this JSON structure (no markdown, no explanation, no comments):
@@ -417,6 +476,32 @@ OR for sleep:
   "min_heart_rate": null,
   "avg_heart_rate": null,
   "max_heart_rate": null,
+  "notes": ""
+}
+
+OR for cardio_series (Resting Heart Rate - values are the same):
+
+{
+  "type": "cardio_series",
+  "source_hint": "apple_health",
+  "metric": "resting_heart_rate",
+  "entries": [
+    {"date": "2025-11-30", "low": 73, "high": 73},
+    {"date": "2025-11-29", "low": 72, "high": 72}
+  ],
+  "notes": ""
+}
+
+OR for cardio_series (Heart Rate Variability - values differ):
+
+{
+  "type": "cardio_series",
+  "source_hint": "apple_health",
+  "metric": "hrv",
+  "entries": [
+    {"date": "2025-11-30", "low": 12, "high": 36},
+    {"date": "2025-11-29", "low": 8, "high": 42}
+  ],
   "notes": ""
 }
 
@@ -799,6 +884,17 @@ def create_payload_from_data(data: Dict[str, Any]) -> ExtractedPayload:
             min_heart_rate=data.get('min_heart_rate'),
             avg_heart_rate=data.get('avg_heart_rate'),
             max_heart_rate=data.get('max_heart_rate'),
+            notes=data.get('notes', '')
+        )
+    elif payload_type == 'cardio_series':
+        # Log key cardio series fields for debugging
+        entries = data.get('entries', [])
+        logger.info(f"[EXTRACTION] Cardio series: metric={data.get('metric')}, entries={len(entries)}")
+        
+        return CardioSeriesPayload(
+            type="cardio_series",
+            metric=data.get('metric', ''),
+            entries=entries,
             notes=data.get('notes', '')
         )
     else:
