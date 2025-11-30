@@ -495,6 +495,224 @@
         margin-left: auto;
     }
 
+    /* ============== Performance Targets Card ============== */
+    .performance-targets-card {
+        background: linear-gradient(135deg, rgba(0, 255, 198, 0.08) 0%, rgba(0, 119, 255, 0.05) 100%);
+        border: 1px solid rgba(0, 255, 198, 0.2);
+        border-radius: 8px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .targets-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .targets-icon {
+        font-size: 1rem;
+    }
+
+    .targets-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--color-teal);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .targets-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .target-item {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    .target-label {
+        color: var(--color-muted-light);
+    }
+
+    .target-value {
+        font-weight: 700;
+    }
+
+    .target-value.hr {
+        color: #ff6b6b;
+    }
+
+    .target-value.power {
+        color: #0ad3c7;
+    }
+
+    .target-value.zone {
+        background: rgba(0, 255, 198, 0.2);
+        color: var(--color-teal);
+        padding: 0.15rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+
+    /* ============== Enhanced Interval Rows ============== */
+    .intervals-list-enhanced {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .interval-row {
+        display: grid;
+        grid-template-columns: 100px 1fr auto;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.6rem 0.75rem;
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 6px;
+        border-left: 3px solid var(--color-muted);
+    }
+
+    .interval-row.warmup { border-left-color: #4CAF50; }
+    .interval-row.steady { border-left-color: var(--color-teal); }
+    .interval-row.interval { border-left-color: var(--color-red); }
+    .interval-row.recovery { border-left-color: var(--color-blue); }
+    .interval-row.cooldown { border-left-color: #4CAF50; }
+
+    .interval-left {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .interval-type {
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .interval-type.warmup { color: #4CAF50; }
+    .interval-type.steady { color: var(--color-teal); }
+    .interval-type.interval { color: var(--color-red); }
+    .interval-type.recovery { color: var(--color-blue); }
+    .interval-type.cooldown { color: #4CAF50; }
+
+    .interval-center {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .interval-duration {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: white;
+    }
+
+    .interval-zone-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        text-transform: uppercase;
+    }
+
+    .interval-zone-badge.Z1 {
+        background: rgba(76, 175, 80, 0.25);
+        color: #4CAF50;
+    }
+
+    .interval-zone-badge.Z2 {
+        background: rgba(0, 255, 198, 0.2);
+        color: var(--color-teal);
+    }
+
+    .interval-zone-badge.Z3 {
+        background: rgba(255, 152, 0, 0.25);
+        color: #FF9800;
+    }
+
+    .interval-zone-badge.Z4 {
+        background: rgba(255, 82, 82, 0.25);
+        color: var(--color-red);
+    }
+
+    .interval-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 0.2rem;
+    }
+
+    .interval-metric {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.75rem;
+    }
+
+    .interval-metric-label {
+        color: var(--color-muted);
+        font-size: 0.65rem;
+        text-transform: uppercase;
+    }
+
+    .interval-metric-value {
+        font-weight: 700;
+    }
+
+    .interval-metric-value.hr {
+        color: #ff6b6b;
+    }
+
+    .interval-metric-value.power {
+        color: #0ad3c7;
+    }
+
+    .interval-notes {
+        grid-column: 1 / -1;
+        font-size: 0.7rem;
+        color: var(--color-muted);
+        padding-top: 0.4rem;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1);
+        margin-top: 0.3rem;
+    }
+
+    .interval-notes i {
+        margin-right: 0.3rem;
+        opacity: 0.7;
+    }
+
+    /* Responsive: Stack on mobile */
+    @media (max-width: 576px) {
+        .interval-row {
+            grid-template-columns: 1fr;
+            gap: 0.4rem;
+        }
+
+        .interval-left {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .interval-right {
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 1rem;
+        }
+
+        .targets-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     .training-rec-flags {
         display: flex;
         flex-wrap: wrap;
@@ -2176,10 +2394,6 @@
                         <span id="coachDuration">--</span>
                     </div>
                     <div class="rec-detail">
-                        <i class="fas fa-heartbeat"></i>
-                        <span id="coachZone">--</span>
-                    </div>
-                    <div class="rec-detail">
                         <i class="fas fa-calendar"></i>
                         <span id="coachDateLabel">--</span>
                     </div>
@@ -2189,11 +2403,23 @@
                     <!-- Reason text will be inserted here -->
                 </div>
                 
+                <!-- Performance Targets Card -->
+                <div class="performance-targets-card" id="coachTargetsCard" style="display: none;">
+                    <div class="targets-header">
+                        <span class="targets-icon">📈</span>
+                        <span class="targets-title">Performance Targets (AI Estimated)</span>
+                    </div>
+                    <div class="targets-grid" id="coachTargetsGrid">
+                        <!-- Targets will be inserted here -->
+                    </div>
+                </div>
+                
+                <!-- Session Plan with enhanced intervals -->
                 <div class="training-rec-intervals" id="coachIntervals" style="display: none;">
                     <div class="intervals-header">
                         <i class="fas fa-list-ol"></i> Session Plan
                     </div>
-                    <div class="intervals-list" id="coachIntervalsList">
+                    <div class="intervals-list-enhanced" id="coachIntervalsList">
                         <!-- Intervals will be inserted here -->
                     </div>
                 </div>
@@ -2504,54 +2730,126 @@ document.addEventListener('DOMContentLoaded', function() {
             durationEl.textContent = '--';
         }
         
-        // Zone
-        const zoneEl = document.getElementById('coachZone');
-        if (rec.session_plan && rec.session_plan.primary_zone) {
-            zoneEl.textContent = rec.session_plan.primary_zone;
-        } else {
-            zoneEl.textContent = '--';
-        }
-        
         // Date label
         document.getElementById('coachDateLabel').textContent = dateStr;
         
         // Reason
         document.getElementById('coachReason').textContent = rec.reason_short || '';
         
-        // Intervals
+        // Performance Targets Card
+        const targetsCard = document.getElementById('coachTargetsCard');
+        const targetsGrid = document.getElementById('coachTargetsGrid');
+        if (rec.session_plan) {
+            const sp = rec.session_plan;
+            let targetsHtml = '';
+            
+            if (sp.expected_avg_hr_bpm) {
+                targetsHtml += `
+                    <div class="target-item">
+                        <span class="target-label">Avg HR:</span>
+                        <span class="target-value hr">${sp.expected_avg_hr_bpm} bpm</span>
+                    </div>`;
+            }
+            
+            if (sp.expected_avg_power_w) {
+                targetsHtml += `
+                    <div class="target-item">
+                        <span class="target-label">Avg Power:</span>
+                        <span class="target-value power">${sp.expected_avg_power_w} W</span>
+                    </div>`;
+            }
+            
+            if (sp.primary_zone) {
+                targetsHtml += `
+                    <div class="target-item">
+                        <span class="target-label">Zone:</span>
+                        <span class="target-value zone">${sp.primary_zone}</span>
+                    </div>`;
+            }
+            
+            if (sp.session_target_power_w_min && sp.session_target_power_w_max) {
+                targetsHtml += `
+                    <div class="target-item">
+                        <span class="target-label">Power Range:</span>
+                        <span class="target-value power">${sp.session_target_power_w_min}–${sp.session_target_power_w_max} W</span>
+                    </div>`;
+            }
+            
+            if (targetsHtml) {
+                targetsGrid.innerHTML = targetsHtml;
+                targetsCard.style.display = 'block';
+            } else {
+                targetsCard.style.display = 'none';
+            }
+        } else {
+            targetsCard.style.display = 'none';
+        }
+        
+        // Enhanced Intervals
         const intervalsContainer = document.getElementById('coachIntervals');
         const intervalsList = document.getElementById('coachIntervalsList');
         if (rec.session_plan && rec.session_plan.intervals && rec.session_plan.intervals.length > 0) {
             intervalsList.innerHTML = rec.session_plan.intervals.map(interval => {
-                let desc = '';
+                // Duration description
+                let durationDesc = '';
                 if (interval.repeats) {
-                    desc = `${interval.repeats}× ${interval.work_minutes || interval.duration_minutes}min`;
+                    durationDesc = `${interval.repeats}× ${interval.work_minutes || interval.duration_minutes}min`;
                     if (interval.rest_minutes) {
-                        desc += ` / ${interval.rest_minutes}min rest`;
+                        durationDesc += ` / ${interval.rest_minutes}min rest`;
                     }
                 } else {
-                    desc = `${interval.duration_minutes}min`;
+                    durationDesc = `${interval.duration_minutes} min`;
                 }
                 
-                // Add HR targets if available
-                let targets = [];
+                // HR metric
+                let hrHtml = '';
                 if (interval.target_hr_bpm_min && interval.target_hr_bpm_max) {
-                    targets.push(`${interval.target_hr_bpm_min}-${interval.target_hr_bpm_max} bpm`);
+                    hrHtml = `
+                        <div class="interval-metric">
+                            <span class="interval-metric-label">HR:</span>
+                            <span class="interval-metric-value hr">${interval.target_hr_bpm_min}–${interval.target_hr_bpm_max} bpm</span>
+                        </div>`;
                 } else if (interval.expected_avg_hr_bpm) {
-                    targets.push(`~${interval.expected_avg_hr_bpm} bpm`);
-                }
-                if (interval.target_power_w_min && interval.target_power_w_max) {
-                    targets.push(`${interval.target_power_w_min}-${interval.target_power_w_max}W`);
+                    hrHtml = `
+                        <div class="interval-metric">
+                            <span class="interval-metric-label">HR:</span>
+                            <span class="interval-metric-value hr">~${interval.expected_avg_hr_bpm} bpm</span>
+                        </div>`;
                 }
                 
-                let targetsHtml = targets.length > 0 ? `<span class="interval-targets">${targets.join(' ')}</span>` : '';
+                // Power metric
+                let powerHtml = '';
+                if (interval.target_power_w_min && interval.target_power_w_max) {
+                    powerHtml = `
+                        <div class="interval-metric">
+                            <span class="interval-metric-label">Power:</span>
+                            <span class="interval-metric-value power">${interval.target_power_w_min}–${interval.target_power_w_max} W</span>
+                        </div>`;
+                }
+                
+                // Notes
+                let notesHtml = '';
+                if (interval.notes) {
+                    notesHtml = `
+                        <div class="interval-notes">
+                            <i class="fas fa-info-circle"></i>${interval.notes}
+                        </div>`;
+                }
                 
                 return `
-                    <div class="interval-item">
-                        <span class="interval-kind">${interval.kind}</span>
-                        <span>${desc}</span>
-                        <span class="interval-zone">${interval.target_zone}</span>
-                        ${targetsHtml}
+                    <div class="interval-row ${interval.kind}">
+                        <div class="interval-left">
+                            <span class="interval-type ${interval.kind}">${interval.kind}</span>
+                        </div>
+                        <div class="interval-center">
+                            <span class="interval-duration">${durationDesc}</span>
+                            <span class="interval-zone-badge ${interval.target_zone}">${interval.target_zone}</span>
+                        </div>
+                        <div class="interval-right">
+                            ${hrHtml}
+                            ${powerHtml}
+                        </div>
+                        ${notesHtml}
                     </div>
                 `;
             }).join('');
