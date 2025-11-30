@@ -46,6 +46,43 @@ from models.services.openai_extraction import (
 logger = logging.getLogger(__name__)
 
 
+# ============== Missing Fields Detection ==============
+
+# Fields that should never be zero (0 is as bad as null for these)
+CYCLING_NUMERIC_FIELDS = [
+    'duration_sec', 'distance_km', 'avg_power_w', 'max_power_w', 
+    'normalized_power_w', 'tss', 'intensity_factor', 'avg_heart_rate', 
+    'max_heart_rate', 'avg_cadence', 'kcal_active', 'kcal_total'
+]
+
+SLEEP_NUMERIC_FIELDS = [
+    'total_sleep_minutes', 'deep_sleep_minutes', 'wakeups_count',
+    'min_heart_rate', 'avg_heart_rate', 'max_heart_rate'
+]
+
+# Fields where 0 is invalid (should be treated as missing)
+ZERO_INVALID_FIELDS = {
+    'avg_heart_rate', 'max_heart_rate', 'min_heart_rate',
+    'avg_power_w', 'max_power_w', 'normalized_power_w',
+    'duration_sec', 'total_sleep_minutes'
+}
+
+
+def detect_missing_numeric_fields(data: dict, field_list: list) -> list:
+    """
+    Detect which numeric fields are missing or invalid (null or 0 for certain fields).
+    Returns list of field names that need user input.
+    """
+    missing = []
+    for field in field_list:
+        value = data.get(field)
+        if value is None:
+            missing.append(field)
+        elif field in ZERO_INVALID_FIELDS and value == 0:
+            missing.append(field)
+    return missing
+
+
 def get_service():
     """Get CyclingReadinessService instance for current user"""
     user_id = current_user.id if current_user.is_authenticated else None
@@ -212,6 +249,165 @@ def delete_cycling_workout(workout_id):
     return jsonify({'error': 'Workout not found'}), 404
 
 
+@cycling_readiness_bp.route('/api/cycling/<int:workout_id>', methods=['PUT', 'PATCH'])
+@login_required
+def update_cycling_workout(workout_id):
+    """
+    Update an existing cycling workout.
+    Accepts partial updates - only provided fields will be updated.
+    ---
+    tags:
+      - Cycling
+    parameters:
+      - name: workout_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        schema:
+          type: object
+          properties:
+            date: {type: string, format: date}
+            duration_sec: {type: integer}
+            distance_km: {type: number}
+            avg_power_w: {type: number}
+            max_power_w: {type: number}
+            normalized_power_w: {type: number}
+            intensity_factor: {type: number}
+            tss: {type: number}
+            avg_heart_rate: {type: integer}
+            max_heart_rate: {type: integer}
+            avg_cadence: {type: integer}
+            kcal_active: {type: integer}
+            kcal_total: {type: integer}
+            notes: {type: string}
+    responses:
+      200:
+        description: Workout updated successfully
+      404:
+        description: Workout not found
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    service = get_service()
+    
+    # Get existing workout first
+    existing = service.get_cycling_workout_by_id(workout_id)
+    if not existing:
+        return jsonify({'error': 'Workout not found'}), 404
+    
+    # Build update dict from allowed fields
+    allowed_fields = [
+        'date', 'start_time', 'source', 'notes', 'duration_sec', 'distance_km',
+        'avg_power_w', 'max_power_w', 'normalized_power_w', 'intensity_factor',
+        'tss', 'avg_heart_rate', 'max_heart_rate', 'avg_cadence',
+        'kcal_active', 'kcal_total'
+    ]
+    
+    updates = {}
+    for field in allowed_fields:
+        if field in data:
+            # Convert empty strings to None for numeric fields
+            value = data[field]
+            if value == '' or value == 'null':
+                value = None
+            updates[field] = value
+    
+    if not updates:
+        return jsonify({'error': 'No valid fields to update'}), 400
+    
+    # Perform update
+    success = service.update_cycling_workout(workout_id, **updates)
+    
+    if success:
+        # Fetch updated workout
+        updated = service.get_cycling_workout_by_id(workout_id)
+        return jsonify({
+            'success': True,
+            'workout': serialize_for_json(updated)
+        })
+    
+    return jsonify({'error': 'Failed to update workout'}), 500
+
+
+@cycling_readiness_bp.route('/api/cycling/<int:workout_id>', methods=['GET'])
+@login_required
+def get_cycling_workout(workout_id):
+    """Get a single cycling workout by ID"""
+    service = get_service()
+    workout = service.get_cycling_workout_by_id(workout_id)
+    
+    if not workout:
+        return jsonify({'error': 'Workout not found'}), 404
+    
+    return jsonify({
+        'success': True,
+        'workout': serialize_for_json(workout)
+    })
+
+
+@cycling_readiness_bp.route('/api/day-summary', methods=['GET'])
+@login_required
+def get_day_summary():
+    """
+    Get all data for a specific date: cycling workout, readiness entry, and sleep summary.
+    Also returns which fields are missing for each record type.
+    ---
+    tags:
+      - Day Summary
+    parameters:
+      - name: date
+        in: query
+        type: string
+        format: date
+        required: true
+        description: Date in YYYY-MM-DD format
+    responses:
+      200:
+        description: Day summary data
+    """
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Date parameter required'}), 400
+    
+    service = get_service()
+    
+    # Get all data for this date
+    cycling_workout = service.get_cycling_workout_by_date(date_str)
+    readiness_entry = service.get_readiness_by_date(date_str)
+    sleep_summary = service.get_sleep_summary_by_date(date_str)
+    
+    # Detect missing fields for each
+    missing = {
+        'cycling': [],
+        'readiness': [],
+        'sleep': []
+    }
+    
+    if cycling_workout:
+        missing['cycling'] = detect_missing_numeric_fields(cycling_workout, CYCLING_NUMERIC_FIELDS)
+    
+    if readiness_entry:
+        readiness_fields = ['energy', 'mood', 'muscle_fatigue', 'sleep_minutes', 'deep_sleep_minutes']
+        missing['readiness'] = [f for f in readiness_fields if not readiness_entry.get(f)]
+    
+    if sleep_summary:
+        missing['sleep'] = detect_missing_numeric_fields(sleep_summary, SLEEP_NUMERIC_FIELDS)
+    
+    return jsonify({
+        'success': True,
+        'date': date_str,
+        'cycling_workout': serialize_for_json(cycling_workout),
+        'readiness_entry': serialize_for_json(readiness_entry),
+        'sleep_summary': serialize_for_json(sleep_summary),
+        'missing': missing,
+        'has_data': bool(cycling_workout or readiness_entry or sleep_summary)
+    })
+
+
 @cycling_readiness_bp.route('/api/cycling/stats', methods=['GET'])
 @login_required
 def get_cycling_stats():
@@ -368,6 +564,44 @@ def import_bundle():
         sleep_count = sum(1 for r in batch_result.image_results if r.type == 'sleep_summary')
         unknown_count = sum(1 for r in batch_result.image_results if r.type == 'unknown')
         
+        # Detect missing fields for canonical workout/sleep
+        workout_missing = []
+        sleep_missing = []
+        
+        if batch_result.canonical_workout.date:
+            cw_dict = batch_result.canonical_workout.to_dict()
+            # Map canonical workout fields to cycling_workout fields
+            mapped_cw = {
+                'duration_sec': int(cw_dict.get('duration_minutes') * 60) if cw_dict.get('duration_minutes') else None,
+                'distance_km': cw_dict.get('distance_km'),
+                'avg_power_w': cw_dict.get('avg_power'),
+                'max_power_w': cw_dict.get('max_power'),
+                'normalized_power_w': cw_dict.get('normalized_power'),
+                'tss': cw_dict.get('tss'),
+                'intensity_factor': cw_dict.get('intensity_factor'),
+                'avg_heart_rate': cw_dict.get('avg_hr'),
+                'max_heart_rate': cw_dict.get('max_hr'),
+                'avg_cadence': cw_dict.get('cadence_avg'),
+                'kcal_active': cw_dict.get('calories_active'),
+                'kcal_total': cw_dict.get('calories_total')
+            }
+            workout_missing = detect_missing_numeric_fields(mapped_cw, CYCLING_NUMERIC_FIELDS)
+        
+        if batch_result.canonical_sleep.date:
+            cs_dict = batch_result.canonical_sleep.to_dict()
+            mapped_cs = {
+                'total_sleep_minutes': cs_dict.get('total_sleep_minutes'),
+                'deep_sleep_minutes': cs_dict.get('deep_sleep_minutes'),
+                'wakeups_count': cs_dict.get('wakeups'),
+                'min_heart_rate': cs_dict.get('min_hr'),
+                'avg_heart_rate': cs_dict.get('avg_hr'),
+                'max_heart_rate': cs_dict.get('max_hr')
+            }
+            sleep_missing = detect_missing_numeric_fields(mapped_cs, SLEEP_NUMERIC_FIELDS)
+        
+        # Get saved IDs for response
+        workout_id = cycling_result.get('id') if cycling_result else None
+        
         return jsonify({
             'success': True,
             'canonical_date': canonical_date,
@@ -380,10 +614,15 @@ def import_bundle():
                 } for r in batch_result.image_results
             ],
             'cycling_workout': serialize_for_json(cycling_result),
+            'workout_id': workout_id,
             'canonical_workout': serialize_for_json(batch_result.canonical_workout.to_dict()),
             'canonical_sleep': serialize_for_json(batch_result.canonical_sleep.to_dict()),
             'readiness_entries': serialize_for_json(readiness_results),
-            'missing_fields': batch_result.missing_fields,
+            'missing_fields': {
+                'workout': workout_missing,
+                'sleep': sleep_missing
+            },
+            'has_missing_data': len(workout_missing) > 0 or len(sleep_missing) > 0,
             'summary': {
                 'cycling_images': cycling_count,
                 'sleep_images': sleep_count,

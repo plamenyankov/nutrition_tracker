@@ -683,6 +683,26 @@ class CyclingReadinessService:
                 ''', (limit,))
             return cursor.fetchall()
 
+    def get_sleep_summary_by_date(self, sleep_date: str) -> Optional[Dict]:
+        """Get sleep summary for a specific date"""
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            if self.user_id:
+                cursor.execute('''
+                    SELECT * FROM sleep_summaries
+                    WHERE user_id = %s AND date = %s
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ''', (self.user_id, sleep_date))
+            else:
+                cursor.execute('''
+                    SELECT * FROM sleep_summaries
+                    WHERE date = %s
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                ''', (sleep_date,))
+            return cursor.fetchone()
+
     # ============== Chart Data Methods ==============
 
     def get_cycling_chart_data(self, days: int = 30) -> Dict[str, List]:
