@@ -366,6 +366,41 @@ def get_analytics_kpis():
         }), 500
 
 
+@cycling_readiness_bp.route('/api/analytics/efficiency-vo2', methods=['GET'])
+@login_required
+def get_efficiency_vo2_data():
+    """
+    Get Efficiency Index and VO2 Index data for analytics charts.
+    
+    Query params:
+        weight_kg: Optional athlete weight in kg (default 87.0)
+    
+    Returns:
+        JSON with:
+        - efficiency_timeseries: Per-workout EI (power/HR) data
+        - efficiency_rolling_7d: 7-day rolling average EI
+        - vo2_weekly: Weekly VO2-style index based on peak power
+    """
+    service = get_service()
+    weight_kg = request.args.get('weight_kg', type=float)
+    
+    try:
+        data = service.get_efficiency_vo2_data(weight_kg=weight_kg)
+        return jsonify({
+            'success': True,
+            **serialize_for_json(data)
+        })
+    except Exception as e:
+        logger.error(f"Error fetching efficiency/VO2 data: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'efficiency_timeseries': [],
+            'efficiency_rolling_7d': [],
+            'vo2_weekly': []
+        }), 500
+
+
 # ============== Cycling Workout API Routes ==============
 
 @cycling_readiness_bp.route('/api/cycling/import-image', methods=['POST'])

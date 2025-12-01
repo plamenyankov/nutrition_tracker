@@ -1864,14 +1864,20 @@ function initCharts(cyclingChartData, readinessChartData) {
 
 // ============== Analytics Tab ==============
 let analyticsKpisLoaded = false;
+let analyticsChartsLoaded = false;
+let efficiencyChart = null;
+let vo2Chart = null;
 
 function initAnalyticsTab() {
-    // Load KPIs when Analytics tab is shown
+    // Load analytics data when Analytics tab is shown
     const analyticsTab = document.querySelector('[data-tab="analytics"]');
     if (analyticsTab) {
         analyticsTab.addEventListener('click', function() {
             if (!analyticsKpisLoaded) {
                 loadAnalyticsKpis();
+            }
+            if (!analyticsChartsLoaded) {
+                loadEfficiencyVo2Charts();
             }
         });
     }
@@ -1889,6 +1895,252 @@ async function loadAnalyticsKpis() {
     } catch (err) {
         console.error('Error loading analytics KPIs:', err);
     }
+}
+
+async function loadEfficiencyVo2Charts() {
+    try {
+        const response = await fetch('/cycling-readiness/api/analytics/efficiency-vo2');
+        const data = await response.json();
+        
+        if (data.success) {
+            renderEfficiencyChart(data.efficiency_timeseries, data.efficiency_rolling_7d);
+            renderVo2Chart(data.vo2_weekly);
+            analyticsChartsLoaded = true;
+        }
+    } catch (err) {
+        console.error('Error loading efficiency/VO2 data:', err);
+    }
+}
+
+function renderEfficiencyChart(timeseries, rolling) {
+    const chartContainer = document.getElementById('efficiencyChartContainer');
+    const emptyState = document.getElementById('efficiencyChartEmpty');
+    const canvas = document.getElementById('efficiencyChart');
+    
+    if (!timeseries || timeseries.length < 3) {
+        chartContainer.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+    }
+    
+    chartContainer.style.display = 'block';
+    emptyState.style.display = 'none';
+    
+    // Prepare data
+    const dates = timeseries.map(d => d.date);
+    const eiValues = timeseries.map(d => d.efficiency_index);
+    const rollingDates = rolling.map(d => d.date);
+    const rollingEi = rolling.map(d => d.rolling_ei);
+    
+    // Destroy existing chart if any
+    if (efficiencyChart) {
+        efficiencyChart.destroy();
+    }
+    
+    efficiencyChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [
+                {
+                    label: 'Session EI',
+                    data: eiValues,
+                    borderColor: 'rgba(0, 255, 198, 0.5)',
+                    backgroundColor: 'rgba(0, 255, 198, 0.1)',
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(0, 255, 198, 0.8)',
+                    pointBorderColor: 'rgba(0, 255, 198, 1)',
+                    tension: 0,
+                    fill: false,
+                    order: 2
+                },
+                {
+                    label: '7-Day Rolling Avg',
+                    data: rollingDates.map(d => {
+                        const idx = dates.indexOf(d);
+                        if (idx >= 0) {
+                            return rolling.find(r => r.date === d)?.rolling_ei || null;
+                        }
+                        return null;
+                    }),
+                    borderColor: '#00FFC6',
+                    backgroundColor: 'rgba(0, 255, 198, 0.15)',
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    tension: 0.4,
+                    fill: true,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: 'rgba(255,255,255,0.7)',
+                        font: { size: 10 },
+                        boxWidth: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleColor: '#00FFC6',
+                    bodyColor: 'rgba(255,255,255,0.9)',
+                    padding: 12,
+                    callbacks: {
+                        afterBody: function(context) {
+                            const dataIndex = context[0].dataIndex;
+                            const entry = timeseries[dataIndex];
+                            if (entry) {
+                                return [
+                                    `Power: ${entry.avg_power_w}W`,
+                                    `HR: ${entry.avg_hr} bpm`,
+                                    `Type: ${entry.workout_type || 'unknown'}`
+                                ];
+                            }
+                            return [];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 },
+                        maxRotation: 45
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'W per bpm',
+                        color: 'rgba(255,255,255,0.6)',
+                        font: { size: 10 }
+                    },
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+function renderVo2Chart(weeklyData) {
+    const chartContainer = document.getElementById('vo2ChartContainer');
+    const emptyState = document.getElementById('vo2ChartEmpty');
+    const canvas = document.getElementById('vo2Chart');
+    const title = document.getElementById('vo2ChartTitle');
+    
+    if (!weeklyData || weeklyData.length < 2) {
+        chartContainer.style.display = 'none';
+        emptyState.style.display = 'block';
+        return;
+    }
+    
+    chartContainer.style.display = 'block';
+    emptyState.style.display = 'none';
+    
+    // Check if we have VO2 index or just peak power
+    const hasVo2Index = weeklyData.some(d => d.vo2_index !== null);
+    
+    // Update title based on data
+    if (!hasVo2Index) {
+        title.innerHTML = '<i class="fas fa-bolt"></i>Weekly Peak Power (proxy for VO₂ capacity)';
+    }
+    
+    // Prepare data
+    const labels = weeklyData.map(d => d.week_label);
+    const values = hasVo2Index 
+        ? weeklyData.map(d => d.vo2_index)
+        : weeklyData.map(d => d.peak_power_w);
+    
+    // Destroy existing chart if any
+    if (vo2Chart) {
+        vo2Chart.destroy();
+    }
+    
+    vo2Chart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: hasVo2Index ? 'VO₂ Index (W/kg)' : 'Peak Power (W)',
+                data: values,
+                borderColor: '#FF7043',
+                backgroundColor: 'rgba(255, 112, 67, 0.15)',
+                pointRadius: 6,
+                pointBackgroundColor: '#FF7043',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                borderWidth: 3,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleColor: '#FF7043',
+                    bodyColor: 'rgba(255,255,255,0.9)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const idx = context.dataIndex;
+                            const entry = weeklyData[idx];
+                            const lines = [];
+                            if (entry.vo2_index !== null) {
+                                lines.push(`VO₂ Index: ${entry.vo2_index} W/kg`);
+                            }
+                            lines.push(`Peak Power: ${entry.peak_power_w}W`);
+                            lines.push(`Workouts: ${entry.workout_count}`);
+                            return lines;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: hasVo2Index ? 'W/kg' : 'Watts',
+                        color: 'rgba(255,255,255,0.6)',
+                        font: { size: 10 }
+                    },
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
 }
 
 function renderAnalyticsKpis(kpis) {

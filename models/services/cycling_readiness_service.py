@@ -2145,3 +2145,217 @@ class CyclingReadinessService:
                 'workouts_30d': len(power_30d)
             }
 
+    # ============== Efficiency Index & VO2 Index Methods ==============
+
+    # Default athlete weight if not stored in user profile
+    DEFAULT_ATHLETE_WEIGHT_KG = 87.0
+
+    def compute_efficiency_index_timeseries(self, days: int = 90) -> List[Dict[str, Any]]:
+        """
+        Compute Efficiency Index (Power / HR) timeseries for each workout.
+        
+        Only includes workouts that have:
+        - avg_power_w > 0
+        - avg_heart_rate > 0
+        - duration >= 15 minutes
+        
+        Args:
+            days: Number of days to look back (default 90)
+        
+        Returns:
+            List sorted by date ascending:
+            [{
+                "date": "2025-11-18",
+                "efficiency_index": float,
+                "avg_power_w": float,
+                "avg_hr": float,
+                "workout_type": str
+            }, ...]
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute('''
+                SELECT 
+                    date,
+                    avg_power_w,
+                    avg_heart_rate,
+                    duration_sec,
+                    intensity_factor,
+                    source,
+                    notes
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+                  AND date <= CURDATE()
+                  AND avg_power_w IS NOT NULL 
+                  AND avg_power_w > 0
+                  AND avg_heart_rate IS NOT NULL 
+                  AND avg_heart_rate > 0
+                  AND duration_sec IS NOT NULL 
+                  AND duration_sec >= 900
+                ORDER BY date ASC
+            ''', (self.user_id, days))
+            
+            workouts = cursor.fetchall()
+            
+            result = []
+            for w in workouts:
+                avg_power = float(w['avg_power_w'])
+                avg_hr = float(w['avg_heart_rate'])
+                efficiency_index = round(avg_power / avg_hr, 3)
+                
+                # Determine workout type
+                workout_type = self._determine_workout_type(w)
+                
+                result.append({
+                    'date': w['date'].strftime('%Y-%m-%d') if hasattr(w['date'], 'strftime') else str(w['date']),
+                    'efficiency_index': efficiency_index,
+                    'avg_power_w': int(avg_power),
+                    'avg_hr': int(avg_hr),
+                    'workout_type': workout_type
+                })
+            
+            return result
+
+    def compute_efficiency_index_rolling(self, window_days: int = 7, total_days: int = 90) -> List[Dict[str, Any]]:
+        """
+        Compute rolling average Efficiency Index over a window.
+        
+        For each day with at least one workout, compute the mean EI of that day's workouts,
+        then compute a rolling average over the window.
+        
+        Args:
+            window_days: Rolling window size (default 7)
+            total_days: Total days to look back (default 90)
+        
+        Returns:
+            List sorted by date ascending:
+            [{
+                "date": "2025-11-18",
+                "rolling_ei": float
+            }, ...]
+        """
+        # Get raw timeseries first
+        timeseries = self.compute_efficiency_index_timeseries(days=total_days)
+        
+        if not timeseries:
+            return []
+        
+        # Group by date and compute daily mean
+        from collections import defaultdict
+        daily_ei = defaultdict(list)
+        
+        for entry in timeseries:
+            daily_ei[entry['date']].append(entry['efficiency_index'])
+        
+        # Compute daily means
+        daily_means = []
+        for date_str, ei_list in sorted(daily_ei.items()):
+            mean_ei = sum(ei_list) / len(ei_list)
+            daily_means.append({'date': date_str, 'mean_ei': mean_ei})
+        
+        # Compute rolling average
+        result = []
+        for i, entry in enumerate(daily_means):
+            # Get values from the last window_days entries (not calendar days)
+            start_idx = max(0, i - window_days + 1)
+            window = daily_means[start_idx:i + 1]
+            
+            rolling_ei = sum(e['mean_ei'] for e in window) / len(window)
+            result.append({
+                'date': entry['date'],
+                'rolling_ei': round(rolling_ei, 3)
+            })
+        
+        return result
+
+    def compute_vo2_index_weekly(self, weight_kg: float = None, weeks: int = 12) -> List[Dict[str, Any]]:
+        """
+        Compute weekly VO2-style index based on peak power per week.
+        
+        VO2 Index = peak_power_w / weight_kg (W/kg)
+        
+        Args:
+            weight_kg: Athlete weight in kg. If None, uses DEFAULT_ATHLETE_WEIGHT_KG
+            weeks: Number of weeks to look back (default 12)
+        
+        Returns:
+            List sorted by week ascending:
+            [{
+                "week_start": "2025-11-17",  # Monday of that ISO week
+                "week_label": "2025-W47",
+                "peak_power_w": float,
+                "vo2_index": float | None
+            }, ...]
+        """
+        # Use default weight if not provided
+        if weight_kg is None:
+            weight_kg = self.DEFAULT_ATHLETE_WEIGHT_KG
+        
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get workouts grouped by ISO week
+            # YEARWEEK(date, 1) uses mode 1 = ISO weeks (Monday is first day)
+            cursor.execute('''
+                SELECT 
+                    YEARWEEK(date, 1) as year_week,
+                    DATE_SUB(date, INTERVAL (WEEKDAY(date)) DAY) as week_start,
+                    MAX(avg_power_w) as peak_power_w,
+                    COUNT(*) as workout_count
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL %s WEEK)
+                  AND date <= CURDATE()
+                  AND avg_power_w IS NOT NULL 
+                  AND avg_power_w > 0
+                GROUP BY YEARWEEK(date, 1), week_start
+                ORDER BY year_week ASC
+            ''', (self.user_id, weeks))
+            
+            weeks_data = cursor.fetchall()
+            
+            result = []
+            for w in weeks_data:
+                year_week = w['year_week']
+                # Format as YYYY-Www
+                year = year_week // 100
+                week_num = year_week % 100
+                week_label = f"{year}-W{week_num:02d}"
+                
+                week_start = w['week_start'].strftime('%Y-%m-%d') if hasattr(w['week_start'], 'strftime') else str(w['week_start'])
+                peak_power = float(w['peak_power_w'])
+                
+                # Calculate VO2 index (W/kg)
+                vo2_index = round(peak_power / weight_kg, 2) if weight_kg and weight_kg > 0 else None
+                
+                result.append({
+                    'week_start': week_start,
+                    'week_label': week_label,
+                    'peak_power_w': int(peak_power),
+                    'vo2_index': vo2_index,
+                    'workout_count': w['workout_count']
+                })
+            
+            return result
+
+    def get_efficiency_vo2_data(self, weight_kg: float = None) -> Dict[str, Any]:
+        """
+        Get all efficiency and VO2 index data for charts.
+        
+        Args:
+            weight_kg: Athlete weight in kg (optional)
+        
+        Returns:
+            Dict with:
+            - efficiency_timeseries: Raw EI per workout
+            - efficiency_rolling_7d: 7-day rolling EI average
+            - vo2_weekly: Weekly VO2 index based on peak power
+        """
+        return {
+            'efficiency_timeseries': self.compute_efficiency_index_timeseries(),
+            'efficiency_rolling_7d': self.compute_efficiency_index_rolling(),
+            'vo2_weekly': self.compute_vo2_index_weekly(weight_kg=weight_kg)
+        }
+

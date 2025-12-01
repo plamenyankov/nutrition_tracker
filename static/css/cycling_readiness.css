@@ -784,6 +784,48 @@
     height: 300px;
 }
 
+/* ============== Efficiency & VO2 Chart Styles ============== */
+.section-title.efficiency {
+    color: var(--color-teal);
+}
+
+.section-title.efficiency i {
+    color: var(--color-teal);
+}
+
+.section-title.vo2 {
+    color: #FF7043;
+}
+
+.section-title.vo2 i {
+    color: #FF7043;
+}
+
+.empty-state.efficiency {
+    background: linear-gradient(135deg, rgba(0, 255, 198, 0.05) 0%, rgba(0, 119, 255, 0.03) 100%);
+    border: 1px dashed rgba(0, 255, 198, 0.2);
+}
+
+.empty-state.efficiency i {
+    color: var(--color-teal);
+}
+
+.empty-state.vo2 {
+    background: linear-gradient(135deg, rgba(255, 112, 67, 0.05) 0%, rgba(255, 193, 7, 0.03) 100%);
+    border: 1px dashed rgba(255, 112, 67, 0.2);
+}
+
+.empty-state.vo2 i {
+    color: #FF7043;
+}
+
+/* Chart container specific styles */
+#efficiencyChartContainer,
+#vo2ChartContainer {
+    position: relative;
+    height: 300px;
+}
+
 /* ============== Enhanced Interval Rows ============== */
 .intervals-list-enhanced {
     display: flex;

@@ -727,8 +727,8 @@
             </div>
         </div>
         
-        <!-- Charts Grid -->
-        <div class="analytics-charts-grid">
+        <!-- Charts Grid - Row 1 -->
+        <div class="analytics-charts-grid mb-3">
             <!-- Performance Trends Chart -->
             <div class="section-card">
                 <h3 class="section-title power">
@@ -761,6 +761,37 @@
                     <p>No readiness data yet.</p>
                 </div>
                 {% endif %}
+            </div>
+        </div>
+        
+        <!-- Charts Grid - Row 2: Efficiency & VO2 -->
+        <div class="analytics-charts-grid">
+            <!-- Efficiency Index Chart -->
+            <div class="section-card">
+                <h3 class="section-title efficiency">
+                    <i class="fas fa-tachometer-alt"></i>Efficiency Index (Power / HR)
+                </h3>
+                <div class="chart-container" id="efficiencyChartContainer">
+                    <canvas id="efficiencyChart"></canvas>
+                </div>
+                <div class="empty-state efficiency" id="efficiencyChartEmpty" style="display: none;">
+                    <i class="fas fa-heartbeat"></i>
+                    <p>Not enough data yet. Complete at least 5 endurance rides (15+ min) to see efficiency trends.</p>
+                </div>
+            </div>
+            
+            <!-- VO2 Index Chart -->
+            <div class="section-card">
+                <h3 class="section-title vo2" id="vo2ChartTitle">
+                    <i class="fas fa-lungs"></i>Aerobic Capacity (VO₂ Index, W/kg)
+                </h3>
+                <div class="chart-container" id="vo2ChartContainer">
+                    <canvas id="vo2Chart"></canvas>
+                </div>
+                <div class="empty-state vo2" id="vo2ChartEmpty" style="display: none;">
+                    <i class="fas fa-running"></i>
+                    <p>Not enough data yet. Complete workouts over several weeks to see aerobic capacity trends.</p>
+                </div>
             </div>
         </div>
     </div>
