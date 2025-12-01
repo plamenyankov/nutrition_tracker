@@ -212,6 +212,9 @@
     transition: all 0.3s ease;
     white-space: nowrap;
     flex-shrink: 0;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
 }
 
 .cycle-tab::after {

@@ -1,0 +1,97 @@
+{% extends 'cycling_readiness/cycle_base.html' %}
+
+{% block page_title %}Workouts{% endblock %}
+
+{% block page_content %}
+<!-- Import Section -->
+<div class="section-card mb-3">
+    <h3 class="section-title">
+        <i class="fas fa-cloud-upload-alt"></i>Import Screenshots
+    </h3>
+    <form id="bundleUploadForm" enctype="multipart/form-data">
+        <div class="upload-zone" id="bundleUploadZone">
+            <i class="fas fa-images"></i>
+            <p class="title">Drop screenshots here</p>
+            <p class="hint">Cycling app, Apple Watch, Sleep data</p>
+            <input type="file" id="bundleImageInput" name="images" accept="image/*" multiple class="d-none">
+        </div>
+        <div id="fileListContainer" class="file-list d-none"></div>
+        <div id="statusMessage" class="d-none"></div>
+        <div id="uploadActions" class="d-none mt-2">
+            <button type="submit" class="btn btn-zyra w-100" id="uploadBtn">
+                <i class="fas fa-magic me-1"></i>Extract & Merge
+            </button>
+        </div>
+        <div id="extractionResults" class="extraction-results d-none"></div>
+    </form>
+</div>
+
+<!-- Recent Workouts Table - Full Width -->
+<div class="section-card">
+    <h3 class="section-title power">
+        <i class="fas fa-list"></i>Recent Workouts
+    </h3>
+    {% if cycling_workouts %}
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Power</th>
+                    <th>Avg HR</th>
+                    <th>Max HR</th>
+                    <th>TSS</th>
+                    <th>IF</th>
+                    <th>Distance</th>
+                    <th>Coach</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="cyclingTableBody">
+                {% for workout in cycling_workouts %}
+                <tr data-workout-id="{{ workout.id }}" data-workout-date="{{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}">
+                    <td>
+                        <button class="btn-view-day" data-date="{{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}" title="View Day Details">
+                            {{ workout.date if workout.date is string else workout.date.strftime('%m/%d') if workout.date else '--' }}
+                        </button>
+                    </td>
+                    <td class="val-time">{{ "%d:%02d"|format((workout.duration_sec or 0) // 60, (workout.duration_sec or 0) % 60) if workout.duration_sec else '<span class="val-empty">--</span>' | safe }}</td>
+                    <td class="val-power">{{ "%.0f"|format(workout.avg_power_w) if workout.avg_power_w else '<span class="val-empty">--</span>' | safe }}{{ 'W' if workout.avg_power_w else '' }}</td>
+                    <td class="val-hr">{{ workout.avg_heart_rate if workout.avg_heart_rate else '<span class="val-empty">--</span>' | safe }}{{ ' bpm' if workout.avg_heart_rate else '' }}</td>
+                    <td class="val-hr">{{ workout.max_heart_rate if workout.max_heart_rate else '<span class="val-empty">--</span>' | safe }}{{ ' bpm' if workout.max_heart_rate else '' }}</td>
+                    <td class="val-tss">{{ "%.0f"|format(workout.tss) if workout.tss else '<span class="val-empty">--</span>' | safe }}</td>
+                    <td class="val-if">{{ "%.2f"|format(workout.intensity_factor) if workout.intensity_factor else '<span class="val-empty">--</span>' | safe }}</td>
+                    <td class="val-distance">{{ "%.1f km"|format(workout.distance_km) if workout.distance_km else '<span class="val-empty">--</span>' | safe }}</td>
+                    <td>
+                        <a href="{{ url_for('cycling_readiness.coach_page') }}?date={{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}" 
+                           class="btn-coach" title="Get AI Coach recommendation">
+                            <i class="fas fa-brain"></i>
+                        </a>
+                    </td>
+                    <td>
+                        <button class="btn-edit btn-edit-workout" data-id="{{ workout.id }}" title="Edit Workout">
+                            <i class="fas fa-pencil-alt"></i>
+                        </button>
+                        <button class="btn-delete btn-delete-workout" data-id="{{ workout.id }}" title="Delete">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-state power">
+        <i class="fas fa-bicycle"></i>
+        <p>No workouts imported yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/cycle_workouts.js') }}"></script>
+{% endblock %}
+

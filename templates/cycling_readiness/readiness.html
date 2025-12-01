@@ -1,0 +1,263 @@
+{% extends 'cycling_readiness/cycle_base.html' %}
+
+{% block page_title %}Readiness & Sleep{% endblock %}
+
+{% block page_content %}
+<!-- Morning Readiness - Collapsible Card -->
+<div class="section-card readiness-card mb-3" id="morningReadinessCard">
+    <!-- Card Header - Always visible -->
+    <div class="readiness-header" id="readinessHeader">
+        <div class="readiness-header-content" onclick="toggleReadinessForm()">
+            <h3 class="section-title sleep mb-0">
+                <i class="fas fa-sun"></i>Morning Readiness
+                <span class="readiness-date-label" id="readinessDateLabel"></span>
+            </h3>
+            <span class="collapse-indicator" id="collapseIndicator">
+                <i class="fas fa-chevron-down"></i>
+            </span>
+        </div>
+        
+        <!-- Summary View (shown when collapsed) -->
+        <div class="readiness-summary" id="readinessSummary" style="display: none;">
+            <div class="summary-pills">
+                <span class="summary-pill score" id="summaryScore" title="Readiness Score">--</span>
+                <span class="summary-pill energy" id="summaryEnergy" title="Energy">⚡ --</span>
+                <span class="summary-pill mood" id="summaryMood" title="Mood">😐</span>
+                <span class="summary-pill fatigue" id="summaryFatigue" title="Muscle Fatigue">💪 --</span>
+                <span class="summary-pill hrv" id="summaryHrv" title="HRV Status">HRV →</span>
+                <span class="summary-pill rhr" id="summaryRhr" title="RHR Status">RHR →</span>
+                <span class="summary-pill symptoms" id="summarySymptoms" title="Symptoms" style="display: none;">🤒</span>
+            </div>
+            <button class="btn btn-sm btn-outline-zyra edit-summary-btn" onclick="event.stopPropagation(); editReadinessForDate()" title="Edit">
+                <i class="fas fa-pencil-alt"></i> Edit
+            </button>
+        </div>
+    </div>
+    
+    <!-- Form Body (collapsible) -->
+    <div class="readiness-form-body" id="readinessFormBody">
+        <form id="readinessForm">
+            <input type="hidden" id="readinessDate" name="date" value="{{ today }}">
+            <input type="hidden" id="readinessEntryId" value="">
+
+            <!-- Energy -->
+            <div class="mb-2">
+                <label class="form-label">Energy Level</label>
+                <div class="rating-selector" data-field="energy">
+                    {% for i in range(1, 6) %}
+                    <label class="rating-option"><input type="radio" name="energy" value="{{ i }}">{{ i }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Mood -->
+            <div class="mb-2">
+                <label class="form-label">Mood</label>
+                <div class="rating-selector" data-field="mood">
+                    <label class="rating-option"><input type="radio" name="mood" value="1">😔</label>
+                    <label class="rating-option"><input type="radio" name="mood" value="2">😐</label>
+                    <label class="rating-option"><input type="radio" name="mood" value="3">😊</label>
+                </div>
+            </div>
+
+            <!-- Muscle Fatigue -->
+            <div class="mb-2">
+                <label class="form-label">Muscle Fatigue</label>
+                <div class="rating-selector" data-field="muscle_fatigue">
+                    <label class="rating-option"><input type="radio" name="muscle_fatigue" value="1">Low</label>
+                    <label class="rating-option"><input type="radio" name="muscle_fatigue" value="2">Med</label>
+                    <label class="rating-option"><input type="radio" name="muscle_fatigue" value="3">High</label>
+                </div>
+            </div>
+
+            <!-- HRV & RHR Section -->
+            <div class="cardio-status-section mb-3" id="cardioStatusSection">
+                <!-- Cardio Data Display (shown when data exists) -->
+                <div id="cardioDataDisplay" style="display: none;">
+                    <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
+                        <i class="fas fa-heartbeat me-1" style="color: var(--color-red);"></i>Cardio metrics
+                    </p>
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            <div class="cardio-metric-display" id="rhrCardioCard">
+                                <div class="metric-header">
+                                    <span class="metric-label">Resting HR</span>
+                                    <span class="auto-chip" id="rhrAutoChip">AUTO</span>
+                                    <button type="button" class="btn-override" id="rhrOverrideBtn" onclick="toggleCardioOverride('rhr')" title="Override">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                </div>
+                                <span class="metric-value" id="displayRhrBpm">--</span>
+                                <!-- Override input (hidden by default) -->
+                                <div class="override-input" id="rhrOverrideInput" style="display: none;">
+                                    <input type="number" class="form-control form-control-sm" id="overrideRhrBpm" 
+                                           placeholder="bpm" min="40" max="120">
+                                    <div class="override-actions">
+                                        <button type="button" class="btn btn-xs btn-link" onclick="resetCardioToAuto('rhr')">Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="cardio-metric-display" id="hrvCardioCard">
+                                <div class="metric-header">
+                                    <span class="metric-label">HRV</span>
+                                    <span class="auto-chip" id="hrvAutoChip">AUTO</span>
+                                    <button type="button" class="btn-override" id="hrvOverrideBtn" onclick="toggleCardioOverride('hrv')" title="Override">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                </div>
+                                <span class="metric-value" id="displayHrv">--</span>
+                                <!-- Override input (hidden by default) -->
+                                <div class="override-input" id="hrvOverrideInput" style="display: none;">
+                                    <div class="d-flex gap-1">
+                                        <input type="number" class="form-control form-control-sm" id="overrideHrvLow" 
+                                               placeholder="low" min="1" max="200" style="width: 60px;">
+                                        <span style="color: var(--color-muted);">–</span>
+                                        <input type="number" class="form-control form-control-sm" id="overrideHrvHigh" 
+                                               placeholder="high" min="1" max="200" style="width: 60px;">
+                                    </div>
+                                    <div class="override-actions">
+                                        <button type="button" class="btn btn-xs btn-link" onclick="resetCardioToAuto('hrv')">Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Manual Cardio Input (shown when no data) -->
+                <div id="manualCardioInput" style="display: none;">
+                    <p class="text-muted small mb-2" style="font-size: 0.7rem; opacity: 0.7;">
+                        <i class="fas fa-edit me-1"></i>No cardio data - enter manually (optional)
+                    </p>
+                    <div class="row mb-2">
+                        <div class="col-4">
+                            <input type="number" class="form-control form-control-sm" id="manualRhrBpm" 
+                                   placeholder="RHR (bpm)" min="40" max="120" style="font-size: 0.75rem;">
+                        </div>
+                        <div class="col-4">
+                            <input type="number" class="form-control form-control-sm" id="manualHrvLow" 
+                                   placeholder="HRV low" min="1" max="200" style="font-size: 0.75rem;">
+                        </div>
+                        <div class="col-4">
+                            <input type="number" class="form-control form-control-sm" id="manualHrvHigh" 
+                                   placeholder="HRV high" min="1" max="200" style="font-size: 0.75rem;">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Selectors -->
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <label class="form-label">
+                            HRV Status
+                            <span class="auto-badge" id="hrvAutoLabel" style="display: none;">auto</span>
+                        </label>
+                        <div class="status-selector" data-field="hrv_status">
+                            <label class="status-option negative"><input type="radio" name="hrv_status" value="-1">↓</label>
+                            <label class="status-option neutral"><input type="radio" name="hrv_status" value="0">→</label>
+                            <label class="status-option positive"><input type="radio" name="hrv_status" value="1">↑</label>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">
+                            RHR Status
+                            <span class="auto-badge" id="rhrAutoLabel" style="display: none;">auto</span>
+                        </label>
+                        <div class="status-selector" data-field="rhr_status">
+                            <label class="status-option positive"><input type="radio" name="rhr_status" value="-1">↓</label>
+                            <label class="status-option neutral"><input type="radio" name="rhr_status" value="0">→</label>
+                            <label class="status-option negative"><input type="radio" name="rhr_status" value="1">↑</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sleep Note -->
+            <p class="text-muted small mb-3" style="font-size: 0.7rem; opacity: 0.7;">
+                <i class="fas fa-info-circle me-1"></i>Sleep data is imported from screenshots
+            </p>
+
+            <div class="mb-3">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="symptomsFlag" name="symptoms_flag">
+                    <label class="form-check-label" style="font-size: 0.8rem; color: var(--color-muted-light);" for="symptomsFlag">
+                        Experiencing symptoms
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-zyra w-100">
+                <i class="fas fa-save me-1"></i>Save Readiness
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Readiness History - Full Width -->
+<div class="section-card">
+    <h3 class="section-title sleep">
+        <i class="fas fa-history"></i>Readiness History
+        <span class="score-info">
+            <button class="score-info-icon" onclick="toggleScoreTooltip()" title="How is the score calculated?">
+                <i class="fas fa-question-circle"></i>
+            </button>
+            <div class="score-tooltip" id="scoreTooltip">
+                <h4>Readiness Score Formula</h4>
+                <p class="category">Subjective Inputs (40 pts max):</p>
+                <ul>
+                    <li>• Energy (1-5): up to 20 pts</li>
+                    <li>• Mood (1-3): up to 10 pts</li>
+                    <li>• Muscle Fatigue (1-3): up to 10 pts</li>
+                </ul>
+                <p class="category">Recovery (25 pts max):</p>
+                <ul>
+                    <li>• HRV Status: up to 10 pts</li>
+                    <li>• RHR Status: up to 10 pts</li>
+                    <li>• Min HR Status: up to 5 pts</li>
+                </ul>
+                <p class="category">Sleep (25 pts max):</p>
+                <ul>
+                    <li>• Duration: up to 10 pts (7-9h optimal)</li>
+                    <li>• Deep Sleep: up to 10 pts (60-120min)</li>
+                    <li>• Awake Time: up to 5 pts</li>
+                </ul>
+                <p style="color: var(--color-red); margin-top: 0.5rem;">Symptoms: -10 pts if present</p>
+            </div>
+        </span>
+    </h3>
+    <div class="table-responsive" id="readinessHistoryContainer">
+        <table class="data-table readiness-history-table" id="readinessHistoryTable">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Score</th>
+                    <th title="Energy">⚡</th>
+                    <th title="Mood">😊</th>
+                    <th title="Fatigue">💪</th>
+                    <th title="Sleep">💤</th>
+                    <th title="RHR">RHR</th>
+                    <th title="HRV">HRV</th>
+                    <th title="HRV Status">H↕</th>
+                    <th title="RHR Status">R↕</th>
+                    <th title="Symptoms">🤒</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="readinessHistoryBody">
+                <!-- Will be populated via JavaScript -->
+            </tbody>
+        </table>
+        <div class="empty-state sleep" id="readinessHistoryEmpty" style="display: none;">
+            <i class="fas fa-bed"></i>
+            <p>No readiness entries yet.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/cycle_readiness.js') }}"></script>
+{% endblock %}
+

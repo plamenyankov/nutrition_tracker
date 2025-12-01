@@ -1,0 +1,329 @@
+{% extends 'layout.html' %}
+
+{% block title %}Zyra Cycle - {% block page_title %}Dashboard{% endblock %}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/cycling_readiness.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="cycle-container py-3">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-zyra"></div>
+        <p class="loading-text">Processing...</p>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="confirmModal" class="confirm-modal">
+        <div class="confirm-dialog">
+            <h4><i class="fas fa-exclamation-triangle text-warning me-2"></i><span id="confirmModalTitle">Delete?</span></h4>
+            <p>This action cannot be undone.</p>
+            <div class="confirm-actions">
+                <button class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button class="btn-confirm-delete" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Missing Data Modal -->
+    <div id="reviewModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit me-2"></i>Review Extracted Data</h3>
+                <button class="modal-close" onclick="closeReviewModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--color-muted-light); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Some fields could not be extracted. Review and fill in missing values below (yellow highlight).
+                </p>
+                <div id="reviewContent">
+                    <!-- Filled dynamically -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-secondary" onclick="skipReviewAndSave()">Skip & Save As-Is</button>
+                <button class="btn-modal btn-modal-primary" onclick="saveReviewedData()">
+                    <i class="fas fa-save me-1"></i>Save Corrected Data
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Workout Modal -->
+    <div id="editWorkoutModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-bicycle me-2" style="color: var(--color-green)"></i>Edit Workout</h3>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editWorkoutId">
+                <div class="modal-form-grid">
+                    <div class="modal-field">
+                        <label>Date</label>
+                        <input type="date" id="editDate" name="date">
+                    </div>
+                    <div class="modal-field">
+                        <label>Duration (mm:ss)</label>
+                        <input type="text" id="editDuration" placeholder="30:00" pattern="\d+:\d{2}">
+                    </div>
+                    <div class="modal-field">
+                        <label>Avg Power (W)</label>
+                        <input type="number" id="editAvgPower" step="0.1">
+                    </div>
+                    <div class="modal-field">
+                        <label>Max Power (W)</label>
+                        <input type="number" id="editMaxPower" step="0.1">
+                    </div>
+                    <div class="modal-field">
+                        <label>Normalized Power (W)</label>
+                        <input type="number" id="editNormalizedPower" step="0.1">
+                    </div>
+                    <div class="modal-field">
+                        <label>Intensity Factor</label>
+                        <input type="number" id="editIF" step="0.01" min="0" max="2">
+                    </div>
+                    <div class="modal-field">
+                        <label>TSS</label>
+                        <input type="number" id="editTSS" step="0.1">
+                    </div>
+                    <div class="modal-field">
+                        <label>Avg Heart Rate (bpm)</label>
+                        <input type="number" id="editAvgHR" min="30" max="250">
+                    </div>
+                    <div class="modal-field">
+                        <label>Max Heart Rate (bpm)</label>
+                        <input type="number" id="editMaxHR" min="30" max="250">
+                    </div>
+                    <div class="modal-field">
+                        <label>Avg Cadence (rpm)</label>
+                        <input type="number" id="editCadence" min="0" max="200">
+                    </div>
+                    <div class="modal-field">
+                        <label>Distance (km)</label>
+                        <input type="number" id="editDistance" step="0.01">
+                    </div>
+                    <div class="modal-field">
+                        <label>Active Calories</label>
+                        <input type="number" id="editKcalActive">
+                    </div>
+                    <div class="modal-field">
+                        <label>Total Calories</label>
+                        <input type="number" id="editKcalTotal">
+                    </div>
+                    <div class="modal-field modal-field-full">
+                        <label>Notes</label>
+                        <input type="text" id="editNotes" placeholder="Optional notes...">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-modal btn-modal-primary" onclick="saveEditedWorkout()">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Readiness Modal -->
+    <div id="editReadinessModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-sun me-2" style="color: var(--color-teal)"></i>Edit Readiness Entry</h3>
+                <button class="modal-close" onclick="closeEditReadinessModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editReadinessId">
+                <input type="hidden" id="editReadinessDate">
+                <p style="color: var(--color-muted); font-size: 0.75rem; margin-bottom: 1rem;">
+                    Edit subjective readiness inputs. Sleep/cardio data is managed via screenshot imports.
+                </p>
+                
+                <!-- Cardio Data Display in Edit Modal -->
+                <div id="editCardioDisplay" style="display: none; margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 1rem; margin-bottom: 0.5rem;">
+                        <div class="cardio-metric-display" style="flex: 1;">
+                            <span class="cardio-metric-label">RHR</span>
+                            <span class="cardio-metric-value" id="editDisplayRhr">--</span>
+                        </div>
+                        <div class="cardio-metric-display" style="flex: 1;">
+                            <span class="cardio-metric-label">HRV</span>
+                            <span class="cardio-metric-value" id="editDisplayHrv">--</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-form-grid">
+                    <div class="modal-field">
+                        <label>Energy (1-5)</label>
+                        <select id="editReadinessEnergy" class="form-control form-control-sm">
+                            <option value="">--</option>
+                            <option value="1">1 - Very Low</option>
+                            <option value="2">2 - Low</option>
+                            <option value="3">3 - Normal</option>
+                            <option value="4">4 - Good</option>
+                            <option value="5">5 - Excellent</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <label>Mood (1-5)</label>
+                        <select id="editReadinessMood" class="form-control form-control-sm">
+                            <option value="">--</option>
+                            <option value="1">1 - Very Low</option>
+                            <option value="2">2 - Low</option>
+                            <option value="3">3 - Neutral</option>
+                            <option value="4">4 - Good</option>
+                            <option value="5">5 - Excellent</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <label>Muscle Fatigue (1-5)</label>
+                        <select id="editReadinessFatigue" class="form-control form-control-sm">
+                            <option value="">--</option>
+                            <option value="1">1 - Very Sore</option>
+                            <option value="2">2 - Sore</option>
+                            <option value="3">3 - Moderate</option>
+                            <option value="4">4 - Fresh</option>
+                            <option value="5">5 - Very Fresh</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <label>HRV Status</label>
+                        <select id="editReadinessHrvStatus" class="form-control form-control-sm">
+                            <option value="">--</option>
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <label>RHR Status</label>
+                        <select id="editReadinessRhrStatus" class="form-control form-control-sm">
+                            <option value="">--</option>
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="elevated">Elevated</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <label>Min HR Status</label>
+                        <select id="editReadinessMinHrStatus" class="form-control form-control-sm">
+                            <option value="">--</option>
+                            <option value="low">Low</option>
+                            <option value="normal">Normal</option>
+                            <option value="elevated">Elevated</option>
+                        </select>
+                    </div>
+                    <div class="modal-field modal-field-full">
+                        <label>
+                            <input type="checkbox" id="editReadinessSymptoms" style="margin-right: 0.5rem;">
+                            Experiencing symptoms (illness, injury, etc.)
+                        </label>
+                    </div>
+                    <div class="modal-field modal-field-full">
+                        <label>Notes</label>
+                        <input type="text" id="editReadinessNotes" placeholder="Optional notes...">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-secondary" onclick="closeEditReadinessModal()">Cancel</button>
+                <button class="btn-modal btn-modal-primary" onclick="saveEditedReadiness()">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Expanded View Modal -->
+    <div id="dayViewModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-calendar-day me-2"></i>Day Summary: <span id="dayViewDate"></span></h3>
+                <button class="modal-close" onclick="closeDayViewModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="dayViewContent">
+                    <div class="text-center" style="padding: 2rem; color: var(--color-muted);">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-secondary" onclick="closeDayViewModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="cycle-hero">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h1><i class="fas fa-bicycle me-2"></i>Zyra Cycle</h1>
+                <p class="subtitle">Cycling performance & morning readiness</p>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+                <a href="{{ url_for('cycling_readiness.expanded_table') }}" class="btn-expanded-link" title="View all data in expanded table">
+                    <i class="fas fa-table me-1"></i>Expanded View
+                </a>
+                <span class="date-badge">
+                    <i class="fas fa-calendar-day me-1"></i>{{ today }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ cycling_stats.total_workouts or 0 }}</div>
+            <div class="stat-label">Workouts</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value tss">{{ "%.0f"|format(cycling_stats.total_tss or 0) }}</div>
+            <div class="stat-label">Total TSS</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.0f"|format(cycling_stats.avg_power or 0) }}W</div>
+            <div class="stat-label">Avg Power</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value time">{{ "%.0f"|format((cycling_stats.total_duration_sec or 0) / 3600) }}h</div>
+            <div class="stat-label">Total Time</div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs - Now using real links -->
+    <div class="cycle-tabs">
+        <a href="{{ url_for('cycling_readiness.workouts_page') }}" 
+           class="cycle-tab {% if current_tab == 'workouts' %}active{% endif %}">
+            <i class="fas fa-bicycle"></i>Workouts
+        </a>
+        <a href="{{ url_for('cycling_readiness.readiness_page') }}" 
+           class="cycle-tab {% if current_tab == 'readiness' %}active{% endif %}">
+            <i class="fas fa-moon"></i>Readiness & Sleep
+        </a>
+        <a href="{{ url_for('cycling_readiness.analytics_page') }}" 
+           class="cycle-tab {% if current_tab == 'analytics' %}active{% endif %}">
+            <i class="fas fa-chart-bar"></i>Analytics
+        </a>
+        <a href="{{ url_for('cycling_readiness.coach_page') }}" 
+           class="cycle-tab {% if current_tab == 'coach' %}active{% endif %}">
+            <i class="fas fa-brain"></i>AI Coach
+        </a>
+    </div>
+
+    <!-- Page Content -->
+    {% block page_content %}{% endblock %}
+</div>
+
+<!-- Shared JavaScript -->
+<script src="{{ url_for('static', filename='js/cycle_shared.js') }}"></script>
+{% block page_scripts %}{% endblock %}
+{% endblock %}
+

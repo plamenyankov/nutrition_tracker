@@ -91,33 +91,88 @@ def get_service():
 
 # ============== Page Routes ==============
 
+def get_base_context():
+    """Get common context data for all pages."""
+    service = get_service()
+    cycling_stats = service.get_cycling_stats(days=30)
+    return {
+        'cycling_stats': cycling_stats,
+        'today': datetime.now().strftime('%Y-%m-%d')
+    }
+
+
 @cycling_readiness_bp.route('/')
 @login_required
 def dashboard():
-    """
-    Main Cycling & Readiness dashboard page.
-    Shows cycling workouts, readiness entries, and charts.
-    """
+    """Redirect to workouts page (default tab)."""
+    return redirect(url_for('cycling_readiness.workouts_page'))
+
+
+@cycling_readiness_bp.route('/workouts')
+@login_required
+def workouts_page():
+    """Workouts page - Import screenshots and view workout history."""
     service = get_service()
+    cycling_workouts = service.get_cycling_workouts(limit=20)
+    
+    context = get_base_context()
+    context.update({
+        'current_tab': 'workouts',
+        'cycling_workouts': cycling_workouts
+    })
+    
+    return render_template('cycling_readiness/workouts.html', **context)
 
-    # Get recent data
-    cycling_workouts = service.get_cycling_workouts(limit=10)
-    readiness_entries = service.get_readiness_entries(limit=14)
-    cycling_stats = service.get_cycling_stats(days=30)
 
-    # Get chart data
+@cycling_readiness_bp.route('/readiness')
+@login_required
+def readiness_page():
+    """Readiness page - Morning readiness form and history."""
+    context = get_base_context()
+    context.update({
+        'current_tab': 'readiness'
+    })
+    
+    return render_template('cycling_readiness/readiness.html', **context)
+
+
+@cycling_readiness_bp.route('/analytics')
+@login_required
+def analytics_page():
+    """Analytics page - KPIs, charts, and trends."""
+    service = get_service()
     cycling_chart = service.get_cycling_chart_data(days=30)
     readiness_chart = service.get_readiness_chart_data(days=30)
+    
+    context = get_base_context()
+    context.update({
+        'current_tab': 'analytics',
+        'cycling_chart': cycling_chart,
+        'readiness_chart': readiness_chart
+    })
+    
+    return render_template('cycling_readiness/analytics.html', **context)
 
-    return render_template(
-        'cycling_readiness/dashboard.html',
-        cycling_workouts=cycling_workouts,
-        readiness_entries=readiness_entries,
-        cycling_stats=cycling_stats,
-        cycling_chart=cycling_chart,
-        readiness_chart=readiness_chart,
-        today=datetime.now().strftime('%Y-%m-%d')
-    )
+
+@cycling_readiness_bp.route('/coach')
+@login_required
+def coach_page():
+    """AI Coach page - Training recommendations."""
+    service = get_service()
+    cycling_workouts = service.get_cycling_workouts(limit=5)
+    
+    # Check if date is passed in URL for auto-analyze
+    selected_date = request.args.get('date')
+    
+    context = get_base_context()
+    context.update({
+        'current_tab': 'coach',
+        'cycling_workouts': cycling_workouts,
+        'selected_date': selected_date,
+        'auto_analyze': selected_date is not None
+    })
+    
+    return render_template('cycling_readiness/coach.html', **context)
 
 
 @cycling_readiness_bp.route('/expanded')

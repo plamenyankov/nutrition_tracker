@@ -1,0 +1,262 @@
+{% extends 'cycling_readiness/cycle_base.html' %}
+
+{% block page_title %}Analytics{% endblock %}
+
+{% block page_content %}
+<!-- KPI Cards Grid -->
+<div class="kpi-grid mb-3">
+    <!-- KPI 1: Acute Load (7-day TSS) -->
+    <div class="kpi-card" id="kpiAcuteLoad">
+        <div class="kpi-header">
+            <span class="kpi-icon">🔥</span>
+            <span class="kpi-title">Acute Load (7d)</span>
+            <button class="kpi-info-btn" data-tooltip="Sum of TSS from the last 7 days. Indicates short-term training load and fatigue.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+        <div class="kpi-value" id="kpiAcuteValue">--</div>
+        <div class="kpi-subtitle" id="kpiAcuteSubtitle">TSS / 7 days</div>
+        <div class="kpi-badge" id="kpiAcuteBadge">--</div>
+    </div>
+    
+    <!-- KPI 2: Chronic Load (42-day) -->
+    <div class="kpi-card" id="kpiChronicLoad">
+        <div class="kpi-header">
+            <span class="kpi-icon">📊</span>
+            <span class="kpi-title">Chronic Load (42d)</span>
+            <button class="kpi-info-btn" data-tooltip="6-week average TSS trend. Represents long-term fitness base.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+        <div class="kpi-value" id="kpiChronicValue">--</div>
+        <div class="kpi-subtitle" id="kpiChronicSubtitle">Weekly TSS avg</div>
+        <div class="kpi-badge neutral" id="kpiChronicBadge">Baseline</div>
+    </div>
+    
+    <!-- KPI 3: HRV Trend -->
+    <div class="kpi-card" id="kpiHrvTrend">
+        <div class="kpi-header">
+            <span class="kpi-icon">💚</span>
+            <span class="kpi-title">HRV Trend</span>
+            <button class="kpi-info-btn" data-tooltip="Shows today's HRV compared to your 30-day baseline. Higher HRV usually means better recovery.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+        <div class="kpi-value" id="kpiHrvValue">--</div>
+        <div class="kpi-subtitle" id="kpiHrvSubtitle">vs 30-day baseline</div>
+        <div class="kpi-trend" id="kpiHrvTrendArrow">
+            <span class="trend-arrow">→</span>
+            <span class="trend-pct">0%</span>
+        </div>
+    </div>
+    
+    <!-- KPI 4: Resting HR Trend -->
+    <div class="kpi-card" id="kpiRhrTrend">
+        <div class="kpi-header">
+            <span class="kpi-icon">❤️</span>
+            <span class="kpi-title">Resting HR</span>
+            <button class="kpi-info-btn" data-tooltip="Shows today's resting HR compared to your 30-day baseline. Higher values can signal fatigue or stress.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+        <div class="kpi-value" id="kpiRhrValue">--</div>
+        <div class="kpi-subtitle" id="kpiRhrSubtitle">vs 30-day baseline</div>
+        <div class="kpi-trend" id="kpiRhrTrendArrow">
+            <span class="trend-arrow">→</span>
+            <span class="trend-pct">0%</span>
+        </div>
+    </div>
+    
+    <!-- KPI 5: Z2 Power Trend -->
+    <div class="kpi-card" id="kpiPowerTrend">
+        <div class="kpi-header">
+            <span class="kpi-icon">⚡</span>
+            <span class="kpi-title">Z2 Power</span>
+            <button class="kpi-info-btn" data-tooltip="30-day rolling average Z2 power. Shows aerobic power capacity.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </div>
+        <div class="kpi-value" id="kpiPowerValue">--</div>
+        <div class="kpi-subtitle" id="kpiPowerSubtitle">7d vs 30d avg</div>
+        <div class="kpi-trend" id="kpiPowerTrendArrow">
+            <span class="trend-arrow">→</span>
+            <span class="trend-pct">0%</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Grid - Row 1 -->
+<div class="analytics-charts-grid mb-3">
+    <!-- Performance Trends Chart -->
+    <div class="section-card">
+        <h3 class="section-title power">
+            <i class="fas fa-chart-line"></i>Performance Trends
+            <button class="chart-info-btn" data-tooltip="Tracks Power, Max/Avg Heart Rate, and TSS across all recorded workouts.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </h3>
+        {% if cycling_chart.dates and cycling_chart.dates|length > 0 %}
+        <div class="chart-container">
+            <canvas id="cyclingChart"></canvas>
+        </div>
+        {% else %}
+        <div class="empty-state power">
+            <i class="fas fa-chart-area"></i>
+            <p>No data yet. Upload screenshots to see your performance trend.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Readiness Trend Chart -->
+    <div class="section-card">
+        <h3 class="section-title sleep">
+            <i class="fas fa-chart-area"></i>Readiness Trend
+            <button class="chart-info-btn" data-tooltip="Shows daily readiness score evolution based on sleep, fatigue, HRV and RHR inputs.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </h3>
+        {% if readiness_chart.dates and readiness_chart.dates|length > 0 %}
+        <div class="chart-container">
+            <canvas id="readinessChart"></canvas>
+        </div>
+        {% else %}
+        <div class="empty-state sleep">
+            <i class="fas fa-chart-line"></i>
+            <p>No readiness data yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Charts Grid - Row 2: Efficiency & VO2 -->
+<div class="analytics-charts-grid mb-3">
+    <!-- Efficiency Index Chart -->
+    <div class="section-card">
+        <h3 class="section-title efficiency">
+            <i class="fas fa-tachometer-alt"></i>Efficiency Index (Power / HR)
+            <button class="chart-info-btn" data-tooltip="Measures how much power you produce per heartbeat (W per bpm). Higher is better.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </h3>
+        <div class="chart-container" id="efficiencyChartContainer">
+            <canvas id="efficiencyChart"></canvas>
+        </div>
+        <div class="empty-state efficiency" id="efficiencyChartEmpty" style="display: none;">
+            <i class="fas fa-heartbeat"></i>
+            <p>Not enough data yet. Complete at least 5 endurance rides (15+ min) to see efficiency trends.</p>
+        </div>
+    </div>
+    
+    <!-- VO2 Index Chart -->
+    <div class="section-card">
+        <h3 class="section-title vo2" id="vo2ChartTitle">
+            <i class="fas fa-lungs"></i>Aerobic Capacity (VO₂ Index, W/kg)
+            <button class="chart-info-btn" data-tooltip="Weekly aerobic capacity trend: peak weekly power divided by body weight (W/kg). Proxy for VO₂max improvements.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </h3>
+        <div class="chart-container" id="vo2ChartContainer">
+            <canvas id="vo2Chart"></canvas>
+        </div>
+        <div class="empty-state vo2" id="vo2ChartEmpty" style="display: none;">
+            <i class="fas fa-running"></i>
+            <p>Not enough data yet. Complete workouts over several weeks to see aerobic capacity trends.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Grid - Row 3: Fatigue Ratio & Aerobic Efficiency -->
+<div class="analytics-charts-grid mb-3">
+    <!-- Fatigue Ratio (HR Drift) Chart -->
+    <div class="section-card">
+        <h3 class="section-title fatigue">
+            <i class="fas fa-heartbeat"></i>Fatigue Ratio (HR Drift)
+            <button class="chart-info-btn" data-tooltip="Shows how much your heart rate increases during steady rides. Lower drift indicates better aerobic endurance.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </h3>
+        <div class="chart-container" id="fatigueChartContainer">
+            <canvas id="fatigueChart"></canvas>
+        </div>
+        <div class="empty-state fatigue" id="fatigueChartEmpty" style="display: none;">
+            <i class="fas fa-heart"></i>
+            <p>Not enough data yet. Complete longer rides (20+ min) with heart rate data to see fatigue trends.</p>
+        </div>
+    </div>
+    
+    <!-- Aerobic Efficiency Chart -->
+    <div class="section-card">
+        <h3 class="section-title aerobic">
+            <i class="fas fa-wind"></i>Aerobic Efficiency (Power / HRV)
+            <button class="chart-info-btn" data-tooltip="Tracks Z2 power relative to your HRV (W per ms). Higher values indicate better aerobic efficiency when recovered.">
+                <i class="fas fa-info-circle"></i>
+            </button>
+        </h3>
+        <div class="chart-container" id="aerobicChartContainer">
+            <canvas id="aerobicChart"></canvas>
+        </div>
+        <div class="empty-state aerobic" id="aerobicChartEmpty" style="display: none;">
+            <i class="fas fa-lungs"></i>
+            <p>Not enough data yet. Need both workout power and HRV data on the same days.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Body Weight Tracker Section -->
+<div class="section-card body-weight-section">
+    <h3 class="section-title weight">
+        <i class="fas fa-weight"></i>Body Weight Tracker
+        <button class="chart-info-btn" data-tooltip="Tracks weekly body weight to support accurate VO₂ Index (W/kg) calculations.">
+            <i class="fas fa-info-circle"></i>
+        </button>
+    </h3>
+    <div class="weight-tracker-grid">
+        <!-- Weight Input Form -->
+        <div class="weight-input-card">
+            <div class="weight-form">
+                <div class="weight-input-row">
+                    <div class="weight-field">
+                        <label>Date</label>
+                        <input type="date" id="weightDate" value="{{ today }}" class="form-control form-control-sm">
+                    </div>
+                    <div class="weight-field">
+                        <label>Weight (kg)</label>
+                        <input type="number" id="weightValue" step="0.1" min="30" max="200" placeholder="87.0" class="form-control form-control-sm">
+                    </div>
+                    <button class="btn btn-zyra btn-sm" id="saveWeightBtn">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                </div>
+                <div id="weightSaveStatus" class="weight-save-status"></div>
+            </div>
+            <div class="weight-latest" id="weightLatest">
+                <span class="weight-latest-label">Latest:</span>
+                <span class="weight-latest-value" id="weightLatestValue">--</span>
+            </div>
+        </div>
+        <!-- Weight Sparkline -->
+        <div class="weight-chart-card">
+            <div class="weight-sparkline-container" id="weightSparklineContainer">
+                <canvas id="weightSparkline"></canvas>
+            </div>
+            <div class="weight-empty" id="weightChartEmpty" style="display: none;">
+                <i class="fas fa-balance-scale"></i>
+                <span>No weight entries yet</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/cycle_analytics.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const cyclingChartData = {{ cycling_chart | tojson | safe }};
+    const readinessChartData = {{ readiness_chart | tojson | safe }};
+    initAnalyticsPage(cyclingChartData, readinessChartData);
+});
+</script>
+{% endblock %}
+

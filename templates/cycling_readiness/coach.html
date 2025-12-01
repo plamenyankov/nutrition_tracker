@@ -1,0 +1,136 @@
+{% extends 'cycling_readiness/cycle_base.html' %}
+
+{% block page_title %}AI Coach{% endblock %}
+
+{% block page_content %}
+<div class="section-card training-rec-card">
+    <h3 class="section-title training">
+        <i class="fas fa-brain"></i>AI Training Coach
+    </h3>
+    
+    <!-- Date Selector -->
+    <div class="coach-date-selector mb-3">
+        <label class="form-label" style="font-size: 0.75rem; color: var(--color-muted-light);">
+            Select date to analyze
+        </label>
+        <div class="d-flex gap-2 align-items-center">
+            <input type="date" class="form-control form-control-sm" id="coachDate" 
+                   value="{{ selected_date or today }}" style="max-width: 180px; font-size: 0.8rem;">
+            <button class="btn btn-zyra" id="analyzeBtn" style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+                <i class="fas fa-magic me-1"></i>Analyze This Day
+            </button>
+        </div>
+    </div>
+    
+    <!-- Loading State -->
+    <div id="coachLoading" class="training-rec-loading" style="display: none;">
+        <i class="fas fa-spinner fa-spin"></i>
+        <span>Analyzing your data...</span>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="coachEmpty" class="training-rec-empty">
+        <i class="fas fa-lightbulb"></i>
+        <p>Select a date and click "Analyze This Day" to get AI-powered training recommendations based on your readiness, sleep, and workout history.</p>
+    </div>
+    
+    <!-- Recommendation Content -->
+    <div id="coachContent" class="training-rec-content" style="display: none;">
+        <div class="training-rec-header">
+            <span class="day-type-badge" id="coachDayTypeBadge">--</span>
+            <span class="intensity-tag" id="coachIntensityTag">--</span>
+            <button class="btn-refresh-rec ms-auto" id="coachRefreshBtn" title="Refresh recommendation">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+        </div>
+        
+        <div class="training-rec-details">
+            <div class="rec-detail">
+                <i class="fas fa-clock"></i>
+                <span id="coachDuration">--</span>
+            </div>
+            <div class="rec-detail">
+                <i class="fas fa-calendar"></i>
+                <span id="coachDateLabel">--</span>
+            </div>
+        </div>
+        
+        <div class="training-rec-reason" id="coachReason">
+            <!-- Reason text will be inserted here -->
+        </div>
+        
+        <!-- Coach Notes / Analysis Card (v2.5) -->
+        <div class="coach-analysis-card" id="coachAnalysisCard" style="display: none;">
+            <div class="analysis-header">
+                <span class="analysis-icon">📊</span>
+                <span class="analysis-title">Coach Notes</span>
+            </div>
+            <div class="analysis-text" id="coachAnalysisText">
+                <!-- Analysis text will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- Performance Targets Card -->
+        <div class="performance-targets-card" id="coachTargetsCard" style="display: none;">
+            <div class="targets-header">
+                <span class="targets-icon">📈</span>
+                <span class="targets-title">Performance Targets (AI Estimated)</span>
+            </div>
+            <div class="targets-grid" id="coachTargetsGrid">
+                <!-- Targets will be inserted here -->
+            </div>
+        </div>
+        
+        <!-- Session Plan with enhanced intervals -->
+        <div class="training-rec-intervals" id="coachIntervals" style="display: none;">
+            <div class="intervals-header">
+                <i class="fas fa-list-ol"></i> Session Plan
+            </div>
+            <div class="intervals-list-enhanced" id="coachIntervalsList">
+                <!-- Intervals will be inserted here -->
+            </div>
+        </div>
+        
+        <div class="training-rec-flags" id="coachFlags" style="display: none;">
+            <!-- Flags will be inserted here -->
+        </div>
+    </div>
+</div>
+
+<!-- Recent AI Recommendations -->
+<div class="section-card mt-3">
+    <h3 class="section-title">
+        <i class="fas fa-history"></i>Quick Access
+    </h3>
+    <p class="text-muted small mb-2" style="font-size: 0.7rem;">
+        Click on a date to analyze that day.
+    </p>
+    <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-outline-zyra btn-sm quick-date-btn" data-date="{{ today }}">
+            Today
+        </button>
+        {% for workout in cycling_workouts[:5] %}
+        <button class="btn btn-outline-zyra btn-sm quick-date-btn" 
+                data-date="{{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}">
+            {{ workout.date if workout.date is string else workout.date.strftime('%m/%d') if workout.date else '--' }}
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/cycle_coach.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initCoachPage();
+    {% if auto_analyze %}
+    // Auto-analyze if date was passed in URL
+    setTimeout(function() {
+        document.getElementById('analyzeBtn').click();
+    }, 300);
+    {% endif %}
+});
+</script>
+{% endblock %}
+
