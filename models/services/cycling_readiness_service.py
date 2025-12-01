@@ -2340,22 +2340,307 @@ class CyclingReadinessService:
             
             return result
 
-    def get_efficiency_vo2_data(self, weight_kg: float = None) -> Dict[str, Any]:
+    def get_efficiency_vo2_data(self) -> Dict[str, Any]:
         """
         Get all efficiency and VO2 index data for charts.
-        
-        Args:
-            weight_kg: Athlete weight in kg (optional)
+        Uses dynamic weight from body_weights table.
         
         Returns:
             Dict with:
             - efficiency_timeseries: Raw EI per workout
             - efficiency_rolling_7d: 7-day rolling EI average
-            - vo2_weekly: Weekly VO2 index based on peak power
+            - vo2_weekly: Weekly VO2 index based on peak power and dynamic weight
+            - fatigue_ratio: HR drift per workout
+            - aerobic_efficiency: Z2 Power / HRV ratio
         """
         return {
             'efficiency_timeseries': self.compute_efficiency_index_timeseries(),
             'efficiency_rolling_7d': self.compute_efficiency_index_rolling(),
-            'vo2_weekly': self.compute_vo2_index_weekly(weight_kg=weight_kg)
+            'vo2_weekly': self.compute_vo2_index_weekly_dynamic(),
+            'fatigue_ratio': self.compute_fatigue_ratio_timeseries(),
+            'aerobic_efficiency': self.compute_aerobic_efficiency_timeseries()
         }
+
+    # ============== Body Weight Methods ==============
+
+    def get_body_weights(self, weeks: int = 12) -> List[Dict[str, Any]]:
+        """
+        Get body weight entries for the last N weeks.
+        
+        Args:
+            weeks: Number of weeks to look back (default 12)
+        
+        Returns:
+            List of weight entries sorted by date ascending
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute('''
+                SELECT date, weight_kg
+                FROM body_weights
+                WHERE user_id = %s
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL %s WEEK)
+                ORDER BY date ASC
+            ''', (self.user_id, weeks))
+            
+            weights = cursor.fetchall()
+            
+            return [{
+                'date': w['date'].strftime('%Y-%m-%d') if hasattr(w['date'], 'strftime') else str(w['date']),
+                'weight_kg': float(w['weight_kg'])
+            } for w in weights]
+
+    def save_body_weight(self, date_str: str, weight_kg: float) -> Dict[str, Any]:
+        """
+        Save or update body weight entry for a specific date.
+        
+        Args:
+            date_str: Date string (YYYY-MM-DD)
+            weight_kg: Body weight in kg
+        
+        Returns:
+            Dict with success status and saved entry
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            try:
+                # Upsert: insert or update on duplicate
+                cursor.execute('''
+                    INSERT INTO body_weights (user_id, date, weight_kg)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE 
+                        weight_kg = VALUES(weight_kg),
+                        updated_at = CURRENT_TIMESTAMP
+                ''', (self.user_id, date_str, weight_kg))
+                
+                conn.commit()
+                
+                return {
+                    'success': True,
+                    'date': date_str,
+                    'weight_kg': weight_kg
+                }
+            except Exception as e:
+                conn.rollback()
+                logger.error(f"Error saving body weight: {e}")
+                return {
+                    'success': False,
+                    'error': str(e)
+                }
+
+    def get_weight_for_date(self, target_date: str) -> float:
+        """
+        Get the most recent weight entry on or before the target date.
+        
+        Args:
+            target_date: Date string (YYYY-MM-DD)
+        
+        Returns:
+            Weight in kg, or None if no entry found
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute('''
+                SELECT weight_kg
+                FROM body_weights
+                WHERE user_id = %s AND date <= %s
+                ORDER BY date DESC
+                LIMIT 1
+            ''', (self.user_id, target_date))
+            
+            row = cursor.fetchone()
+            return float(row['weight_kg']) if row else None
+
+    def compute_vo2_index_weekly_dynamic(self, weeks: int = 12) -> List[Dict[str, Any]]:
+        """
+        Compute weekly VO2 index using dynamic weight from body_weights table.
+        
+        Args:
+            weeks: Number of weeks to look back (default 12)
+        
+        Returns:
+            List sorted by week ascending with weight_kg included
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get workouts grouped by ISO week
+            cursor.execute('''
+                SELECT 
+                    YEARWEEK(date, 1) as year_week,
+                    DATE_SUB(date, INTERVAL (WEEKDAY(date)) DAY) as week_start,
+                    DATE_ADD(DATE_SUB(date, INTERVAL (WEEKDAY(date)) DAY), INTERVAL 6 DAY) as week_end,
+                    MAX(avg_power_w) as peak_power_w,
+                    COUNT(*) as workout_count
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL %s WEEK)
+                  AND date <= CURDATE()
+                  AND avg_power_w IS NOT NULL 
+                  AND avg_power_w > 0
+                GROUP BY YEARWEEK(date, 1), week_start, week_end
+                ORDER BY year_week ASC
+            ''', (self.user_id, weeks))
+            
+            weeks_data = cursor.fetchall()
+            
+            result = []
+            for w in weeks_data:
+                year_week = w['year_week']
+                year = year_week // 100
+                week_num = year_week % 100
+                week_label = f"{year}-W{week_num:02d}"
+                
+                week_start = w['week_start'].strftime('%Y-%m-%d') if hasattr(w['week_start'], 'strftime') else str(w['week_start'])
+                week_end = w['week_end'].strftime('%Y-%m-%d') if hasattr(w['week_end'], 'strftime') else str(w['week_end'])
+                peak_power = float(w['peak_power_w'])
+                
+                # Get weight for this week (latest entry on or before week end)
+                weight_kg = self.get_weight_for_date(week_end)
+                
+                # Calculate VO2 index if weight available
+                vo2_index = round(peak_power / weight_kg, 2) if weight_kg and weight_kg > 0 else None
+                
+                result.append({
+                    'week_start': week_start,
+                    'week_label': week_label,
+                    'peak_power_w': int(peak_power),
+                    'weight_kg': weight_kg,
+                    'vo2_index': vo2_index,
+                    'workout_count': w['workout_count']
+                })
+            
+            return result
+
+    # ============== Fatigue Ratio (HR Drift) ==============
+
+    def compute_fatigue_ratio_timeseries(self, days: int = 90) -> List[Dict[str, Any]]:
+        """
+        Compute HR Drift (Fatigue Ratio) for each workout.
+        
+        HR Drift = (Avg HR second half - Avg HR first half) / Avg HR first half
+        
+        Note: Since we don't have half-workout HR data, we approximate using
+        the difference between max HR and avg HR as a proxy for drift.
+        
+        A better implementation would require lap/segment data.
+        
+        Args:
+            days: Number of days to look back
+        
+        Returns:
+            List of workouts with fatigue ratio, sorted by date
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get workouts with HR data (use steady endurance sessions)
+            cursor.execute('''
+                SELECT 
+                    date,
+                    avg_heart_rate,
+                    max_heart_rate,
+                    avg_power_w,
+                    duration_sec,
+                    intensity_factor
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+                  AND date <= CURDATE()
+                  AND avg_heart_rate IS NOT NULL 
+                  AND avg_heart_rate > 0
+                  AND max_heart_rate IS NOT NULL
+                  AND max_heart_rate > 0
+                  AND duration_sec >= 1200
+                ORDER BY date ASC
+            ''', (self.user_id, days))
+            
+            workouts = cursor.fetchall()
+            
+            result = []
+            for w in workouts:
+                avg_hr = float(w['avg_heart_rate'])
+                max_hr = float(w['max_heart_rate'])
+                
+                # Approximate HR drift using max-avg difference relative to avg
+                # This is a simplified proxy; true HR drift needs lap data
+                hr_drift_percent = round(((max_hr - avg_hr) / avg_hr) * 100, 1)
+                
+                # Determine workout type
+                workout_type = self._determine_workout_type(w)
+                
+                result.append({
+                    'date': w['date'].strftime('%Y-%m-%d') if hasattr(w['date'], 'strftime') else str(w['date']),
+                    'fatigue_ratio': hr_drift_percent,
+                    'avg_hr': int(avg_hr),
+                    'max_hr': int(max_hr),
+                    'duration_min': int((w['duration_sec'] or 0) / 60),
+                    'workout_type': workout_type
+                })
+            
+            return result
+
+    # ============== Aerobic Efficiency (Z2 Power / HRV) ==============
+
+    def compute_aerobic_efficiency_timeseries(self, days: int = 90) -> List[Dict[str, Any]]:
+        """
+        Compute Aerobic Efficiency: Z2 Power / HRV (ms)
+        
+        Higher values indicate better aerobic efficiency when recovered.
+        
+        Args:
+            days: Number of days to look back
+        
+        Returns:
+            List of daily entries with aerobic efficiency ratio
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Join workouts with cardio metrics for the same day
+            # Only include Z2-ish workouts (moderate intensity)
+            cursor.execute('''
+                SELECT 
+                    cw.date,
+                    cw.avg_power_w,
+                    cw.avg_heart_rate,
+                    cw.intensity_factor,
+                    (cdm.hrv_low_ms + cdm.hrv_high_ms) / 2 as hrv_avg
+                FROM cycling_workouts cw
+                INNER JOIN cardio_daily_metrics cdm 
+                    ON cdm.user_id = cw.user_id AND cdm.date = cw.date
+                WHERE cw.user_id = %s 
+                  AND cw.date >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+                  AND cw.date <= CURDATE()
+                  AND cw.avg_power_w IS NOT NULL 
+                  AND cw.avg_power_w > 0
+                  AND cdm.hrv_low_ms IS NOT NULL
+                  AND cdm.hrv_high_ms IS NOT NULL
+                  AND (cw.intensity_factor IS NULL OR cw.intensity_factor < 0.80)
+                ORDER BY cw.date ASC
+            ''', (self.user_id, days))
+            
+            rows = cursor.fetchall()
+            
+            result = []
+            for r in rows:
+                avg_power = float(r['avg_power_w'])
+                hrv_avg = float(r['hrv_avg']) if r['hrv_avg'] else None
+                
+                # Calculate aerobic efficiency (W per ms of HRV)
+                aerobic_efficiency = round(avg_power / hrv_avg, 3) if hrv_avg and hrv_avg > 0 else None
+                
+                if aerobic_efficiency is not None:
+                    result.append({
+                        'date': r['date'].strftime('%Y-%m-%d') if hasattr(r['date'], 'strftime') else str(r['date']),
+                        'aerobic_efficiency': aerobic_efficiency,
+                        'avg_power_w': int(avg_power),
+                        'hrv_avg': round(hrv_avg, 1),
+                        'intensity_factor': float(r['intensity_factor']) if r['intensity_factor'] else None
+                    })
+            
+            return result
 

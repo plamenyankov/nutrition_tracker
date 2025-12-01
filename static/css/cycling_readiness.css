@@ -2204,3 +2204,260 @@
 
 .extraction-type { font-weight: 600; font-size: 0.8rem; }
 
+/* ============== Tooltip / Info Button Styles ============== */
+.kpi-info-btn,
+.chart-info-btn {
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.kpi-info-btn:hover,
+.chart-info-btn:hover {
+    opacity: 1;
+    color: var(--color-teal);
+}
+
+/* Tooltip popover */
+.kpi-info-btn::before,
+.chart-info-btn::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 20, 25, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 400;
+    line-height: 1.4;
+    width: 200px;
+    text-align: left;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    margin-bottom: 8px;
+}
+
+.kpi-info-btn::after,
+.chart-info-btn::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: rgba(20, 20, 25, 0.98);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1001;
+    margin-bottom: -4px;
+}
+
+.kpi-info-btn:hover::before,
+.chart-info-btn:hover::before,
+.kpi-info-btn:hover::after,
+.chart-info-btn:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Chart info button positioning */
+.chart-info-btn {
+    font-size: 0.8rem;
+}
+
+.section-title .chart-info-btn::before {
+    left: auto;
+    right: 0;
+    transform: translateX(0);
+}
+
+.section-title .chart-info-btn::after {
+    left: auto;
+    right: 10px;
+    transform: translateX(0);
+}
+
+/* ============== Fatigue Ratio Chart Styles ============== */
+.section-title.fatigue {
+    color: #FF7043;
+}
+
+.empty-state.fatigue {
+    background: linear-gradient(135deg, rgba(255, 112, 67, 0.08) 0%, rgba(255, 82, 82, 0.05) 100%);
+    border: 1px solid rgba(255, 112, 67, 0.2);
+}
+
+/* ============== Aerobic Efficiency Chart Styles ============== */
+.section-title.aerobic {
+    color: #7C4DFF;
+}
+
+.empty-state.aerobic {
+    background: linear-gradient(135deg, rgba(124, 77, 255, 0.08) 0%, rgba(0, 119, 255, 0.05) 100%);
+    border: 1px solid rgba(124, 77, 255, 0.2);
+}
+
+/* ============== Body Weight Tracker Section ============== */
+.body-weight-section {
+    margin-top: 1rem;
+}
+
+.section-title.weight {
+    color: #26A69A;
+}
+
+.weight-tracker-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-top: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .weight-tracker-grid {
+        grid-template-columns: 1fr 2fr;
+    }
+}
+
+.weight-input-card {
+    background: rgba(38, 166, 154, 0.08);
+    border: 1px solid rgba(38, 166, 154, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.weight-form {
+    margin-bottom: 1rem;
+}
+
+.weight-input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.weight-field {
+    flex: 1;
+    min-width: 100px;
+}
+
+.weight-field label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.weight-field input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.weight-field input:focus {
+    outline: none;
+    border-color: #26A69A;
+    box-shadow: 0 0 0 2px rgba(38, 166, 154, 0.2);
+}
+
+.weight-save-status {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    min-height: 1.2em;
+}
+
+.weight-save-status.success {
+    color: var(--color-green);
+}
+
+.weight-save-status.error {
+    color: var(--color-red);
+}
+
+.weight-latest {
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.weight-latest-label {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.weight-latest-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #26A69A;
+    margin-left: 0.5rem;
+}
+
+.weight-chart-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.weight-sparkline-container {
+    width: 100%;
+    height: 100px;
+}
+
+.weight-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--color-muted);
+    font-size: 0.8rem;
+}
+
+.weight-empty i {
+    font-size: 1.5rem;
+    opacity: 0.5;
+}
+
+/* ============== KPI Header Fix for Tooltip ============== */
+.kpi-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+
+/* ============== Section Title Flex for Tooltip ============== */
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+

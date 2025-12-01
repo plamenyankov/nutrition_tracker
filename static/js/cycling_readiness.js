@@ -1878,8 +1878,22 @@ function initAnalyticsTab() {
             }
             if (!analyticsChartsLoaded) {
                 loadEfficiencyVo2Charts();
+                loadBodyWeights();
             }
         });
+    }
+    
+    // Set up body weight save button
+    const saveWeightBtn = document.getElementById('saveWeightBtn');
+    if (saveWeightBtn) {
+        saveWeightBtn.addEventListener('click', saveBodyWeight);
+    }
+    
+    // Set today's date as default for weight input
+    const weightDateInput = document.getElementById('weightDate');
+    if (weightDateInput && !weightDateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        weightDateInput.value = today;
     }
 }
 
@@ -1905,11 +1919,329 @@ async function loadEfficiencyVo2Charts() {
         if (data.success) {
             renderEfficiencyChart(data.efficiency_timeseries, data.efficiency_rolling_7d);
             renderVo2Chart(data.vo2_weekly);
+            renderFatigueChart(data.fatigue_ratio);
+            renderAerobicEfficiencyChart(data.aerobic_efficiency);
             analyticsChartsLoaded = true;
         }
     } catch (err) {
         console.error('Error loading efficiency/VO2 data:', err);
     }
+}
+
+// ============== Body Weight Chart Reference ==============
+let weightSparklineChart = null;
+let fatigueChart = null;
+let aerobicChart = null;
+
+// ============== Body Weight Functions ==============
+async function loadBodyWeights() {
+    try {
+        const response = await fetch('/cycling-readiness/api/analytics/weights');
+        const data = await response.json();
+        
+        if (data.success && data.weights) {
+            renderWeightSparkline(data.weights);
+            updateLatestWeight(data.weights);
+        }
+    } catch (err) {
+        console.error('Error loading body weights:', err);
+    }
+}
+
+function updateLatestWeight(weights) {
+    const latestValue = document.getElementById('weightLatestValue');
+    if (weights && weights.length > 0) {
+        const latest = weights[weights.length - 1];
+        latestValue.textContent = `${latest.weight_kg} kg`;
+    } else {
+        latestValue.textContent = '--';
+    }
+}
+
+function renderWeightSparkline(weights) {
+    const container = document.getElementById('weightSparklineContainer');
+    const emptyState = document.getElementById('weightChartEmpty');
+    const canvas = document.getElementById('weightSparkline');
+    
+    if (!weights || weights.length < 2) {
+        if (container) container.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'flex';
+        return;
+    }
+    
+    if (container) container.style.display = 'block';
+    if (emptyState) emptyState.style.display = 'none';
+    
+    const dates = weights.map(w => w.date);
+    const values = weights.map(w => w.weight_kg);
+    
+    if (weightSparklineChart) {
+        weightSparklineChart.destroy();
+    }
+    
+    weightSparklineChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                data: values,
+                borderColor: '#26A69A',
+                backgroundColor: 'rgba(38, 166, 154, 0.15)',
+                pointRadius: 3,
+                pointBackgroundColor: '#26A69A',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleColor: '#26A69A',
+                    bodyColor: 'rgba(255,255,255,0.9)',
+                    padding: 10,
+                    callbacks: {
+                        label: (context) => `${context.parsed.y} kg`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: false
+                },
+                y: {
+                    display: true,
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 },
+                        maxTicksLimit: 4
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+async function saveBodyWeight() {
+    const dateInput = document.getElementById('weightDate');
+    const weightInput = document.getElementById('weightValue');
+    const statusEl = document.getElementById('weightSaveStatus');
+    
+    const date = dateInput?.value;
+    const weight = parseFloat(weightInput?.value);
+    
+    if (!date || isNaN(weight)) {
+        statusEl.textContent = 'Please enter both date and weight';
+        statusEl.className = 'weight-save-status error';
+        return;
+    }
+    
+    try {
+        const response = await fetch('/cycling-readiness/api/analytics/weights', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, weight_kg: weight })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusEl.textContent = `Saved ${weight} kg for ${date}`;
+            statusEl.className = 'weight-save-status success';
+            weightInput.value = '';
+            loadBodyWeights(); // Refresh chart
+            loadEfficiencyVo2Charts(); // Refresh VO2 chart with new weight
+        } else {
+            statusEl.textContent = data.error || 'Failed to save';
+            statusEl.className = 'weight-save-status error';
+        }
+    } catch (err) {
+        console.error('Error saving weight:', err);
+        statusEl.textContent = 'Error saving weight';
+        statusEl.className = 'weight-save-status error';
+    }
+}
+
+// ============== Fatigue Ratio (HR Drift) Chart ==============
+function renderFatigueChart(fatigueData) {
+    const chartContainer = document.getElementById('fatigueChartContainer');
+    const emptyState = document.getElementById('fatigueChartEmpty');
+    const canvas = document.getElementById('fatigueChart');
+    
+    if (!fatigueData || fatigueData.length < 3) {
+        if (chartContainer) chartContainer.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'flex';
+        return;
+    }
+    
+    if (chartContainer) chartContainer.style.display = 'block';
+    if (emptyState) emptyState.style.display = 'none';
+    
+    const dates = fatigueData.map(d => d.date);
+    const values = fatigueData.map(d => d.fatigue_ratio);
+    
+    if (fatigueChart) {
+        fatigueChart.destroy();
+    }
+    
+    fatigueChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'HR Drift %',
+                data: values,
+                borderColor: '#FF7043',
+                backgroundColor: 'rgba(255, 112, 67, 0.15)',
+                pointRadius: 4,
+                pointBackgroundColor: '#FF7043',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleColor: '#FF7043',
+                    bodyColor: 'rgba(255,255,255,0.9)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const idx = context.dataIndex;
+                            const entry = fatigueData[idx];
+                            return [
+                                `HR Drift: ${entry.fatigue_ratio}%`,
+                                `Avg HR: ${entry.avg_hr} bpm`,
+                                `Max HR: ${entry.max_hr} bpm`,
+                                `Duration: ${entry.duration_min} min`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 },
+                        maxRotation: 45
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'HR Drift %',
+                        color: 'rgba(255,255,255,0.6)',
+                        font: { size: 10 }
+                    },
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
+}
+
+// ============== Aerobic Efficiency Chart ==============
+function renderAerobicEfficiencyChart(aerobicData) {
+    const chartContainer = document.getElementById('aerobicChartContainer');
+    const emptyState = document.getElementById('aerobicChartEmpty');
+    const canvas = document.getElementById('aerobicChart');
+    
+    if (!aerobicData || aerobicData.length < 3) {
+        if (chartContainer) chartContainer.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'flex';
+        return;
+    }
+    
+    if (chartContainer) chartContainer.style.display = 'block';
+    if (emptyState) emptyState.style.display = 'none';
+    
+    const dates = aerobicData.map(d => d.date);
+    const values = aerobicData.map(d => d.aerobic_efficiency);
+    
+    if (aerobicChart) {
+        aerobicChart.destroy();
+    }
+    
+    aerobicChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: 'Aerobic Efficiency',
+                data: values,
+                borderColor: '#7C4DFF',
+                backgroundColor: 'rgba(124, 77, 255, 0.15)',
+                pointRadius: 4,
+                pointBackgroundColor: '#7C4DFF',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleColor: '#7C4DFF',
+                    bodyColor: 'rgba(255,255,255,0.9)',
+                    padding: 12,
+                    callbacks: {
+                        label: function(context) {
+                            const idx = context.dataIndex;
+                            const entry = aerobicData[idx];
+                            return [
+                                `Efficiency: ${entry.aerobic_efficiency} W/ms`,
+                                `Power: ${entry.avg_power_w}W`,
+                                `HRV: ${entry.hrv_avg} ms`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 },
+                        maxRotation: 45
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'W per ms HRV',
+                        color: 'rgba(255,255,255,0.6)',
+                        font: { size: 10 }
+                    },
+                    ticks: {
+                        color: 'rgba(255,255,255,0.4)',
+                        font: { size: 9 }
+                    },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            }
+        }
+    });
 }
 
 function renderEfficiencyChart(timeseries, rolling) {
@@ -2111,6 +2443,9 @@ function renderVo2Chart(weeklyData) {
                                 lines.push(`VO₂ Index: ${entry.vo2_index} W/kg`);
                             }
                             lines.push(`Peak Power: ${entry.peak_power_w}W`);
+                            if (entry.weight_kg) {
+                                lines.push(`Weight: ${entry.weight_kg} kg`);
+                            }
                             lines.push(`Workouts: ${entry.workout_count}`);
                             return lines;
                         }

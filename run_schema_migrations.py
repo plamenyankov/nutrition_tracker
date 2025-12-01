@@ -55,6 +55,12 @@ def run_all_migrations():
     except ImportError as e:
         logger.warning(f"Could not import add_cardio_manual_override: {e}")
     
+    try:
+        from migrations.add_body_weights import run_migration as migrate_body_weights
+        migrations.append(('add_body_weights', migrate_body_weights))
+    except ImportError as e:
+        logger.warning(f"Could not import add_body_weights: {e}")
+    
     # Run migrations
     logger.info(f"Running {len(migrations)} schema migrations...")
     
