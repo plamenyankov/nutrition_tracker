@@ -1417,6 +1417,59 @@ class CyclingReadinessService:
             'athlete_profile': self._get_athlete_profile(target_date_str)
         }
 
+    def build_training_context_v2_5(self, target_date: date) -> Dict[str, Any]:
+        """
+        Build Training Context v2.5 for AI-powered recommendations.
+        
+        Enhanced version with:
+        - training_goals: Goals and preferences for session types
+        - interval_guidelines: Power factors and timing for interval calculations
+        - analysis_requirements: Requirements for AI reasoning and analysis text
+        
+        Args:
+            target_date: The date to build context for
+        
+        Returns:
+            Dict with v2.5 structure including all new sections
+        """
+        # Get base context from v2
+        base_context = self.build_training_context(target_date)
+        
+        # Add v2.5 enhancements
+        base_context['version'] = '2.5'
+        
+        # Training Goals - Defines what types of sessions are allowed
+        base_context['training_goals'] = {
+            'allow_intervals': True,
+            'focus': 'progressive_adaptation',
+            'preferred_types': ['z1', 'z2', 'endurance', '4x4', '3x8'],
+            'max_session_length_min': 75,
+            'min_session_length_min': 20
+        }
+        
+        # Interval Guidelines - Power factors for computing targets
+        base_context['interval_guidelines'] = {
+            'vo2_power_factor': 1.25,       # Multiply Z2 avg power by this for VO2max intervals
+            'threshold_power_factor': 1.15,  # Multiply Z2 avg power by this for threshold intervals
+            'z2_power_factor': 0.85,         # Factor for steady Z2 work
+            'warmup_minutes': 5,
+            'cooldown_minutes': 5
+        }
+        
+        # Analysis Requirements - What the AI must include in analysis_text
+        base_context['analysis_requirements'] = {
+            'max_sentences': 5,
+            'must_include': [
+                'HRV trend',
+                'RHR comparison',
+                'fatigue state',
+                'power vs HR behavior',
+                '7-day load reasoning'
+            ]
+        }
+        
+        return base_context
+
     def _get_day_context(self, target_date: str) -> Dict[str, Any]:
         """
         Get readiness, sleep, and cardio context for the target date.

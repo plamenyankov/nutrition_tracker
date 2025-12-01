@@ -18,13 +18,17 @@ let deleteId = null;
 let reviewData = null;
 let selectedFiles = [];
 
-// ============== Day Type Constants ==============
+// ============== Day Type Constants (CSResponse v1) ==============
 const DAY_TYPE_LABELS = {
     'rest': 'Rest Day',
     'recovery_spin_z1': 'Recovery Z1',
     'easy_endurance_z1': 'Easy Z1',
     'steady_endurance_z2': 'Endurance Z2',
+    'progressive_endurance': 'Progressive',
     'norwegian_4x4': '4×4 VO2max',
+    'threshold_3x8': '3×8 Threshold',
+    'vo2max_intervals': 'VO2max Intervals',
+    'cadence_drills': 'Cadence Drills',
     'hybrid_endurance': 'Hybrid',
     'other': 'Training'
 };
@@ -34,7 +38,11 @@ const DAY_TYPE_CLASSES = {
     'recovery_spin_z1': 'z1',
     'easy_endurance_z1': 'z1',
     'steady_endurance_z2': 'z2',
+    'progressive_endurance': 'z2',
     'norwegian_4x4': 'hard',
+    'threshold_3x8': 'hard',
+    'vo2max_intervals': 'hard',
+    'cadence_drills': 'z2',
     'hybrid_endurance': 'z2',
     'other': ''
 };
@@ -565,6 +573,16 @@ function renderCoachRecommendation(rec, dateStr) {
     document.getElementById('coachDateLabel').textContent = dateStr;
     document.getElementById('coachReason').textContent = rec.reason_short || '';
     
+    // Coach Notes / Analysis Card (new in v2.5)
+    const analysisCard = document.getElementById('coachAnalysisCard');
+    const analysisText = document.getElementById('coachAnalysisText');
+    if (rec.analysis_text && analysisCard) {
+        analysisText.textContent = rec.analysis_text;
+        analysisCard.style.display = 'block';
+    } else if (analysisCard) {
+        analysisCard.style.display = 'none';
+    }
+    
     // Performance Targets Card
     const targetsCard = document.getElementById('coachTargetsCard');
     const targetsGrid = document.getElementById('coachTargetsGrid');
@@ -614,11 +632,12 @@ function renderCoachRecommendation(rec, dateStr) {
         targetsCard.style.display = 'none';
     }
     
-    // Enhanced Intervals
+    // Enhanced Intervals (CSResponse v1)
     const intervalsContainer = document.getElementById('coachIntervals');
     const intervalsList = document.getElementById('coachIntervalsList');
     if (rec.session_plan && rec.session_plan.intervals && rec.session_plan.intervals.length > 0) {
         intervalsList.innerHTML = rec.session_plan.intervals.map(interval => {
+            // Build duration description
             let durationDesc = '';
             if (interval.repeats) {
                 durationDesc = `${interval.repeats}× ${interval.work_minutes || interval.duration_minutes}min`;
@@ -629,6 +648,13 @@ function renderCoachRecommendation(rec, dateStr) {
                 durationDesc = `${interval.duration_minutes} min`;
             }
             
+            // Block name badge (e.g., "4x4 VO2max")
+            let blockNameHtml = '';
+            if (interval.block_name) {
+                blockNameHtml = `<span class="interval-block-name">${interval.block_name}</span>`;
+            }
+            
+            // HR targets
             let hrHtml = '';
             if (interval.target_hr_bpm_min && interval.target_hr_bpm_max) {
                 hrHtml = `
@@ -644,6 +670,7 @@ function renderCoachRecommendation(rec, dateStr) {
                     </div>`;
             }
             
+            // Power targets
             let powerHtml = '';
             if (interval.target_power_w_min && interval.target_power_w_max) {
                 powerHtml = `
@@ -653,6 +680,7 @@ function renderCoachRecommendation(rec, dateStr) {
                     </div>`;
             }
             
+            // Notes/coaching cues
             let notesHtml = '';
             if (interval.notes) {
                 notesHtml = `
@@ -661,10 +689,15 @@ function renderCoachRecommendation(rec, dateStr) {
                     </div>`;
             }
             
+            // Get interval kind class - handle new types (progressive, threshold, vo2max)
+            const kindClass = interval.kind || 'steady';
+            const isHardInterval = ['interval', 'threshold', 'vo2max'].includes(kindClass);
+            
             return `
-                <div class="interval-row ${interval.kind}">
+                <div class="interval-row ${kindClass} ${isHardInterval ? 'hard-interval' : ''}">
                     <div class="interval-left">
-                        <span class="interval-type ${interval.kind}">${interval.kind}</span>
+                        <span class="interval-type ${kindClass}">${kindClass}</span>
+                        ${blockNameHtml}
                     </div>
                     <div class="interval-center">
                         <span class="interval-duration">${durationDesc}</span>

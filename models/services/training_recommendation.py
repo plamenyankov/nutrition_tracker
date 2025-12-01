@@ -1,12 +1,14 @@
 """
-Training Recommendation Service
+Training Recommendation Service v2.5
 
 Generates AI-powered daily training recommendations based on:
 - Today's readiness, sleep, and cardio metrics
 - Last 7 days of training history
 - 30-day baseline statistics
+- Training goals and interval guidelines
 
-Uses OpenAI to analyze the context and recommend appropriate training.
+Uses OpenAI GPT-4o to analyze the context and recommend appropriate training
+with dynamic interval structures.
 """
 import json
 import logging
@@ -17,29 +19,36 @@ from dataclasses import dataclass, asdict, field
 logger = logging.getLogger(__name__)
 
 
-# ============== Data Models (using dataclasses for compatibility) ==============
+# ============== Data Models (CSResponse v1) ==============
 
 @dataclass
 class TrainingInterval:
-    """A single interval/segment within a training session"""
-    kind: Literal["warmup", "steady", "interval", "recovery", "cooldown"]
+    """
+    A single interval/segment within a training session.
+    
+    CSResponse v1 supports dynamic intervals with power and HR ranges.
+    """
+    kind: Literal["warmup", "steady", "interval", "recovery", "cooldown", "progressive", "threshold", "vo2max"]
     duration_minutes: int
-    target_zone: Literal["Z1", "Z2", "Z3", "Z4"]
+    target_zone: Literal["Z1", "Z2", "Z3", "Z4", "Z5"]
     notes: Optional[str] = None
     
-    # Power targets (optional, based on athlete's baseline)
+    # Power targets (based on athlete_profile and interval_guidelines)
     target_power_w_min: Optional[int] = None
     target_power_w_max: Optional[int] = None
     
-    # Heart rate targets (optional)
+    # Heart rate targets
     target_hr_bpm_min: Optional[int] = None
     target_hr_bpm_max: Optional[int] = None
     expected_avg_hr_bpm: Optional[int] = None
     
-    # For interval blocks
+    # For interval blocks (repeats structure)
     repeats: Optional[int] = None
     work_minutes: Optional[int] = None
     rest_minutes: Optional[int] = None
+    
+    # Block metadata
+    block_name: Optional[str] = None  # e.g., "4x4 VO2max", "3x8 Threshold"
 
     def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in asdict(self).items() if v is not None}
@@ -47,16 +56,18 @@ class TrainingInterval:
 
 @dataclass
 class TrainingSessionPlan:
-    """Complete session plan with intervals"""
+    """Complete session plan with intervals - CSResponse v1"""
     duration_minutes: int
-    primary_zone: Literal["Z1", "Z2", "Z3", "Z4"]
-    overall_intensity: Literal["very_easy", "easy", "moderate", "hard"]
+    primary_zone: Literal["Z1", "Z2", "Z3", "Z4", "Z5"]
+    overall_intensity: Literal["very_easy", "easy", "moderate", "hard", "very_hard"]
     intervals: List[TrainingInterval]
     comments: Optional[str] = None
     
-    # Session-level targets (optional)
+    # Session-level targets
     session_target_power_w_min: Optional[int] = None
     session_target_power_w_max: Optional[int] = None
+    session_target_hr_bpm_min: Optional[int] = None
+    session_target_hr_bpm_max: Optional[int] = None
     expected_avg_hr_bpm: Optional[int] = None
     expected_avg_power_w: Optional[int] = None
 
@@ -73,6 +84,10 @@ class TrainingSessionPlan:
             result['session_target_power_w_min'] = self.session_target_power_w_min
         if self.session_target_power_w_max is not None:
             result['session_target_power_w_max'] = self.session_target_power_w_max
+        if self.session_target_hr_bpm_min is not None:
+            result['session_target_hr_bpm_min'] = self.session_target_hr_bpm_min
+        if self.session_target_hr_bpm_max is not None:
+            result['session_target_hr_bpm_max'] = self.session_target_hr_bpm_max
         if self.expected_avg_hr_bpm is not None:
             result['expected_avg_hr_bpm'] = self.expected_avg_hr_bpm
         if self.expected_avg_power_w is not None:
@@ -82,18 +97,32 @@ class TrainingSessionPlan:
 
 @dataclass
 class TrainingRecommendation:
-    """Complete training recommendation for a day"""
+    """
+    Complete training recommendation for a day - CSResponse v1
+    
+    Supports expanded day_type options for interval workouts and
+    includes analysis_text for coach reasoning.
+    """
     date: str  # YYYY-MM-DD
     day_type: Literal[
+        # Rest & Recovery
         "rest",
         "recovery_spin_z1",
+        # Endurance
         "easy_endurance_z1",
         "steady_endurance_z2",
+        "progressive_endurance",
+        # Intervals
         "norwegian_4x4",
+        "threshold_3x8",
+        "vo2max_intervals",
+        "cadence_drills",
+        # Other
         "hybrid_endurance",
         "other"
     ]
-    reason_short: str  # 1-3 sentences explaining the recommendation
+    reason_short: str  # 1-3 sentences brief summary
+    analysis_text: Optional[str] = None  # 3-6 sentences with detailed analysis
     session_plan: Optional[TrainingSessionPlan] = None
     flags: Dict[str, bool] = field(default_factory=dict)
 
@@ -105,150 +134,161 @@ class TrainingRecommendation:
             'session_plan': self.session_plan.to_dict() if self.session_plan else None,
             'flags': self.flags
         }
+        if self.analysis_text:
+            result['analysis_text'] = self.analysis_text
         return result
 
 
-# ============== OpenAI System Prompt ==============
+# ============== OpenAI System Prompt v4 ==============
 
-TRAINING_COACH_SYSTEM_PROMPT = """You are an experienced endurance cycling coach using a Norwegian-style polarized training approach.
+TRAINING_COACH_SYSTEM_PROMPT_V4 = """You are an elite endurance cycling coach using Norwegian-style polarized training.
 
-## Your Task
-You will receive a JSON object called "training_context" for one evaluation_date. You must:
-1. Choose the safest and most effective training for that date
-2. Output ONLY a JSON object matching the TrainingRecommendation schema
-3. Fill in SPECIFIC numeric power & HR targets for every interval using the athlete_profile data
+You receive training_context (v2.5) containing 30-day time-series, athlete profile,
+7-day load, daily physiology, and interval guidelines.
 
-## Input Structure (training_context)
+## Your Job
 
-- **evaluation_date**: The date you are recommending for (YYYY-MM-DD)
+1. **Determine the athlete's state:**
+   - Evaluate fatigue state from HRV trend, RHR comparison, sleep quality
+   - Assess readiness score and subjective inputs (energy, mood, muscle fatigue)
+   - Consider 7-day training load and workout pattern
 
-- **day**: The athlete's state on evaluation_date:
-  - readiness: score (0-100), energy (1-5), mood (1-3), muscle_fatigue (1-3), hrv_status (-1/0/1), rhr_status (-1/0/1), symptoms (bool)
-  - sleep: total_minutes, deep_minutes, awake_minutes, min_hr, max_hr
-  - cardio: rhr_bpm, hrv_low_ms, hrv_high_ms
+2. **Interpret historical data:**
+   - Analyze power vs HR behavior from 30-day history
+   - Compare today's cardio metrics to baseline
+   - Identify signs of adaptation, fatigue, or overreaching
 
-- **history_7d**: The 7 days BEFORE evaluation_date (D-7 to D-1), each with:
-  - readiness_score, workout_type, workout_duration_minutes, tss, rhr_bpm, hrv_avg_ms
+3. **Decide the training type:**
+   - REST: Complete recovery day (no session)
+   - RECOVERY: Light Z1 spinning, 20-30 min
+   - Z1: Easy Zone 1 endurance
+   - Z2: Steady Zone 2 endurance
+   - ENDURANCE: Progressive build from Z1 to Z2
+   - PROGRESSIVE ENDURANCE: Negative split with power build
+   - 4x4 VO2max: Norwegian-style 4×4min intervals at Z4-Z5
+   - 3x8 Threshold: Threshold intervals at Z3-Z4
+   - CADENCE DRILLS: High-cadence technique work
+   - HYBRID: Mixed session based on athlete state
 
-- **baseline_30d**: Rolling 30-day averages for comparison
+4. **Only allow hard sessions (VO2max/threshold) when:**
+   - Readiness score > 70
+   - HRV status >= 0 (not depressed)
+   - RHR status >= 0 (not elevated)
+   - Sleep >= 7 hours
+   - No symptoms
+   - No hard session in last 2-3 days
+   - 7-day load is manageable
 
-- **athlete_profile**: CRITICAL data for setting numeric targets:
-  - max_hr_bpm: Maximum HR observed in any workout (last 30 days)
-  - resting_hr_bpm_30d_avg: Average resting HR
-  - zones.z1: { avg_power_w, min_power_w, max_power_w, avg_hr_bpm } - typical Z1 workout stats
-  - zones.z2: { avg_power_w, min_power_w, max_power_w, avg_hr_bpm } - typical Z2 workout stats
-  - zones.norwegian_4x4: { avg_power_w, avg_hr_bpm } - typical 4x4 interval stats
+## Input Structure (training_context v2.5)
 
-## MANDATORY: Using athlete_profile for Numeric Targets
+- **evaluation_date**: The date you are recommending for
+- **day**: Readiness, sleep, cardio for evaluation_date
+- **history_7d**: 7 days BEFORE evaluation_date with workouts, TSS, cardio
+- **baseline_30d**: 30-day averages for comparison
+- **athlete_profile**: Max HR, resting HR, zone data (Z1, Z2, norwegian_4x4)
+- **training_goals**: Allowed session types, duration limits, focus
+- **interval_guidelines**: Power factors for computing interval targets
+  - vo2_power_factor: Multiply Z2 power for VO2max intervals (e.g., 1.25)
+  - threshold_power_factor: Multiply Z2 power for threshold intervals (e.g., 1.15)
+  - warmup_minutes, cooldown_minutes: Standard warm-up/cool-down durations
+- **analysis_requirements**: What must be in your analysis_text
 
-For EVERY non-rest session, you MUST set specific numeric targets based on athlete_profile:
+## Computing Numeric Targets
 
-### For Z1 intervals (warmup, recovery, cooldown, easy spinning):
-- target_power_w_min/max: Use zones.z1.min_power_w to zones.z1.avg_power_w (or estimate 40-50% of zones.z2.avg_power_w if z1 data missing)
-- target_hr_bpm_min/max: Use zones.z1.avg_hr_bpm ±5 bpm, or 55-65% of max_hr_bpm
-- expected_avg_hr_bpm: zones.z1.avg_hr_bpm or 60% of max_hr_bpm
+Use athlete_profile.zones and interval_guidelines to calculate SPECIFIC targets:
 
-### For Z2 intervals (steady endurance):
-- target_power_w_min/max: zones.z2.min_power_w to zones.z2.max_power_w
-- target_hr_bpm_min/max: zones.z2.avg_hr_bpm ±5 bpm, or 65-75% of max_hr_bpm
-- expected_avg_hr_bpm: zones.z2.avg_hr_bpm or 70% of max_hr_bpm
+### Z1 (warmup, recovery, cooldown):
+- Power: zones.z1.min_power_w to zones.z1.avg_power_w
+- HR: zones.z1.avg_hr_bpm ±5 bpm, or 55-65% of max_hr_bpm
 
-### For Z4 intervals (Norwegian 4x4 work intervals):
-- target_power_w_min/max: zones.norwegian_4x4.avg_power_w ±10% (or 110-120% of zones.z2.avg_power_w if missing)
-- target_hr_bpm_min/max: 88-95% of max_hr_bpm
-- expected_avg_hr_bpm: zones.norwegian_4x4.avg_hr_bpm or 92% of max_hr_bpm
+### Z2 (steady endurance):
+- Power: zones.z2.min_power_w to zones.z2.max_power_w (or avg * z2_power_factor)
+- HR: zones.z2.avg_hr_bpm ±5 bpm, or 65-75% of max_hr_bpm
 
-### If zone data is NULL:
-- Use max_hr_bpm and resting_hr_bpm_30d_avg to estimate:
-  - Z1 HR = resting + 20-40% of (max - resting)
-  - Z2 HR = resting + 50-65% of (max - resting)
-  - Z4 HR = 88-95% of max_hr_bpm
-- If no power data available, set power fields to null but ALWAYS fill HR targets
+### Z4/Z5 (4x4 VO2max intervals):
+- Power: zones.z2.avg_power_w * interval_guidelines.vo2_power_factor
+- HR: 88-95% of max_hr_bpm
 
-## Decision Framework
+### Z3/Z4 (3x8 Threshold intervals):
+- Power: zones.z2.avg_power_w * interval_guidelines.threshold_power_factor
+- HR: 82-90% of max_hr_bpm
 
-### When to recommend REST (day_type="rest", session_plan=null):
-- Readiness <40, symptoms=true, or signs of overreaching
-- 3+ consecutive training days
-- Explain clearly in reason_short
+If zone data is NULL, estimate from max_hr_bpm and resting_hr_bpm_30d_avg.
 
-### When to recommend RECOVERY SPIN Z1 (20-45 min):
-- Readiness 40-55 or recovering from hard effort
-- Set HR targets to stay <65% max_hr_bpm
+## Output Format (CSResponse v1)
 
-### When to recommend ENDURANCE Z2 (45-90 min):
-- Readiness 60-75, good sleep, no recent hard days
-- Use zones.z2 data for power/HR targets
-
-### When to recommend NORWEGIAN 4x4:
-- Readiness >70
-- HRV/RHR status >= 0
-- Good sleep (7+ hours)
-- No symptoms
-- No hard session in last 2-3 days
-- Structure MUST be:
-  1. Warmup: 10min Z1
-  2. Interval block: repeats=4, work_minutes=4, rest_minutes=3, target_zone="Z4"
-  3. Cooldown: 10min Z1
-
-## Safety Bias
-When in doubt (low readiness, elevated RHR, depressed HRV, high recent load):
-- Choose easier day (rest or Z1/Z2)
-- Reduce duration
-- Lower power/HR targets
-
-## Output Format
-
-Return ONLY valid JSON matching this schema:
+Return ONLY valid JSON:
 
 {
   "date": "YYYY-MM-DD",
-  "day_type": "rest" | "recovery_spin_z1" | "easy_endurance_z1" | "steady_endurance_z2" | "norwegian_4x4" | "hybrid_endurance" | "other",
-  "reason_short": "1-3 sentences explaining the recommendation based on the data",
+  "day_type": "rest" | "recovery_spin_z1" | "easy_endurance_z1" | "steady_endurance_z2" | 
+              "progressive_endurance" | "norwegian_4x4" | "threshold_3x8" | 
+              "vo2max_intervals" | "cadence_drills" | "hybrid_endurance" | "other",
+  "reason_short": "1-3 sentence summary of recommendation",
+  "analysis_text": "3-6 sentences including: HRV trend, RHR comparison, fatigue state, load reasoning, power/HR behavior",
   "session_plan": null | {
     "duration_minutes": <int>,
-    "primary_zone": "Z1" | "Z2" | "Z3" | "Z4",
-    "overall_intensity": "very_easy" | "easy" | "moderate" | "hard",
+    "primary_zone": "Z1" | "Z2" | "Z3" | "Z4" | "Z5",
+    "overall_intensity": "very_easy" | "easy" | "moderate" | "hard" | "very_hard",
+    "session_target_power_w_min": <int>,
+    "session_target_power_w_max": <int>,
+    "session_target_hr_bpm_min": <int>,
+    "session_target_hr_bpm_max": <int>,
+    "expected_avg_hr_bpm": <int>,
+    "expected_avg_power_w": <int>,
     "intervals": [
       {
-        "kind": "warmup" | "steady" | "interval" | "recovery" | "cooldown",
+        "kind": "warmup" | "steady" | "interval" | "recovery" | "cooldown" | "progressive" | "threshold" | "vo2max",
         "duration_minutes": <int>,
-        "target_zone": "Z1" | "Z2" | "Z3" | "Z4",
-        "target_power_w_min": <int - REQUIRED if power data available>,
-        "target_power_w_max": <int - REQUIRED if power data available>,
-        "target_hr_bpm_min": <int - ALWAYS REQUIRED>,
-        "target_hr_bpm_max": <int - ALWAYS REQUIRED>,
-        "expected_avg_hr_bpm": <int - ALWAYS REQUIRED for main segments>,
-        "notes": "<optional>",
-        "repeats": <int - for interval blocks>,
-        "work_minutes": <int - for interval blocks>,
-        "rest_minutes": <int - for interval blocks>
+        "target_zone": "Z1" | "Z2" | "Z3" | "Z4" | "Z5",
+        "target_power_w_min": <int>,
+        "target_power_w_max": <int>,
+        "target_hr_bpm_min": <int>,
+        "target_hr_bpm_max": <int>,
+        "expected_avg_hr_bpm": <int>,
+        "notes": "<optional coaching cue>",
+        "block_name": "<e.g., '4x4 VO2max'>",
+        "repeats": <int for interval blocks>,
+        "work_minutes": <int for interval blocks>,
+        "rest_minutes": <int for interval blocks>
       }
     ],
-    "comments": "<optional>",
-    "expected_avg_hr_bpm": <int - session average>,
-    "expected_avg_power_w": <int - session average if power data available>
+    "comments": "<optional overall session comment>"
   },
   "flags": {
     "ok_to_push": <bool>,
     "consider_rest_day": <bool>,
     "prioritize_sleep": <bool>,
-    "monitor_hrv": <bool>
+    "monitor_hrv": <bool>,
+    "high_fatigue_detected": <bool>
   }
 }
 
-CRITICAL RULES:
-- For rest days: session_plan = null
-- For ALL other days: MUST fill target_hr_bpm_min/max and expected_avg_hr_bpm for every interval
-- If power data exists in athlete_profile: MUST fill target_power_w_min/max
-- Use athlete_profile.zones data to set realistic, personalized targets
-- Do NOT leave HR fields empty/null for non-rest sessions
-- No text outside the JSON object"""
+## CRITICAL RULES
 
+1. For rest days: session_plan = null
+2. For ALL other days: MUST fill target_hr_bpm_min/max for every interval
+3. If power data exists: MUST fill target_power_w_min/max
+4. analysis_text MUST include: HRV trend, RHR comparison, fatigue state, 7-day load reasoning, power/HR behavior
+5. Use interval_guidelines to compute interval power targets
+6. Do NOT leave HR fields empty for non-rest sessions
+7. No text outside the JSON object
+8. Respect training_goals.max_session_length_min and min_session_length_min
+
+## Safety Bias
+
+When in doubt (low readiness, elevated RHR, depressed HRV, high recent load):
+- Choose easier day (rest or Z1/Z2)
+- Reduce duration
+- Lower power/HR targets
+- Set consider_rest_day=true and high_fatigue_detected=true in flags"""
+
+# Keep old prompt for backward compatibility
+TRAINING_COACH_SYSTEM_PROMPT = TRAINING_COACH_SYSTEM_PROMPT_V4
 
 TRAINING_USER_PROMPT_TEMPLATE = """Here is the training_context for the athlete and the evaluation date.
 Using only this data, choose the best training for that date.
-Respond only with valid JSON that matches the TrainingRecommendation schema.
+Respond only with valid JSON that matches the CSResponse v1 schema.
 
 {context_json}"""
 
@@ -399,7 +439,8 @@ def _parse_interval(interval_data: Dict) -> TrainingInterval:
         expected_avg_hr_bpm=interval_data.get('expected_avg_hr_bpm'),
         repeats=interval_data.get('repeats'),
         work_minutes=interval_data.get('work_minutes'),
-        rest_minutes=interval_data.get('rest_minutes')
+        rest_minutes=interval_data.get('rest_minutes'),
+        block_name=interval_data.get('block_name')
     )
 
 
@@ -423,6 +464,8 @@ def _parse_session_plan(sp: Dict) -> TrainingSessionPlan:
         comments=sp.get('comments'),
         session_target_power_w_min=sp.get('session_target_power_w_min'),
         session_target_power_w_max=sp.get('session_target_power_w_max'),
+        session_target_hr_bpm_min=sp.get('session_target_hr_bpm_min'),
+        session_target_hr_bpm_max=sp.get('session_target_hr_bpm_max'),
         expected_avg_hr_bpm=sp.get('expected_avg_hr_bpm'),
         expected_avg_power_w=sp.get('expected_avg_power_w')
     )
@@ -448,6 +491,7 @@ def _build_recommendation_from_payload(payload: Dict, fallback_date: str) -> Tra
         date=payload.get('date', fallback_date),
         day_type=payload.get('day_type', 'rest'),
         reason_short=payload.get('reason_short', 'Unable to determine recommendation.'),
+        analysis_text=payload.get('analysis_text'),
         session_plan=session_plan,
         flags=payload.get('flags', {})
     )
@@ -459,6 +503,7 @@ def generate_training_recommendation(
     user_id: str,
     target_date: date,
     force_refresh: bool = False,
+    use_v2_5: bool = True,
     connection_manager=None
 ) -> TrainingRecommendation:
     """
@@ -471,6 +516,7 @@ def generate_training_recommendation(
         user_id: The user's ID
         target_date: The date to generate recommendation for
         force_refresh: If True, always call OpenAI even if stored rec exists
+        use_v2_5: If True, use training_context_v2_5 (default True)
         connection_manager: Optional database connection manager
     
     Returns:
@@ -494,7 +540,13 @@ def generate_training_recommendation(
     
     # Build the training context
     service = CyclingReadinessService(user_id=user_id, connection_manager=connection_manager)
-    context = service.build_training_context(target_date)
+    
+    # Use v2.5 context if enabled
+    if use_v2_5:
+        context = service.build_training_context_v2_5(target_date)
+        logger.info(f"[TRAINING] Using training_context v2.5 for {date_str}")
+    else:
+        context = service.build_training_context(target_date)
     
     # Build the user prompt with context (just the JSON)
     context_json = json.dumps(context, indent=2, default=str)
@@ -504,7 +556,7 @@ def generate_training_recommendation(
     logger.debug(f"[TRAINING] Context: evaluation_date={context.get('evaluation_date')}, "
                  f"readiness_score={context.get('day', {}).get('readiness', {}).get('score')}")
     
-    # Call OpenAI
+    # Call OpenAI with GPT-4o (best available model)
     model_name = DEFAULT_MODEL_NAME
     try:
         client = get_openai_client()
@@ -512,11 +564,11 @@ def generate_training_recommendation(
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": TRAINING_COACH_SYSTEM_PROMPT},
+                {"role": "system", "content": TRAINING_COACH_SYSTEM_PROMPT_V4},
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.3,  # Slightly creative but mostly deterministic
-            max_tokens=1500
+            max_tokens=2000   # Increased for longer analysis_text
         )
         
         response_text = response.choices[0].message.content
@@ -614,6 +666,10 @@ def get_recommendation_summary(recommendation: TrainingRecommendation) -> str:
     summary += f"🎯 {recommendation.day_type.replace('_', ' ').title()}\n"
     summary += f"💬 {recommendation.reason_short}\n"
     
+    # Add analysis text if present
+    if recommendation.analysis_text:
+        summary += f"\n📊 Analysis:\n{recommendation.analysis_text}\n"
+    
     if recommendation.session_plan:
         sp = recommendation.session_plan
         summary += f"\n📋 Session Plan ({sp.duration_minutes} min, {sp.primary_zone}, {sp.overall_intensity}):\n"
@@ -624,25 +680,34 @@ def get_recommendation_summary(recommendation: TrainingRecommendation) -> str:
         if sp.expected_avg_power_w:
             summary += f"   Expected Avg Power: {sp.expected_avg_power_w}W\n"
         
+        # Session target ranges
+        if sp.session_target_hr_bpm_min and sp.session_target_hr_bpm_max:
+            summary += f"   Target HR Range: {sp.session_target_hr_bpm_min}–{sp.session_target_hr_bpm_max} bpm\n"
+        if sp.session_target_power_w_min and sp.session_target_power_w_max:
+            summary += f"   Target Power Range: {sp.session_target_power_w_min}–{sp.session_target_power_w_max} W\n"
+        
         summary += "\n"
         
         for i, interval in enumerate(sp.intervals, 1):
+            # Handle block name if present
+            block_prefix = f"[{interval.block_name}] " if interval.block_name else ""
+            
             if interval.repeats:
-                summary += f"  {i}. {interval.kind}: {interval.repeats}x {interval.work_minutes}min {interval.target_zone}"
+                summary += f"  {i}. {block_prefix}{interval.kind}: {interval.repeats}× {interval.work_minutes or interval.duration_minutes}min {interval.target_zone}"
                 if interval.rest_minutes:
                     summary += f" / {interval.rest_minutes}min rest"
             else:
-                summary += f"  {i}. {interval.kind}: {interval.duration_minutes}min {interval.target_zone}"
+                summary += f"  {i}. {block_prefix}{interval.kind}: {interval.duration_minutes}min {interval.target_zone}"
             
             # Add targets if available
             targets = []
             if interval.target_hr_bpm_min or interval.target_hr_bpm_max:
-                hr_range = f"{interval.target_hr_bpm_min or '?'}-{interval.target_hr_bpm_max or '?'} bpm"
+                hr_range = f"{interval.target_hr_bpm_min or '?'}–{interval.target_hr_bpm_max or '?'} bpm"
                 targets.append(hr_range)
             if interval.expected_avg_hr_bpm:
                 targets.append(f"avg ~{interval.expected_avg_hr_bpm} bpm")
             if interval.target_power_w_min or interval.target_power_w_max:
-                power_range = f"{interval.target_power_w_min or '?'}-{interval.target_power_w_max or '?'}W"
+                power_range = f"{interval.target_power_w_min or '?'}–{interval.target_power_w_max or '?'}W"
                 targets.append(power_range)
             
             if targets:
@@ -663,3 +728,24 @@ def get_recommendation_summary(recommendation: TrainingRecommendation) -> str:
     
     return summary
 
+
+# ============== Day Type Helpers ==============
+
+DAY_TYPE_INFO = {
+    'rest': {'label': 'Rest Day', 'color': 'rest', 'icon': '🛌'},
+    'recovery_spin_z1': {'label': 'Recovery Z1', 'color': 'z1', 'icon': '🚴‍♂️'},
+    'easy_endurance_z1': {'label': 'Easy Z1', 'color': 'z1', 'icon': '🚴'},
+    'steady_endurance_z2': {'label': 'Endurance Z2', 'color': 'z2', 'icon': '🚴'},
+    'progressive_endurance': {'label': 'Progressive', 'color': 'z2', 'icon': '📈'},
+    'norwegian_4x4': {'label': '4×4 VO2max', 'color': 'hard', 'icon': '🔥'},
+    'threshold_3x8': {'label': '3×8 Threshold', 'color': 'hard', 'icon': '⚡'},
+    'vo2max_intervals': {'label': 'VO2max', 'color': 'hard', 'icon': '🔥'},
+    'cadence_drills': {'label': 'Cadence', 'color': 'z2', 'icon': '🎯'},
+    'hybrid_endurance': {'label': 'Hybrid', 'color': 'z2', 'icon': '🔄'},
+    'other': {'label': 'Training', 'color': '', 'icon': '🏋️'},
+}
+
+
+def get_day_type_display(day_type: str) -> Dict[str, str]:
+    """Get display info for a day type."""
+    return DAY_TYPE_INFO.get(day_type, DAY_TYPE_INFO['other'])
