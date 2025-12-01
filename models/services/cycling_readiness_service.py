@@ -1859,3 +1859,289 @@ class CyclingReadinessService:
             'avg_hr_bpm': int(round(sum(hrs) / len(hrs))) if hrs else None
         }
 
+    # ============== Analytics KPI Methods ==============
+
+    def get_analytics_kpis(self) -> Dict[str, Any]:
+        """
+        Get all KPI data for the Analytics dashboard.
+        
+        Returns:
+            Dict with:
+            - acute_load_7d: 7-day TSS total, daily average, and load level
+            - chronic_load_42d: 42-day weekly TSS average
+            - hrv_trend: Today's HRV vs 30-day baseline
+            - rhr_trend: Today's RHR vs 30-day baseline  
+            - z2_power_trend: 7-day vs 30-day Z2 power average
+        """
+        today = date.today().strftime('%Y-%m-%d')
+        
+        return {
+            'acute_load_7d': self._get_acute_load(),
+            'chronic_load_42d': self._get_chronic_load(),
+            'hrv_trend': self._get_hrv_trend(today),
+            'rhr_trend': self._get_rhr_trend(today),
+            'z2_power_trend': self._get_z2_power_trend()
+        }
+
+    def _get_acute_load(self) -> Dict[str, Any]:
+        """
+        Calculate Acute Training Load (7-day TSS).
+        
+        Returns:
+            Dict with tss (total), avg_per_day, level (low/medium/high)
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get TSS for last 7 days (D-6 to D)
+            cursor.execute('''
+                SELECT 
+                    COALESCE(SUM(tss), 0) as total_tss,
+                    COUNT(CASE WHEN tss > 0 THEN 1 END) as workout_days
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+                  AND date <= CURDATE()
+            ''', (self.user_id,))
+            
+            result = cursor.fetchone()
+            total_tss = float(result['total_tss']) if result['total_tss'] else 0
+            workout_days = result['workout_days'] or 0
+            
+            # Calculate daily average
+            avg_per_day = round(total_tss / 7, 1) if total_tss > 0 else 0
+            
+            # Determine load level based on 7-day TSS
+            # Typical ranges: Low < 200, Medium 200-400, High > 400
+            if total_tss < 200:
+                level = 'low'
+            elif total_tss < 400:
+                level = 'medium'
+            else:
+                level = 'high'
+            
+            return {
+                'tss': round(total_tss, 1),
+                'avg_per_day': avg_per_day,
+                'workout_days': workout_days,
+                'level': level
+            }
+
+    def _get_chronic_load(self) -> Dict[str, Any]:
+        """
+        Calculate Chronic Training Load (42-day TSS).
+        
+        Returns:
+            Dict with total_tss, weekly_tss (average per week)
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get TSS for last 42 days
+            cursor.execute('''
+                SELECT 
+                    COALESCE(SUM(tss), 0) as total_tss,
+                    COUNT(CASE WHEN tss > 0 THEN 1 END) as workout_days
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL 41 DAY)
+                  AND date <= CURDATE()
+            ''', (self.user_id,))
+            
+            result = cursor.fetchone()
+            total_tss = float(result['total_tss']) if result['total_tss'] else 0
+            workout_days = result['workout_days'] or 0
+            
+            # Weekly average (42 days = 6 weeks)
+            weekly_tss = round(total_tss / 6, 1) if total_tss > 0 else 0
+            
+            return {
+                'total_tss': round(total_tss, 1),
+                'weekly_tss': weekly_tss,
+                'workout_days': workout_days
+            }
+
+    def _get_hrv_trend(self, target_date: str) -> Dict[str, Any]:
+        """
+        Calculate HRV trend comparing today to 30-day baseline.
+        
+        Args:
+            target_date: Date string (YYYY-MM-DD)
+        
+        Returns:
+            Dict with today, baseline_30d, delta_percent, direction
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get today's HRV
+            cursor.execute('''
+                SELECT hrv_low_ms, hrv_high_ms
+                FROM cardio_daily_metrics
+                WHERE user_id = %s AND date = %s
+            ''', (self.user_id, target_date))
+            
+            today_row = cursor.fetchone()
+            today_hrv = None
+            if today_row and today_row['hrv_low_ms'] and today_row['hrv_high_ms']:
+                today_hrv = (today_row['hrv_low_ms'] + today_row['hrv_high_ms']) / 2
+            
+            # Get 30-day baseline (excluding today)
+            cursor.execute('''
+                SELECT AVG((hrv_low_ms + hrv_high_ms) / 2) as avg_hrv
+                FROM cardio_daily_metrics
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
+                  AND date < %s
+                  AND hrv_low_ms IS NOT NULL 
+                  AND hrv_high_ms IS NOT NULL
+            ''', (self.user_id, target_date, target_date))
+            
+            baseline_row = cursor.fetchone()
+            baseline_hrv = float(baseline_row['avg_hrv']) if baseline_row and baseline_row['avg_hrv'] else None
+            
+            # Calculate delta and direction
+            delta_percent = None
+            direction = 'flat'
+            
+            if today_hrv is not None and baseline_hrv is not None and baseline_hrv > 0:
+                delta_percent = round(((today_hrv - baseline_hrv) / baseline_hrv) * 100, 1)
+                if delta_percent > 5:
+                    direction = 'up'
+                elif delta_percent < -5:
+                    direction = 'down'
+                else:
+                    direction = 'flat'
+            
+            return {
+                'today': round(today_hrv, 1) if today_hrv else None,
+                'baseline_30d': round(baseline_hrv, 1) if baseline_hrv else None,
+                'delta_percent': delta_percent,
+                'direction': direction
+            }
+
+    def _get_rhr_trend(self, target_date: str) -> Dict[str, Any]:
+        """
+        Calculate RHR trend comparing today to 30-day baseline.
+        
+        Args:
+            target_date: Date string (YYYY-MM-DD)
+        
+        Returns:
+            Dict with today, baseline_30d, delta_percent, direction
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get today's RHR
+            cursor.execute('''
+                SELECT rhr_bpm
+                FROM cardio_daily_metrics
+                WHERE user_id = %s AND date = %s
+            ''', (self.user_id, target_date))
+            
+            today_row = cursor.fetchone()
+            today_rhr = today_row['rhr_bpm'] if today_row else None
+            
+            # Get 30-day baseline (excluding today)
+            cursor.execute('''
+                SELECT AVG(rhr_bpm) as avg_rhr
+                FROM cardio_daily_metrics
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(%s, INTERVAL 30 DAY)
+                  AND date < %s
+                  AND rhr_bpm IS NOT NULL
+            ''', (self.user_id, target_date, target_date))
+            
+            baseline_row = cursor.fetchone()
+            baseline_rhr = float(baseline_row['avg_rhr']) if baseline_row and baseline_row['avg_rhr'] else None
+            
+            # Calculate delta and direction
+            # Note: For RHR, lower is usually better (opposite of HRV)
+            delta_percent = None
+            direction = 'flat'
+            
+            if today_rhr is not None and baseline_rhr is not None and baseline_rhr > 0:
+                delta_percent = round(((today_rhr - baseline_rhr) / baseline_rhr) * 100, 1)
+                if delta_percent > 5:
+                    direction = 'up'  # RHR up = potentially worse
+                elif delta_percent < -5:
+                    direction = 'down'  # RHR down = potentially better
+                else:
+                    direction = 'flat'
+            
+            return {
+                'today': today_rhr,
+                'baseline_30d': round(baseline_rhr, 1) if baseline_rhr else None,
+                'delta_percent': delta_percent,
+                'direction': direction
+            }
+
+    def _get_z2_power_trend(self) -> Dict[str, Any]:
+        """
+        Calculate Z2 power trend comparing 7-day to 30-day average.
+        
+        Returns:
+            Dict with avg_30d, avg_7d, delta_percent, direction
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Get Z2 workouts in last 30 days
+            # Z2 is typically identified by intensity_factor 0.55-0.75
+            cursor.execute('''
+                SELECT 
+                    date,
+                    avg_power_w,
+                    intensity_factor
+                FROM cycling_workouts
+                WHERE user_id = %s 
+                  AND date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+                  AND date <= CURDATE()
+                  AND avg_power_w IS NOT NULL
+                  AND avg_power_w > 0
+                  AND (intensity_factor IS NULL OR (intensity_factor >= 0.55 AND intensity_factor < 0.80))
+            ''', (self.user_id,))
+            
+            workouts = cursor.fetchall()
+            
+            # Split into 7-day and 30-day groups
+            seven_days_ago = (date.today() - timedelta(days=6)).strftime('%Y-%m-%d')
+            
+            power_7d = []
+            power_30d = []
+            
+            for w in workouts:
+                w_date = w['date'].strftime('%Y-%m-%d') if hasattr(w['date'], 'strftime') else str(w['date'])
+                power = float(w['avg_power_w'])
+                
+                power_30d.append(power)
+                if w_date >= seven_days_ago:
+                    power_7d.append(power)
+            
+            # Calculate averages
+            avg_30d = round(sum(power_30d) / len(power_30d), 1) if power_30d else None
+            avg_7d = round(sum(power_7d) / len(power_7d), 1) if power_7d else None
+            
+            # Calculate delta and direction
+            delta_percent = None
+            direction = 'flat'
+            
+            if avg_7d is not None and avg_30d is not None and avg_30d > 0:
+                delta_percent = round(((avg_7d - avg_30d) / avg_30d) * 100, 1)
+                if delta_percent > 3:
+                    direction = 'up'  # Power up = improvement
+                elif delta_percent < -3:
+                    direction = 'down'  # Power down = potential fatigue
+                else:
+                    direction = 'flat'
+            
+            return {
+                'avg_30d': avg_30d,
+                'avg_7d': avg_7d,
+                'delta_percent': delta_percent,
+                'direction': direction,
+                'workouts_7d': len(power_7d),
+                'workouts_30d': len(power_30d)
+            }
+

@@ -334,6 +334,38 @@ def get_score_formula():
     })
 
 
+# ============== Analytics KPI API ==============
+
+@cycling_readiness_bp.route('/api/analytics/kpis', methods=['GET'])
+@login_required
+def get_analytics_kpis():
+    """
+    Get KPI data for the Analytics dashboard.
+    
+    Returns:
+        JSON with:
+        - acute_load_7d: 7-day TSS total and daily average
+        - chronic_load_42d: 42-day weekly TSS average
+        - hrv_trend: Today's HRV vs 30-day baseline
+        - rhr_trend: Today's RHR vs 30-day baseline
+        - z2_power_trend: 7-day vs 30-day Z2 power average
+    """
+    service = get_service()
+    
+    try:
+        kpis = service.get_analytics_kpis()
+        return jsonify({
+            'success': True,
+            'kpis': serialize_for_json(kpis)
+        })
+    except Exception as e:
+        logger.error(f"Error fetching KPIs: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 # ============== Cycling Workout API Routes ==============
 
 @cycling_readiness_bp.route('/api/cycling/import-image', methods=['POST'])

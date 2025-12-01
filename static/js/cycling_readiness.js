@@ -1862,6 +1862,144 @@ function initCharts(cyclingChartData, readinessChartData) {
     }
 }
 
+// ============== Analytics Tab ==============
+let analyticsKpisLoaded = false;
+
+function initAnalyticsTab() {
+    // Load KPIs when Analytics tab is shown
+    const analyticsTab = document.querySelector('[data-tab="analytics"]');
+    if (analyticsTab) {
+        analyticsTab.addEventListener('click', function() {
+            if (!analyticsKpisLoaded) {
+                loadAnalyticsKpis();
+            }
+        });
+    }
+}
+
+async function loadAnalyticsKpis() {
+    try {
+        const response = await fetch('/cycling-readiness/api/analytics/kpis');
+        const data = await response.json();
+        
+        if (data.success && data.kpis) {
+            renderAnalyticsKpis(data.kpis);
+            analyticsKpisLoaded = true;
+        }
+    } catch (err) {
+        console.error('Error loading analytics KPIs:', err);
+    }
+}
+
+function renderAnalyticsKpis(kpis) {
+    // KPI 1: Acute Load (7-day TSS)
+    const acuteLoad = kpis.acute_load_7d || {};
+    const acuteCard = document.getElementById('kpiAcuteLoad');
+    const acuteValue = document.getElementById('kpiAcuteValue');
+    const acuteSubtitle = document.getElementById('kpiAcuteSubtitle');
+    const acuteBadge = document.getElementById('kpiAcuteBadge');
+    
+    if (acuteLoad.tss !== null && acuteLoad.tss !== undefined) {
+        acuteValue.textContent = Math.round(acuteLoad.tss);
+        acuteSubtitle.textContent = `${acuteLoad.avg_per_day} TSS/day avg`;
+        acuteBadge.textContent = acuteLoad.level;
+        acuteBadge.className = `kpi-badge ${acuteLoad.level}`;
+        acuteCard.className = `kpi-card load-${acuteLoad.level}`;
+    } else {
+        acuteValue.textContent = '--';
+    }
+    
+    // KPI 2: Chronic Load (42-day)
+    const chronicLoad = kpis.chronic_load_42d || {};
+    const chronicValue = document.getElementById('kpiChronicValue');
+    const chronicSubtitle = document.getElementById('kpiChronicSubtitle');
+    
+    if (chronicLoad.weekly_tss !== null && chronicLoad.weekly_tss !== undefined) {
+        chronicValue.textContent = Math.round(chronicLoad.weekly_tss);
+        chronicSubtitle.textContent = `${chronicLoad.workout_days} workouts in 6 weeks`;
+    } else {
+        chronicValue.textContent = '--';
+    }
+    
+    // KPI 3: HRV Trend
+    const hrvTrend = kpis.hrv_trend || {};
+    const hrvCard = document.getElementById('kpiHrvTrend');
+    const hrvValue = document.getElementById('kpiHrvValue');
+    const hrvSubtitle = document.getElementById('kpiHrvSubtitle');
+    const hrvTrendArrow = document.getElementById('kpiHrvTrendArrow');
+    
+    if (hrvTrend.today !== null && hrvTrend.today !== undefined) {
+        hrvValue.textContent = Math.round(hrvTrend.today) + ' ms';
+        hrvSubtitle.textContent = hrvTrend.baseline_30d ? `Baseline: ${Math.round(hrvTrend.baseline_30d)} ms` : 'vs 30-day baseline';
+        
+        const arrow = hrvTrend.direction === 'up' ? '↑' : hrvTrend.direction === 'down' ? '↓' : '→';
+        const pct = hrvTrend.delta_percent !== null ? `${hrvTrend.delta_percent > 0 ? '+' : ''}${hrvTrend.delta_percent}%` : '';
+        hrvTrendArrow.innerHTML = `<span class="trend-arrow">${arrow}</span><span class="trend-pct">${pct}</span>`;
+        hrvTrendArrow.className = `kpi-trend ${hrvTrend.direction}`;
+        
+        // Color card based on direction (HRV up = good)
+        if (hrvTrend.direction === 'up') {
+            hrvCard.classList.add('hrv-good');
+        }
+    } else {
+        hrvValue.textContent = '--';
+    }
+    
+    // KPI 4: RHR Trend
+    const rhrTrend = kpis.rhr_trend || {};
+    const rhrCard = document.getElementById('kpiRhrTrend');
+    const rhrValue = document.getElementById('kpiRhrValue');
+    const rhrSubtitle = document.getElementById('kpiRhrSubtitle');
+    const rhrTrendArrow = document.getElementById('kpiRhrTrendArrow');
+    
+    if (rhrTrend.today !== null && rhrTrend.today !== undefined) {
+        rhrValue.textContent = rhrTrend.today + ' bpm';
+        rhrSubtitle.textContent = rhrTrend.baseline_30d ? `Baseline: ${Math.round(rhrTrend.baseline_30d)} bpm` : 'vs 30-day baseline';
+        
+        const arrow = rhrTrend.direction === 'up' ? '↑' : rhrTrend.direction === 'down' ? '↓' : '→';
+        const pct = rhrTrend.delta_percent !== null ? `${rhrTrend.delta_percent > 0 ? '+' : ''}${rhrTrend.delta_percent}%` : '';
+        rhrTrendArrow.innerHTML = `<span class="trend-arrow">${arrow}</span><span class="trend-pct">${pct}</span>`;
+        
+        // For RHR, down is good, up is bad (opposite of HRV)
+        const trendClass = rhrTrend.direction === 'up' ? 'down' : rhrTrend.direction === 'down' ? 'up' : 'flat';
+        rhrTrendArrow.className = `kpi-trend ${trendClass}`;
+        
+        // Color card if elevated
+        if (rhrTrend.direction === 'up') {
+            rhrCard.classList.add('rhr-elevated');
+        }
+    } else {
+        rhrValue.textContent = '--';
+    }
+    
+    // KPI 5: Z2 Power Trend
+    const powerTrend = kpis.z2_power_trend || {};
+    const powerCard = document.getElementById('kpiPowerTrend');
+    const powerValue = document.getElementById('kpiPowerValue');
+    const powerSubtitle = document.getElementById('kpiPowerSubtitle');
+    const powerTrendArrow = document.getElementById('kpiPowerTrendArrow');
+    
+    if (powerTrend.avg_7d !== null && powerTrend.avg_7d !== undefined) {
+        powerValue.textContent = Math.round(powerTrend.avg_7d) + 'W';
+        powerSubtitle.textContent = powerTrend.avg_30d ? `30d avg: ${Math.round(powerTrend.avg_30d)}W` : '7d vs 30d avg';
+        
+        const arrow = powerTrend.direction === 'up' ? '↑' : powerTrend.direction === 'down' ? '↓' : '→';
+        const pct = powerTrend.delta_percent !== null ? `${powerTrend.delta_percent > 0 ? '+' : ''}${powerTrend.delta_percent}%` : '';
+        powerTrendArrow.innerHTML = `<span class="trend-arrow">${arrow}</span><span class="trend-pct">${pct}</span>`;
+        powerTrendArrow.className = `kpi-trend ${powerTrend.direction}`;
+        
+        // Color card if improving
+        if (powerTrend.direction === 'up') {
+            powerCard.classList.add('power-up');
+        }
+    } else if (powerTrend.avg_30d !== null && powerTrend.avg_30d !== undefined) {
+        powerValue.textContent = Math.round(powerTrend.avg_30d) + 'W';
+        powerSubtitle.textContent = '30-day average';
+    } else {
+        powerValue.textContent = '--';
+    }
+}
+
 // ============== Initialize ==============
 function initCyclingReadiness(cyclingChartData, readinessChartData) {
     initTabs();
@@ -1875,6 +2013,7 @@ function initCyclingReadiness(cyclingChartData, readinessChartData) {
     initDayView();
     initReviewModal();
     initCoachTab();
+    initAnalyticsTab();
     handleUrlParams();
     initCharts(cyclingChartData, readinessChartData);
 
@@ -1886,7 +2025,7 @@ function initCyclingReadiness(cyclingChartData, readinessChartData) {
     }
     loadReadinessHistory();
 
-    console.log('🚴 Zyra Cycle v3 initialized');
+    console.log('🚴 Zyra Cycle v3.1 initialized');
 }
 
 // Export for use in HTML
