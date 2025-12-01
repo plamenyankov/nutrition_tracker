@@ -1,36 +1,9 @@
 /**
  * Zyra Cycle - AI Coach Page JavaScript
  * Handles AI training recommendations
+ * 
+ * Note: DAY_TYPE_LABELS and DAY_TYPE_CLASSES are defined in cycle_shared.js
  */
-
-// ============== Day Type Constants ==============
-const DAY_TYPE_LABELS = {
-    'rest': 'Rest Day',
-    'recovery_spin_z1': 'Recovery Z1',
-    'easy_endurance_z1': 'Easy Z1',
-    'steady_endurance_z2': 'Endurance Z2',
-    'progressive_endurance': 'Progressive',
-    'norwegian_4x4': '4×4 VO2max',
-    'threshold_3x8': '3×8 Threshold',
-    'vo2max_intervals': 'VO2max Intervals',
-    'cadence_drills': 'Cadence Drills',
-    'hybrid_endurance': 'Hybrid',
-    'other': 'Training'
-};
-
-const DAY_TYPE_CLASSES = {
-    'rest': 'rest',
-    'recovery_spin_z1': 'z1',
-    'easy_endurance_z1': 'z1',
-    'steady_endurance_z2': 'z2',
-    'progressive_endurance': 'z2',
-    'norwegian_4x4': 'hard',
-    'threshold_3x8': 'hard',
-    'vo2max_intervals': 'hard',
-    'cadence_drills': 'z2',
-    'hybrid_endurance': 'z2',
-    'other': ''
-};
 
 // ============== Initialize Coach Page ==============
 function initCoachPage() {
@@ -113,26 +86,31 @@ async function fetchCoachRecommendation(date, forceRefresh = false) {
 
 // ============== Render Recommendation ==============
 function renderCoachRecommendation(rec, date) {
+    // Extract session plan for easier access
+    const sessionPlan = rec.session_plan || {};
+    const flags = rec.flags || {};
+    
     // Day type badge
     const dayTypeBadge = document.getElementById('coachDayTypeBadge');
     if (dayTypeBadge) {
-        const dayType = rec.day_type || rec.session_type || 'other';
-        dayTypeBadge.textContent = DAY_TYPE_LABELS[dayType] || dayType;
+        const dayType = rec.day_type || 'other';
+        dayTypeBadge.textContent = DAY_TYPE_LABELS[dayType] || dayType.replace(/_/g, ' ').toUpperCase();
         dayTypeBadge.className = `day-type-badge ${DAY_TYPE_CLASSES[dayType] || ''}`;
     }
     
-    // Intensity tag
+    // Intensity tag - from session_plan.overall_intensity
     const intensityTag = document.getElementById('coachIntensityTag');
     if (intensityTag) {
-        const intensity = rec.intensity || 'moderate';
-        intensityTag.textContent = intensity.toUpperCase();
-        intensityTag.className = `intensity-tag ${intensity}`;
+        const intensity = sessionPlan.overall_intensity || 'moderate';
+        intensityTag.textContent = intensity.replace(/_/g, ' ').toUpperCase();
+        intensityTag.className = `intensity-tag ${intensity.replace(/_/g, '-')}`;
     }
     
-    // Duration
+    // Duration - from session_plan.duration_minutes
     const durationEl = document.getElementById('coachDuration');
     if (durationEl) {
-        durationEl.textContent = rec.duration_minutes ? `${rec.duration_minutes} min` : rec.duration || '--';
+        const duration = sessionPlan.duration_minutes;
+        durationEl.textContent = duration ? `${duration} min` : '--';
     }
     
     // Date label
@@ -141,10 +119,10 @@ function renderCoachRecommendation(rec, date) {
         dateLabel.textContent = date;
     }
     
-    // Reason/Description
+    // Reason/Description - use reason_short
     const reasonEl = document.getElementById('coachReason');
     if (reasonEl) {
-        reasonEl.innerHTML = rec.reason || rec.description || '';
+        reasonEl.innerHTML = rec.reason_short || '';
     }
     
     // Analysis text (Coach Notes v2.5)
@@ -159,36 +137,38 @@ function renderCoachRecommendation(rec, date) {
         }
     }
     
-    // Performance targets
+    // Performance targets - from session_plan (Enhanced styling)
     const targetsCard = document.getElementById('coachTargetsCard');
     const targetsGrid = document.getElementById('coachTargetsGrid');
     if (targetsCard && targetsGrid) {
         const targets = [];
         
-        if (rec.power_target_w) {
-            const power = Array.isArray(rec.power_target_w) 
-                ? `${rec.power_target_w[0]}-${rec.power_target_w[1]}` 
-                : rec.power_target_w;
-            targets.push({ label: 'Power', value: `${power}W`, icon: '⚡' });
+        // Power target from session_plan
+        if (sessionPlan.session_target_power_w_min || sessionPlan.session_target_power_w_max) {
+            const powerMin = sessionPlan.session_target_power_w_min || '?';
+            const powerMax = sessionPlan.session_target_power_w_max || '?';
+            targets.push({ label: 'Power Range', value: `${powerMin}-${powerMax}W`, icon: '⚡', type: 'power' });
+        } else if (sessionPlan.expected_avg_power_w) {
+            targets.push({ label: 'Target Power', value: `~${sessionPlan.expected_avg_power_w}W`, icon: '⚡', type: 'power' });
         }
         
-        if (rec.hr_target_bpm) {
-            const hr = Array.isArray(rec.hr_target_bpm) 
-                ? `${rec.hr_target_bpm[0]}-${rec.hr_target_bpm[1]}` 
-                : rec.hr_target_bpm;
-            targets.push({ label: 'Heart Rate', value: `${hr} bpm`, icon: '❤️' });
+        // HR target from session_plan
+        if (sessionPlan.session_target_hr_bpm_min || sessionPlan.session_target_hr_bpm_max) {
+            const hrMin = sessionPlan.session_target_hr_bpm_min || '?';
+            const hrMax = sessionPlan.session_target_hr_bpm_max || '?';
+            targets.push({ label: 'Heart Rate', value: `${hrMin}-${hrMax} bpm`, icon: '❤️', type: 'hr' });
+        } else if (sessionPlan.expected_avg_hr_bpm) {
+            targets.push({ label: 'Target HR', value: `~${sessionPlan.expected_avg_hr_bpm} bpm`, icon: '❤️', type: 'hr' });
         }
         
-        if (rec.cadence_target) {
-            const cadence = Array.isArray(rec.cadence_target) 
-                ? `${rec.cadence_target[0]}-${rec.cadence_target[1]}` 
-                : rec.cadence_target;
-            targets.push({ label: 'Cadence', value: `${cadence} rpm`, icon: '🔄' });
+        // Zone info
+        if (sessionPlan.primary_zone) {
+            targets.push({ label: 'Primary Zone', value: sessionPlan.primary_zone, icon: '🎯', type: 'zone' });
         }
         
         if (targets.length > 0) {
             targetsGrid.innerHTML = targets.map(t => `
-                <div class="target-item">
+                <div class="target-item ${t.type}">
                     <span class="target-icon">${t.icon}</span>
                     <span class="target-label">${t.label}</span>
                     <span class="target-value">${t.value}</span>
@@ -200,31 +180,98 @@ function renderCoachRecommendation(rec, date) {
         }
     }
     
-    // Intervals / Session plan
+    // Intervals / Session plan - from session_plan.intervals (Enhanced segment cards)
     const intervalsSection = document.getElementById('coachIntervals');
     const intervalsList = document.getElementById('coachIntervalsList');
     if (intervalsSection && intervalsList) {
-        const intervals = rec.structure || rec.intervals || [];
+        const intervals = sessionPlan.intervals || [];
         if (intervals.length > 0) {
             intervalsList.innerHTML = intervals.map((int, idx) => {
-                const powerStr = int.power_target_w 
-                    ? (Array.isArray(int.power_target_w) ? `${int.power_target_w[0]}-${int.power_target_w[1]}W` : `${int.power_target_w}W`)
-                    : '';
-                const hrStr = int.hr_target_bpm 
-                    ? (Array.isArray(int.hr_target_bpm) ? `${int.hr_target_bpm[0]}-${int.hr_target_bpm[1]} bpm` : `${int.hr_target_bpm} bpm`)
-                    : '';
+                // Determine segment type for styling
+                const kind = (int.kind || 'steady').toLowerCase();
+                
+                // Get icon based on segment type
+                const getSegmentIcon = (type) => {
+                    const icons = {
+                        'warmup': '🔥',
+                        'steady': '🚴',
+                        'cooldown': '❄️',
+                        'recovery': '💤',
+                        'interval': '⚡',
+                        'threshold': '⚡',
+                        'vo2max': '🔥',
+                        'progressive': '📈'
+                    };
+                    return icons[type] || '🚴';
+                };
+                
+                // Power targets from interval
+                let powerStr = '';
+                if (int.target_power_w_min || int.target_power_w_max) {
+                    const pMin = int.target_power_w_min || '?';
+                    const pMax = int.target_power_w_max || '?';
+                    powerStr = `${pMin}-${pMax}W`;
+                }
+                
+                // HR targets from interval
+                let hrStr = '';
+                if (int.target_hr_bpm_min || int.target_hr_bpm_max) {
+                    const hMin = int.target_hr_bpm_min || '?';
+                    const hMax = int.target_hr_bpm_max || '?';
+                    hrStr = `${hMin}-${hMax}`;
+                } else if (int.expected_avg_hr_bpm) {
+                    hrStr = `~${int.expected_avg_hr_bpm}`;
+                }
+                
+                // Handle repeats structure (for interval blocks like 4x4)
+                let durationDisplay = '';
+                if (int.repeats && int.work_minutes) {
+                    durationDisplay = `${int.repeats}×${int.work_minutes}min`;
+                    if (int.rest_minutes) {
+                        durationDisplay += ` / ${int.rest_minutes}min rest`;
+                    }
+                } else if (int.duration_minutes) {
+                    durationDisplay = `${int.duration_minutes} min`;
+                }
+                
+                // Zone pill
+                const zone = int.target_zone || '';
+                const zonePill = zone ? `<span class="zone-pill ${zone.toLowerCase()}">${zone}</span>` : '';
+                
+                // Segment name
+                const segmentName = int.block_name || kind.charAt(0).toUpperCase() + kind.slice(1);
                 
                 return `
-                    <div class="interval-item-enhanced">
-                        <div class="interval-number">${idx + 1}</div>
-                        <div class="interval-content">
-                            <div class="interval-name">${int.block_name || int.name || `Block ${idx + 1}`}</div>
-                            <div class="interval-details">
-                                ${int.duration_min ? `<span class="interval-duration">${int.duration_min} min</span>` : ''}
-                                ${powerStr ? `<span class="interval-power">${powerStr}</span>` : ''}
-                                ${hrStr ? `<span class="interval-hr">${hrStr}</span>` : ''}
+                    <div class="segment-card ${kind}">
+                        <div class="segment-number">
+                            ${getSegmentIcon(kind)}
+                        </div>
+                        <div class="segment-content">
+                            <div class="segment-header">
+                                <span class="segment-name">${segmentName}</span>
+                                ${zonePill}
                             </div>
-                            ${int.notes ? `<div class="interval-notes">${int.notes}</div>` : ''}
+                            ${int.notes ? `<div class="segment-notes">${int.notes}</div>` : ''}
+                        </div>
+                        <div class="segment-metrics">
+                            ${durationDisplay ? `
+                                <div class="segment-metric duration">
+                                    <span class="segment-metric-icon">⏱️</span>
+                                    <span class="segment-metric-value">${durationDisplay}</span>
+                                </div>
+                            ` : ''}
+                            ${hrStr ? `
+                                <div class="segment-metric hr">
+                                    <span class="segment-metric-icon">❤️</span>
+                                    <span class="segment-metric-value">${hrStr} bpm</span>
+                                </div>
+                            ` : ''}
+                            ${powerStr ? `
+                                <div class="segment-metric power">
+                                    <span class="segment-metric-icon">⚡</span>
+                                    <span class="segment-metric-value">${powerStr}</span>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 `;
@@ -235,17 +282,18 @@ function renderCoachRecommendation(rec, date) {
         }
     }
     
-    // Flags
+    // Flags - from rec.flags object
     const flagsEl = document.getElementById('coachFlags');
     if (flagsEl) {
-        const flags = [];
-        if (rec.ok_to_push) flags.push({ icon: '💪', text: 'OK to push today', class: 'positive' });
-        if (rec.prioritize_sleep) flags.push({ icon: '😴', text: 'Prioritize sleep tonight', class: 'caution' });
-        if (rec.recovery_focus) flags.push({ icon: '🧘', text: 'Focus on recovery', class: 'rest' });
-        if (rec.hydration_reminder) flags.push({ icon: '💧', text: 'Stay hydrated', class: 'info' });
+        const flagsList = [];
+        if (flags.ok_to_push) flagsList.push({ icon: '💪', text: 'OK to push today', class: 'positive' });
+        if (flags.prioritize_sleep) flagsList.push({ icon: '😴', text: 'Prioritize sleep tonight', class: 'caution' });
+        if (flags.consider_rest_day) flagsList.push({ icon: '🛌', text: 'Consider a rest day', class: 'rest' });
+        if (flags.monitor_hrv) flagsList.push({ icon: '📊', text: 'Monitor HRV closely', class: 'info' });
+        if (flags.high_fatigue_detected) flagsList.push({ icon: '⚠️', text: 'High fatigue detected', class: 'warning' });
         
-        if (flags.length > 0) {
-            flagsEl.innerHTML = flags.map(f => `
+        if (flagsList.length > 0) {
+            flagsEl.innerHTML = flagsList.map(f => `
                 <div class="rec-flag ${f.class}">
                     <span class="flag-icon">${f.icon}</span>
                     <span class="flag-text">${f.text}</span>

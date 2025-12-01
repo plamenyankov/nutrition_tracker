@@ -149,7 +149,7 @@ function updateReadinessSummary(data) {
 // ============== Load Readiness Data ==============
 async function loadFullReadinessData(date) {
     try {
-        const response = await fetch(`/cycling-readiness/api/readiness-with-cardio?date=${date}`);
+        const response = await fetch(`/cycling-readiness/api/readiness/full?date=${date}`);
         const data = await response.json();
         
         if (data.success) {
@@ -291,7 +291,7 @@ function resetCardioToAuto(type) {
 // ============== Readiness History ==============
 async function loadReadinessHistory() {
     try {
-        const response = await fetch('/cycling-readiness/api/readiness-history?limit=14');
+        const response = await fetch('/cycling-readiness/api/readiness?limit=14');
         const data = await response.json();
         
         const tbody = document.getElementById('readinessHistoryBody');

@@ -5,7 +5,6 @@
 
 // ============== Module State ==============
 let selectedFiles = [];
-let reviewData = null;
 
 // ============== File Upload ==============
 function initFileUpload() {

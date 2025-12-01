@@ -1394,7 +1394,7 @@ def get_readiness_entries():
         e['hrv_manual_override'] = bool(e.get('hrv_manual_override', False))
         e['symptoms_flag'] = bool(e.get('symptoms_flag', False))
 
-    return jsonify({'entries': entries})
+    return jsonify({'success': True, 'entries': entries})
 
 
 @cycling_readiness_bp.route('/api/readiness/full', methods=['GET'])

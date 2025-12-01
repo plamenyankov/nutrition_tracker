@@ -227,13 +227,16 @@ function initReadinessChart(data) {
     
     if (readinessChart) readinessChart.destroy();
     
+    // Use morning_score (backend field name) or scores (fallback for compatibility)
+    const scores = data.morning_score || data.scores || [];
+    
     readinessChart = new Chart(canvas, {
         type: 'line',
         data: {
             labels: data.dates,
             datasets: [{
                 label: 'Readiness Score',
-                data: data.scores,
+                data: scores,
                 borderColor: '#00FFC6',
                 backgroundColor: 'rgba(0, 255, 198, 0.15)',
                 tension: 0.3,
