@@ -316,6 +316,10 @@
            class="cycle-tab {% if current_tab == 'coach' %}active{% endif %}">
             <i class="fas fa-brain"></i>AI Coach
         </a>
+        <a href="{{ url_for('cycling_readiness.ai_analyzer_page') }}" 
+           class="cycle-tab {% if current_tab == 'ai_analyzer' %}active{% endif %}">
+            <i class="fas fa-microscope"></i>AI Analyzer
+        </a>
     </div>
 
     <!-- Page Content -->

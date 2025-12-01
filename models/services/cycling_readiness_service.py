@@ -2644,3 +2644,253 @@ class CyclingReadinessService:
             
             return result
 
+    # ============== AI Workout Analysis Methods ==============
+
+    def get_analysis_for_workout(self, workout_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get AI analysis for a specific workout.
+        
+        Args:
+            workout_id: The ID of the cycling workout
+        
+        Returns:
+            Analysis dict if exists, None otherwise
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute('''
+                SELECT * FROM ai_workout_analyses 
+                WHERE user_id = %s AND workout_id = %s
+            ''', (self.user_id, workout_id))
+            return cursor.fetchone()
+
+    def create_or_update_analysis(self, workout_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create or update an AI workout analysis.
+        
+        Args:
+            workout_id: The ID of the cycling workout
+            data: Analysis data dict with scores, labels, notes, etc.
+        
+        Returns:
+            The saved analysis record
+        """
+        import json
+        
+        # First get the workout to retrieve its date
+        workout = self.get_cycling_workout_by_id(workout_id)
+        if not workout:
+            raise ValueError(f"Workout {workout_id} not found")
+        
+        workout_date = workout.get('date')
+        if hasattr(workout_date, 'strftime'):
+            workout_date = workout_date.strftime('%Y-%m-%d')
+        
+        # Prepare raw_json
+        raw_json = data.get('raw_json')
+        if isinstance(raw_json, dict):
+            raw_json = json.dumps(raw_json)
+        
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            # Check if analysis exists
+            cursor.execute('''
+                SELECT id FROM ai_workout_analyses 
+                WHERE user_id = %s AND workout_id = %s
+            ''', (self.user_id, workout_id))
+            existing = cursor.fetchone()
+            
+            if existing:
+                # Update existing
+                cursor.execute('''
+                    UPDATE ai_workout_analyses SET
+                        date = %s,
+                        overall_score = %s,
+                        compliance_score = %s,
+                        intensity_score = %s,
+                        duration_score = %s,
+                        hr_response_score = %s,
+                        execution_label = %s,
+                        fatigue_risk = %s,
+                        notes_short = %s,
+                        notes_detailed = %s,
+                        raw_json = %s,
+                        prompt_version = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s AND workout_id = %s
+                ''', (
+                    workout_date,
+                    data.get('overall_score'),
+                    data.get('compliance_score'),
+                    data.get('intensity_score'),
+                    data.get('duration_score'),
+                    data.get('hr_response_score'),
+                    data.get('execution_label'),
+                    data.get('fatigue_risk'),
+                    data.get('notes_short'),
+                    data.get('notes_detailed'),
+                    raw_json,
+                    data.get('prompt_version'),
+                    self.user_id,
+                    workout_id
+                ))
+                conn.commit()
+                analysis_id = existing['id']
+            else:
+                # Insert new
+                cursor.execute('''
+                    INSERT INTO ai_workout_analyses (
+                        user_id, workout_id, date,
+                        overall_score, compliance_score, intensity_score,
+                        duration_score, hr_response_score,
+                        execution_label, fatigue_risk,
+                        notes_short, notes_detailed,
+                        raw_json, prompt_version
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    self.user_id,
+                    workout_id,
+                    workout_date,
+                    data.get('overall_score'),
+                    data.get('compliance_score'),
+                    data.get('intensity_score'),
+                    data.get('duration_score'),
+                    data.get('hr_response_score'),
+                    data.get('execution_label'),
+                    data.get('fatigue_risk'),
+                    data.get('notes_short'),
+                    data.get('notes_detailed'),
+                    raw_json,
+                    data.get('prompt_version')
+                ))
+                conn.commit()
+                analysis_id = cursor.lastrowid
+            
+            # Return the saved record
+            cursor.execute('''
+                SELECT * FROM ai_workout_analyses WHERE id = %s
+            ''', (analysis_id,))
+            return cursor.fetchone()
+
+    def get_analysis_history(self, limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        Get paginated list of AI workout analyses for the current user.
+        
+        Includes workout summary data (duration, power, HR) via JOIN.
+        
+        Args:
+            limit: Max number of results
+            offset: Pagination offset
+        
+        Returns:
+            List of analysis records with workout summaries
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute('''
+                SELECT 
+                    a.id,
+                    a.workout_id,
+                    a.date,
+                    a.overall_score,
+                    a.compliance_score,
+                    a.execution_label,
+                    a.fatigue_risk,
+                    a.notes_short,
+                    a.created_at,
+                    a.updated_at,
+                    w.duration_sec as workout_duration_sec,
+                    w.avg_power_w as workout_avg_power_w,
+                    w.avg_heart_rate as workout_avg_hr_bpm
+                FROM ai_workout_analyses a
+                LEFT JOIN cycling_workouts w ON a.workout_id = w.id
+                WHERE a.user_id = %s
+                ORDER BY a.date DESC, a.created_at DESC
+                LIMIT %s OFFSET %s
+            ''', (self.user_id, limit, offset))
+            return cursor.fetchall()
+
+    def get_analysis_count(self) -> int:
+        """Get total count of analyses for pagination."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT COUNT(*) FROM ai_workout_analyses WHERE user_id = %s
+            ''', (self.user_id,))
+            return cursor.fetchone()[0]
+
+    @staticmethod
+    def format_analysis_json(analysis: Dict[str, Any], workout: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Format analysis record into the standardized JSON schema.
+        
+        Args:
+            analysis: Analysis record from database
+            workout: Optional workout record for additional context
+        
+        Returns:
+            Formatted JSON matching the API response schema
+        """
+        import json
+        
+        if not analysis:
+            return None
+        
+        # Parse raw_json if it's a string
+        raw_json = analysis.get('raw_json')
+        if isinstance(raw_json, str):
+            try:
+                raw_json = json.loads(raw_json)
+            except (json.JSONDecodeError, TypeError):
+                raw_json = {}
+        
+        if not raw_json:
+            raw_json = {}
+        
+        # Format date
+        date_val = analysis.get('date')
+        if hasattr(date_val, 'strftime'):
+            date_str = date_val.strftime('%Y-%m-%d')
+        else:
+            date_str = str(date_val) if date_val else None
+        
+        # Extract coach_comparison from raw_json if available
+        coach_comparison_raw = raw_json.get('coach_comparison', {})
+        coach_comparison = {
+            "has_coach_plan": coach_comparison_raw.get('has_coach_plan', False),
+            "plan_type": coach_comparison_raw.get('plan_type'),
+            "compliance_score": analysis.get('compliance_score'),
+            "notes": coach_comparison_raw.get('notes', '')
+        }
+        
+        # Extract physiology and action_items from raw_json
+        physiology = raw_json.get('physiology')
+        action_items = raw_json.get('action_items', [])
+        
+        return {
+            "workout_id": analysis.get('workout_id'),
+            "date": date_str,
+            "scores": {
+                "overall_score": analysis.get('overall_score'),
+                "dimension_scores": {
+                    "intensity": analysis.get('intensity_score'),
+                    "duration": analysis.get('duration_score'),
+                    "hr_response": analysis.get('hr_response_score')
+                },
+                "label": analysis.get('execution_label'),
+                "fatigue_risk": analysis.get('fatigue_risk')
+            },
+            "coach_comparison": coach_comparison,
+            "summary": {
+                "short_text": analysis.get('notes_short'),
+                "detailed_text": analysis.get('notes_detailed')
+            },
+            "physiology": physiology,
+            "action_items": action_items,
+            "raw": {
+                "id": analysis.get('id'),
+                "prompt_version": analysis.get('prompt_version')
+            }
+        }
+

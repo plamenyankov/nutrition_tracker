@@ -1,0 +1,198 @@
+{% extends 'cycling_readiness/cycle_base.html' %}
+
+{% block page_title %}AI Analyzer{% endblock %}
+
+{% block page_content %}
+<!-- KPI Cards Row -->
+<div class="analyzer-kpi-row">
+    <div class="analyzer-kpi-card">
+        <div class="kpi-value" id="kpiAvgExecution">--</div>
+        <div class="kpi-label">Avg Execution (30d)</div>
+    </div>
+    <div class="analyzer-kpi-card">
+        <div class="kpi-value" id="kpiAvgCompliance">--</div>
+        <div class="kpi-label">Avg Compliance (30d)</div>
+    </div>
+    <div class="analyzer-kpi-card">
+        <div class="kpi-value" id="kpiOverreached">--</div>
+        <div class="kpi-label">Overreached / High-fatigue (30d)</div>
+    </div>
+    <div class="analyzer-kpi-card">
+        <div class="kpi-value" id="kpiGoodExecution">--</div>
+        <div class="kpi-label">Good/Excellent Rate (30d)</div>
+    </div>
+</div>
+
+<div class="analyzer-layout">
+    <!-- Left Column: Analysis History -->
+    <div class="analyzer-sidebar">
+        <div class="section-card">
+            <h3 class="section-title">
+                <i class="fas fa-history"></i>AI Analysis History
+            </h3>
+            
+            <!-- History Loading State -->
+            <div id="historyLoading" class="history-loading">
+                <div class="spinner-zyra-sm"></div>
+                <span>Loading history...</span>
+            </div>
+            
+            <!-- History Empty State -->
+            <div id="historyEmpty" class="history-empty" style="display: none;">
+                <i class="fas fa-lightbulb"></i>
+                <p>No AI analyses yet.</p>
+                <p class="hint">Start by analyzing a workout from the <a href="{{ url_for('cycling_readiness.workouts_page') }}">Workouts tab</a>.</p>
+            </div>
+            
+            <!-- History List -->
+            <div id="historyList" class="history-list" style="display: none;">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column: Analysis Details -->
+    <div class="analyzer-main">
+        <div class="section-card analysis-card">
+            <h3 class="section-title">
+                <i class="fas fa-microscope"></i>AI Workout Analysis
+            </h3>
+            
+            <!-- Loading State -->
+            <div id="analysisLoading" class="analysis-loading" style="display: none;">
+                <div class="spinner-zyra"></div>
+                <p>Analyzing workout...</p>
+            </div>
+            
+            <!-- Empty State (no workout selected) -->
+            <div id="analysisEmpty" class="analysis-empty">
+                <i class="fas fa-chart-line"></i>
+                <p>Select an analysis from the history list to view details.</p>
+                <p class="hint">Or analyze a new workout from the Workouts tab.</p>
+            </div>
+            
+            <!-- Error State -->
+            <div id="analysisError" class="analysis-error" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p id="analysisErrorText">Could not load analysis for this workout.</p>
+                <button class="btn btn-outline-zyra btn-sm" onclick="retryAnalysis()">
+                    <i class="fas fa-redo me-1"></i>Retry
+                </button>
+            </div>
+            
+            <!-- Analysis Content -->
+            <div id="analysisContent" class="analysis-content" style="display: none;">
+                <!-- Execution Score Card -->
+                <div class="execution-score-card">
+                    <div class="score-main">
+                        <div class="score-circle">
+                            <span class="score-number" id="overallScore">--</span>
+                            <span class="score-label">Score</span>
+                        </div>
+                        <div class="score-badges">
+                            <span class="execution-label" id="executionLabel">--</span>
+                            <span class="fatigue-badge" id="fatigueBadge">--</span>
+                        </div>
+                    </div>
+                    <div class="dimension-scores">
+                        <div class="dimension-item">
+                            <div class="dimension-label"><i class="fas fa-bolt me-1"></i>Intensity</div>
+                            <div class="dimension-bar">
+                                <div class="dimension-fill" id="intensityBar" style="width: 0%"></div>
+                            </div>
+                            <div class="dimension-value" id="intensityScore">--</div>
+                        </div>
+                        <div class="dimension-item">
+                            <div class="dimension-label"><i class="fas fa-clock me-1"></i>Duration</div>
+                            <div class="dimension-bar">
+                                <div class="dimension-fill" id="durationBar" style="width: 0%"></div>
+                            </div>
+                            <div class="dimension-value" id="durationScore">--</div>
+                        </div>
+                        <div class="dimension-item">
+                            <div class="dimension-label"><i class="fas fa-heartbeat me-1"></i>HR Response</div>
+                            <div class="dimension-bar">
+                                <div class="dimension-fill" id="hrResponseBar" style="width: 0%"></div>
+                            </div>
+                            <div class="dimension-value" id="hrResponseScore">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Physiology Insights Section -->
+                <div id="physiologyCard" class="physiology-insights-card" style="display: none;">
+                    <div class="physiology-header">
+                        <i class="fas fa-stethoscope me-1"></i>Physiology Insights
+                    </div>
+                    <div id="physiologyContent" class="physiology-content">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                
+                <!-- Coach vs Reality Section -->
+                <div class="coach-comparison-card">
+                    <div class="comparison-header">
+                        <i class="fas fa-balance-scale me-1"></i>Coach vs Reality
+                    </div>
+                    <div id="coachComparisonContent" class="comparison-content">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                
+                <!-- Plan vs Reality Section -->
+                <div id="planVsRealityCard" class="plan-vs-reality-card" style="display: none;">
+                    <div class="plan-vs-reality-header">
+                        <i class="fas fa-chart-bar me-1"></i>Plan vs Reality
+                    </div>
+                    <div id="planVsRealityContent" class="plan-vs-reality-content">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                
+                <!-- Summary Section -->
+                <div class="analysis-summary-card">
+                    <div class="summary-header">
+                        <i class="fas fa-file-alt me-1"></i>Summary
+                    </div>
+                    <div class="summary-content">
+                        <p class="summary-short" id="summaryShort">--</p>
+                        <p class="summary-detailed" id="summaryDetailed">--</p>
+                    </div>
+                </div>
+                
+                <!-- Action Items Section -->
+                <div id="actionItemsCard" class="action-items-card" style="display: none;">
+                    <div class="action-items-header">
+                        <i class="fas fa-tasks me-1"></i>Action Items
+                    </div>
+                    <div id="actionItemsContent" class="action-items-content">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                
+                <!-- Metadata -->
+                <div class="analysis-meta">
+                    <span class="meta-item" id="analysisMeta">
+                        <i class="fas fa-robot me-1"></i>Prompt: <span id="promptVersion">--</span>
+                    </span>
+                    <button class="btn-regenerate" id="regenerateBtn" title="Regenerate analysis">
+                        <i class="fas fa-sync-alt me-1"></i>Regenerate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script>
+    // Pass config to JS
+    window.ANALYZER_CONFIG = {
+        workoutId: {{ workout_id if workout_id else 'null' }},
+        apiEndpoint: "{{ url_for('cycling_readiness.analyze_workout') }}",
+        historyEndpoint: "/cycling-readiness/api/ai/analysis/history"
+    };
+</script>
+<script src="{{ url_for('static', filename='js/cycle_ai_analyzer.js') }}"></script>
+{% endblock %}

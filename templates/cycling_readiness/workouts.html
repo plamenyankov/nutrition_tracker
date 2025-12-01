@@ -45,6 +45,7 @@
                     <th>IF</th>
                     <th>Distance</th>
                     <th>Coach</th>
+                    <th>AI</th>
                     <th></th>
                 </tr>
             </thead>
@@ -67,6 +68,12 @@
                         <a href="{{ url_for('cycling_readiness.coach_page') }}?date={{ workout.date if workout.date is string else workout.date.strftime('%Y-%m-%d') if workout.date else '' }}" 
                            class="btn-coach" title="Get AI Coach recommendation">
                             <i class="fas fa-brain"></i>
+                        </a>
+                    </td>
+                    <td>
+                        <a href="{{ url_for('cycling_readiness.ai_analyzer_page') }}?workout_id={{ workout.id }}" 
+                           class="btn-ai-analyze" title="AI Workout Analysis">
+                            <i class="fas fa-microscope"></i>
                         </a>
                     </td>
                     <td>

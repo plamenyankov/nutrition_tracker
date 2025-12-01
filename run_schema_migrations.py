@@ -61,6 +61,12 @@ def run_all_migrations():
     except ImportError as e:
         logger.warning(f"Could not import add_body_weights: {e}")
     
+    try:
+        from migrations.add_ai_workout_analyses import run_migration as migrate_ai_analyses
+        migrations.append(('add_ai_workout_analyses', migrate_ai_analyses))
+    except ImportError as e:
+        logger.warning(f"Could not import add_ai_workout_analyses: {e}")
+    
     # Run migrations
     logger.info(f"Running {len(migrations)} schema migrations...")
     
