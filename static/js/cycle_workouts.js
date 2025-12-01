@@ -57,11 +57,64 @@ function initFileUpload() {
                 body: formData
             });
 
-            const result = await response.json();
+            // Handle non-OK responses before trying to parse JSON
+            if (!response.ok) {
+                hideLoading();
+                if (response.status === 404) {
+                    showStatus('error', 'Upload endpoint not found. Please check server configuration.');
+                } else {
+                    showStatus('error', `Upload failed (${response.status}). Please try again.`);
+                }
+                console.error('Upload error: HTTP', response.status);
+                return;
+            }
+
+            // Safely parse JSON response
+            let result;
+            const text = await response.text();
+            try {
+                result = JSON.parse(text);
+            } catch (parseErr) {
+                hideLoading();
+                showStatus('error', 'Unexpected server response. Please try again.');
+                console.error('Upload error: Invalid JSON response:', text.slice(0, 200));
+                return;
+            }
+            
             hideLoading();
 
             if (result.success) {
-                showStatus('success', `Processed ${result.count} screenshots`);
+                // Get count from summary or extraction_results
+                const count = result.summary?.cycling_images + result.summary?.sleep_images + result.summary?.cardio_images 
+                           || result.extraction_results?.length 
+                           || selectedFiles.length;
+                showStatus('success', `Processed ${count} screenshot${count !== 1 ? 's' : ''}`);
+                
+                // Adapt response format for displayExtractionResults
+                // The backend returns extraction_results, but the frontend expects extractions
+                if (result.extraction_results && !result.extractions) {
+                    result.extractions = result.extraction_results.map(r => ({
+                        filename: r.filename,
+                        type: r.type === 'cycling_power' || r.type === 'watch_workout' ? 'cycling' 
+                            : r.type === 'sleep_summary' ? 'sleep' 
+                            : r.type,
+                        confidence: r.confidence,
+                        fields: r.fields,
+                        missing_fields: []
+                    }));
+                }
+                // Add missing fields info from backend
+                if (result.has_missing_data && result.missing_fields) {
+                    if (result.missing_fields.workout?.length > 0 && result.extractions) {
+                        const workoutExt = result.extractions.find(e => e.type === 'cycling');
+                        if (workoutExt) workoutExt.missing_fields = result.missing_fields.workout;
+                    }
+                    if (result.missing_fields.sleep?.length > 0 && result.extractions) {
+                        const sleepExt = result.extractions.find(e => e.type === 'sleep');
+                        if (sleepExt) sleepExt.missing_fields = result.missing_fields.sleep;
+                    }
+                }
+                
                 displayExtractionResults(result);
             } else {
                 showStatus('error', result.error || 'Extraction failed');

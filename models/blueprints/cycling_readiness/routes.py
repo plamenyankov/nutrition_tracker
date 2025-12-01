@@ -872,6 +872,8 @@ def get_cycling_stats():
 
 # ============== Bundle Import API Route ==============
 
+# Alias route for backwards compatibility (original path used by frontend)
+@cycling_readiness_bp.route('/api/extract-batch', methods=['POST'])
 @cycling_readiness_bp.route('/api/cycle/import-bundle', methods=['POST'])
 @login_required
 def import_bundle():
