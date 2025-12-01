@@ -2,13 +2,21 @@
 Migration: Add body_weights table for tracking weekly weight entries.
 
 Used for accurate VO2 Index (W/kg) calculations in Analytics.
+
+Run: python migrations/add_body_weights.py
 """
+import os
+import sys
 import logging
 
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from models.database.connection_manager import get_db_manager
+
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def run_migration(connection) -> bool:
+def run_migration() -> bool:
     """
     Create body_weights table for storing user weight entries.
     
@@ -20,65 +28,69 @@ def run_migration(connection) -> bool:
     - created_at: Timestamp of creation
     - updated_at: Timestamp of last update
     """
-    logger.info("Starting migration: Adding body_weights table")
-    
-    cursor = connection.cursor()
-    
     try:
-        # Check if table already exists
-        cursor.execute("""
-            SELECT COUNT(*) 
-            FROM information_schema.tables 
-            WHERE table_schema = DATABASE() 
-            AND table_name = 'body_weights'
-        """)
+        db_manager = get_db_manager()
+        logger.info("Starting migration: Adding body_weights table")
         
-        if cursor.fetchone()[0] > 0:
-            logger.info("Table body_weights already exists. Migration already applied.")
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Check if table already exists
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = DATABASE() 
+                AND table_name = 'body_weights'
+            """)
+            
+            if cursor.fetchone()[0] > 0:
+                logger.info("Table body_weights already exists. Migration already applied.")
+                return True
+            
+            # Create the body_weights table
+            cursor.execute("""
+                CREATE TABLE body_weights (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id VARCHAR(36) NOT NULL,
+                    date DATE NOT NULL,
+                    weight_kg FLOAT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_user_date (user_id, date),
+                    INDEX idx_user_date (user_id, date)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """)
+            
+            conn.commit()
+            logger.info("✓ Created body_weights table successfully")
             return True
-        
-        # Create the body_weights table
-        cursor.execute("""
-            CREATE TABLE body_weights (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                user_id VARCHAR(36) NOT NULL,
-                date DATE NOT NULL,
-                weight_kg FLOAT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                UNIQUE KEY unique_user_date (user_id, date),
-                INDEX idx_user_date (user_id, date),
-                CONSTRAINT fk_body_weights_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        """)
-        
-        connection.commit()
-        logger.info("✓ Created body_weights table successfully")
-        return True
         
     except Exception as e:
         logger.error(f"Migration failed: {e}")
-        connection.rollback()
         return False
-    finally:
-        cursor.close()
 
 
-def rollback_migration(connection) -> bool:
+def rollback_migration() -> bool:
     """Drop the body_weights table."""
-    logger.info("Rolling back: Dropping body_weights table")
-    
-    cursor = connection.cursor()
-    
     try:
-        cursor.execute("DROP TABLE IF EXISTS body_weights")
-        connection.commit()
-        logger.info("✓ Dropped body_weights table")
-        return True
+        db_manager = get_db_manager()
+        logger.info("Rolling back: Dropping body_weights table")
+        
+        with db_manager.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DROP TABLE IF EXISTS body_weights")
+            conn.commit()
+            logger.info("✓ Dropped body_weights table")
+            return True
     except Exception as e:
         logger.error(f"Rollback failed: {e}")
-        connection.rollback()
         return False
-    finally:
-        cursor.close()
 
+
+if __name__ == "__main__":
+    success = run_migration()
+    if success:
+        print("✅ Migration completed successfully!")
+    else:
+        print("❌ Migration failed!")
+        sys.exit(1)
