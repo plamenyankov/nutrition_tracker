@@ -309,15 +309,25 @@ function showReviewModal(extractions) {
         const dateStr = ext.payload?.date || ext.fields?.date || ext.fields?.workout_date;
         const displayDate = dateStr ? formatDisplayDate(dateStr) : 'Unknown date';
         
+        // Filter out fields that already have valid values (not null, not undefined, not empty string)
+        // Also filter out 0 for heart rate fields as 0 is not a valid HR value
+        const trulyMissingFields = (ext.missing_fields || []).filter(field => {
+            const value = ext.payload?.[field];
+            // Consider 0 as "missing" for heart rate fields (0 bpm is not valid)
+            if (field.includes('heart_rate') && value === 0) return true;
+            // Otherwise, field is missing if value is null, undefined, or empty string
+            return value === null || value === undefined || value === '';
+        });
+        
         // Build HTML for missing fields
-        const missingHtml = ext.missing_fields?.map(field => `
+        const missingHtml = trulyMissingFields.map(field => `
             <div class="review-field missing" data-review-index="${idx}">
-                <label>${formatFieldLabel(field)}</label>
+                <label>${formatFieldLabel(field, ext.type)}</label>
                 <input type="${getFieldInputType(field)}" 
                        data-field="${field}"
                        class="form-control form-control-sm"
-                       placeholder="Enter ${formatFieldLabel(field).toLowerCase()}"
-                       value="${ext.payload?.[field] ?? ''}">
+                       placeholder="Enter ${formatFieldLabel(field, ext.type).toLowerCase()}"
+                       value="">
             </div>
         `).join('') || '';
 
@@ -343,7 +353,26 @@ function formatDisplayDate(dateStr) {
     }
 }
 
-function formatFieldLabel(field) {
+function formatFieldLabel(field, type) {
+    // Context-aware labels for fields that exist in both workout and sleep
+    const contextLabels = {
+        'cycling': {
+            'max_heart_rate': 'Max HR (Workout)',
+            'avg_heart_rate': 'Avg HR (Workout)'
+        },
+        'sleep': {
+            'max_heart_rate': 'Max HR (Sleep)',
+            'avg_heart_rate': 'Avg HR (Sleep)',
+            'min_heart_rate': 'Min HR (Sleep)'
+        }
+    };
+    
+    // Check for context-specific label
+    if (type && contextLabels[type] && contextLabels[type][field]) {
+        return contextLabels[type][field];
+    }
+    
+    // Default: convert snake_case to Title Case
     return field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 

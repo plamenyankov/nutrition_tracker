@@ -1154,6 +1154,122 @@ def import_bundle():
         return jsonify({'error': str(e)}), 500
 
 
+# ============== Batch Save API Route (for reviewed/corrected data) ==============
+
+@cycling_readiness_bp.route('/api/batch-save', methods=['POST'])
+@login_required
+def batch_save():
+    """
+    Save corrected extraction data after user review.
+    This is called after the user fills in missing fields in the review modal.
+    ---
+    tags:
+      - Batch Import
+    """
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    extractions = data.get('extractions', [])
+    if not extractions:
+        return jsonify({'error': 'No extractions to save'}), 400
+    
+    try:
+        service = get_service()
+        saved_count = 0
+        
+        for ext in extractions:
+            ext_type = ext.get('type')
+            payload = ext.get('payload', {})
+            
+            if not payload:
+                continue
+            
+            logger.info(f"[BATCH-SAVE] Processing {ext_type} with payload: {payload}")
+            
+            if ext_type == 'cycling':
+                # Save/update cycling workout
+                workout_date = payload.get('date') or payload.get('workout_date')
+                if not workout_date:
+                    logger.warning(f"[BATCH-SAVE] Skipping cycling - no date")
+                    continue
+                
+                # Convert duration_minutes to seconds if present
+                duration_sec = None
+                if payload.get('duration_minutes'):
+                    duration_sec = int(float(payload['duration_minutes']) * 60)
+                elif payload.get('duration_sec'):
+                    duration_sec = int(payload['duration_sec'])
+                
+                cycling_payload = {
+                    'workout_date': workout_date,
+                    'sport': 'indoor_cycle',
+                    'duration_sec': duration_sec,
+                    'avg_power_w': payload.get('avg_power_w') or payload.get('avg_power'),
+                    'max_power_w': payload.get('max_power_w') or payload.get('max_power'),
+                    'normalized_power_w': payload.get('normalized_power_w') or payload.get('normalized_power'),
+                    'avg_heart_rate': payload.get('avg_heart_rate') or payload.get('avg_hr'),
+                    'max_heart_rate': payload.get('max_heart_rate') or payload.get('max_hr'),
+                    'avg_cadence': payload.get('avg_cadence') or payload.get('cadence_avg'),
+                    'max_cadence': payload.get('max_cadence') or payload.get('cadence_max'),
+                    'distance_km': payload.get('distance_km'),
+                    'kcal_active': payload.get('kcal_active') or payload.get('calories_active'),
+                    'kcal_total': payload.get('kcal_total') or payload.get('calories_total'),
+                    'tss': payload.get('tss'),
+                    'intensity_factor': payload.get('intensity_factor')
+                }
+                
+                # Remove None values
+                cycling_payload = {k: v for k, v in cycling_payload.items() if v is not None}
+                
+                workout_id, merged_data = service.merge_cycling_workout(workout_date, [cycling_payload])
+                logger.info(f"[BATCH-SAVE] Saved cycling workout {workout_id} for {workout_date}")
+                saved_count += 1
+                
+            elif ext_type == 'sleep':
+                # Save/update sleep data
+                sleep_date = payload.get('date') or payload.get('sleep_end_date')
+                if not sleep_date:
+                    logger.warning(f"[BATCH-SAVE] Skipping sleep - no date")
+                    continue
+                
+                # Save sleep summary
+                service.save_sleep_summary(
+                    date=sleep_date,
+                    sleep_start_time=payload.get('sleep_start') or payload.get('sleep_start_time'),
+                    sleep_end_time=payload.get('sleep_end') or payload.get('sleep_end_time'),
+                    total_sleep_minutes=payload.get('total_sleep_minutes'),
+                    deep_sleep_minutes=payload.get('deep_sleep_minutes'),
+                    awake_minutes=payload.get('awake_minutes'),
+                    min_heart_rate=payload.get('min_heart_rate') or payload.get('min_hr'),
+                    avg_heart_rate=payload.get('avg_heart_rate') or payload.get('avg_hr'),
+                    max_heart_rate=payload.get('max_heart_rate') or payload.get('max_hr'),
+                    notes=payload.get('notes')
+                )
+                
+                # Update readiness entry with sleep data
+                sleep_payload = {
+                    'sleep_end_date': sleep_date,
+                    'total_sleep_minutes': payload.get('total_sleep_minutes'),
+                    'deep_sleep_minutes': payload.get('deep_sleep_minutes'),
+                    'awake_minutes': payload.get('awake_minutes'),
+                    'min_heart_rate': payload.get('min_heart_rate') or payload.get('min_hr')
+                }
+                service.update_readiness_from_sleep(sleep_date, sleep_payload)
+                
+                logger.info(f"[BATCH-SAVE] Saved sleep data for {sleep_date}")
+                saved_count += 1
+        
+        return jsonify({
+            'success': True,
+            'saved_count': saved_count
+        })
+        
+    except Exception as e:
+        logger.error(f"[BATCH-SAVE] Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 # ============== Sleep Import API Routes ==============
 
 @cycling_readiness_bp.route('/api/sleep/import-image', methods=['POST'])
