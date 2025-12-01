@@ -84,6 +84,9 @@ function initFileUpload() {
             hideLoading();
 
             if (result.success) {
+                // Log the raw response for debugging
+                console.log('[Extract] Raw API response:', result);
+                
                 // Get count from summary or extraction_results
                 const count = result.summary?.cycling_images + result.summary?.sleep_images + result.summary?.cardio_images 
                            || result.extraction_results?.length 
@@ -93,28 +96,83 @@ function initFileUpload() {
                 // Adapt response format for displayExtractionResults
                 // The backend returns extraction_results, but the frontend expects extractions
                 if (result.extraction_results && !result.extractions) {
-                    result.extractions = result.extraction_results.map(r => ({
-                        filename: r.filename,
-                        type: r.type === 'cycling_power' || r.type === 'watch_workout' ? 'cycling' 
-                            : r.type === 'sleep_summary' ? 'sleep' 
-                            : r.type,
-                        confidence: r.confidence,
-                        fields: r.fields,
-                        missing_fields: []
-                    }));
+                    result.extractions = result.extraction_results.map(r => {
+                        const isCycling = r.type === 'cycling_power' || r.type === 'watch_workout';
+                        const isSleep = r.type === 'sleep_summary';
+                        const normalizedType = isCycling ? 'cycling' : isSleep ? 'sleep' : r.type;
+                        
+                        // Extract date from fields or canonical data
+                        let extractedDate = r.fields?.date || r.fields?.workout_date;
+                        if (!extractedDate && isCycling && result.canonical_workout?.date) {
+                            extractedDate = result.canonical_workout.date;
+                        }
+                        if (!extractedDate && isSleep && result.canonical_sleep?.date) {
+                            extractedDate = result.canonical_sleep.date;
+                        }
+                        
+                        // Build payload from fields for easy access
+                        const payload = { ...r.fields };
+                        if (extractedDate) payload.date = extractedDate;
+                        
+                        // Map canonical values to payload for cycling
+                        if (isCycling && result.canonical_workout) {
+                            const cw = result.canonical_workout;
+                            payload.date = payload.date || cw.date;
+                            payload.avg_power_w = payload.avg_power_w || cw.avg_power;
+                            payload.max_power_w = payload.max_power_w || cw.max_power;
+                            payload.avg_heart_rate = payload.avg_heart_rate || cw.avg_hr;
+                            payload.max_heart_rate = payload.max_heart_rate || cw.max_hr;
+                            payload.duration_minutes = payload.duration_minutes || cw.duration_minutes;
+                        }
+                        
+                        // Map canonical values to payload for sleep
+                        if (isSleep && result.canonical_sleep) {
+                            const cs = result.canonical_sleep;
+                            payload.date = payload.date || cs.date;
+                            payload.total_sleep_minutes = payload.total_sleep_minutes || cs.total_sleep_minutes;
+                            payload.deep_sleep_minutes = payload.deep_sleep_minutes || cs.deep_sleep_minutes;
+                            payload.awake_minutes = payload.awake_minutes || cs.awake_minutes;
+                            payload.min_heart_rate = payload.min_heart_rate || cs.min_hr;
+                            payload.avg_heart_rate = payload.avg_heart_rate || cs.avg_hr;
+                            payload.max_heart_rate = payload.max_heart_rate || cs.max_hr;
+                        }
+                        
+                        return {
+                            filename: r.filename,
+                            type: normalizedType,
+                            confidence: r.confidence,
+                            fields: r.fields,
+                            payload: payload,
+                            missing_fields: []
+                        };
+                    });
+                    
+                    // Sort extractions: cycling first, then sleep, then others
+                    result.extractions.sort((a, b) => {
+                        const order = { cycling: 0, sleep: 1 };
+                        const aOrder = order[a.type] ?? 2;
+                        const bOrder = order[b.type] ?? 2;
+                        return aOrder - bOrder;
+                    });
                 }
+                
                 // Add missing fields info from backend
                 if (result.has_missing_data && result.missing_fields) {
                     if (result.missing_fields.workout?.length > 0 && result.extractions) {
-                        const workoutExt = result.extractions.find(e => e.type === 'cycling');
-                        if (workoutExt) workoutExt.missing_fields = result.missing_fields.workout;
+                        // Apply missing fields to all cycling extractions
+                        result.extractions.filter(e => e.type === 'cycling').forEach(ext => {
+                            ext.missing_fields = result.missing_fields.workout;
+                        });
                     }
                     if (result.missing_fields.sleep?.length > 0 && result.extractions) {
-                        const sleepExt = result.extractions.find(e => e.type === 'sleep');
-                        if (sleepExt) sleepExt.missing_fields = result.missing_fields.sleep;
+                        // Apply missing fields to all sleep extractions
+                        result.extractions.filter(e => e.type === 'sleep').forEach(ext => {
+                            ext.missing_fields = result.missing_fields.sleep;
+                        });
                     }
                 }
                 
+                console.log('[Extract] Processed extractions:', result.extractions);
                 displayExtractionResults(result);
             } else {
                 showStatus('error', result.error || 'Extraction failed');
@@ -244,25 +302,45 @@ function showReviewModal(extractions) {
 
     content.innerHTML = extractions.map((ext, idx) => {
         const typeLabel = ext.type === 'cycling' ? 'Cycling Workout' : ext.type === 'sleep' ? 'Sleep Data' : 'Unknown';
+        const icon = ext.type === 'cycling' ? 'fa-bicycle' : ext.type === 'sleep' ? 'fa-moon' : 'fa-question';
+        const iconColor = ext.type === 'cycling' ? 'var(--color-green)' : ext.type === 'sleep' ? 'var(--color-blue)' : 'var(--color-muted)';
+        
+        // Format date for display
+        const dateStr = ext.payload?.date || ext.fields?.date || ext.fields?.workout_date;
+        const displayDate = dateStr ? formatDisplayDate(dateStr) : 'Unknown date';
+        
+        // Build HTML for missing fields
         const missingHtml = ext.missing_fields?.map(field => `
             <div class="review-field missing" data-review-index="${idx}">
                 <label>${formatFieldLabel(field)}</label>
                 <input type="${getFieldInputType(field)}" 
                        data-field="${field}"
                        class="form-control form-control-sm"
-                       value="${ext.payload?.[field] || ''}">
+                       placeholder="Enter ${formatFieldLabel(field).toLowerCase()}"
+                       value="${ext.payload?.[field] ?? ''}">
             </div>
         `).join('') || '';
 
         return `
             <div class="review-item" data-review-index="${idx}">
-                <h5>${typeLabel} - ${ext.payload?.date || 'Unknown date'}</h5>
-                ${missingHtml || '<p class="text-muted small">All fields extracted successfully</p>'}
+                <h5><i class="fas ${icon}" style="color: ${iconColor}; margin-right: 0.5rem;"></i>${typeLabel} - ${displayDate}</h5>
+                ${missingHtml || '<p class="text-muted small" style="color: var(--color-muted);">All fields extracted successfully</p>'}
             </div>
         `;
-    }).join('<hr>');
+    }).join('<hr style="border-color: rgba(255,255,255,0.1); margin: 1rem 0;">');
 
     document.getElementById('reviewModal').classList.add('active');
+}
+
+function formatDisplayDate(dateStr) {
+    if (!dateStr) return 'Unknown date';
+    try {
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) {
+        return dateStr;
+    }
 }
 
 function formatFieldLabel(field) {

@@ -2205,9 +2205,9 @@
     background: rgba(0, 0, 0, 0.85);
     z-index: 10000;
     justify-content: center;
-    align-items: flex-start;
-    padding: 2rem 1rem;
-    overflow-y: auto;
+    align-items: center;
+    padding: 1rem;
+    overflow: hidden;
 }
 
 .modal-overlay.active { display: flex; }
@@ -2219,6 +2219,9 @@
     padding: 1.5rem;
     max-width: 700px;
     width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
@@ -2229,6 +2232,7 @@
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -2248,12 +2252,40 @@
 
 .modal-close:hover { color: white; }
 
-.modal-body { margin-bottom: 1.25rem; }
+.modal-body { 
+    margin-bottom: 1.25rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0; /* Important for flex overflow */
+    padding-right: 0.5rem; /* Space for scrollbar */
+}
+
+/* Custom scrollbar for modal body */
+.modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 198, 0.3);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 198, 0.5);
+}
 
 .modal-footer {
     display: flex;
     gap: 0.75rem;
     justify-content: flex-end;
+    flex-shrink: 0;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* ============== Form Fields in Modals ============== */
@@ -2359,6 +2391,59 @@
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
     font-size: 0.7rem;
+}
+
+/* ============== Review Item Styles ============== */
+.review-item {
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+}
+
+.review-item h5 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.review-field {
+    margin-bottom: 0.75rem;
+}
+
+.review-field label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-muted-light);
+    margin-bottom: 0.25rem;
+}
+
+.review-field input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: white;
+    font-size: 0.9rem;
+}
+
+.review-field input:focus {
+    outline: none;
+    border-color: var(--color-teal);
+}
+
+.review-field.missing input {
+    border-color: var(--color-yellow);
+    background: rgba(255, 193, 7, 0.1);
+}
+
+.review-field input::placeholder {
+    color: var(--color-muted);
+    opacity: 0.7;
 }
 
 /* ============== Day View Panels ============== */
