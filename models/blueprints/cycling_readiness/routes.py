@@ -57,7 +57,7 @@ CYCLING_NUMERIC_FIELDS = [
 
 SLEEP_NUMERIC_FIELDS = [
     'total_sleep_minutes', 'deep_sleep_minutes', 'awake_minutes',
-    'min_heart_rate', 'avg_heart_rate', 'max_heart_rate'
+    'min_heart_rate', 'max_heart_rate'
 ]
 
 # Fields where 0 is invalid (should be treated as missing)
@@ -1106,7 +1106,6 @@ def import_bundle():
                 'deep_sleep_minutes': cs_dict.get('deep_sleep_minutes'),
                 'awake_minutes': cs_dict.get('awake_minutes'),
                 'min_heart_rate': cs_dict.get('min_hr'),
-                'avg_heart_rate': cs_dict.get('avg_hr'),
                 'max_heart_rate': cs_dict.get('max_hr')
             }
             sleep_missing = detect_missing_numeric_fields(mapped_cs, SLEEP_NUMERIC_FIELDS)
@@ -1530,10 +1529,25 @@ def get_readiness_entries():
     # Use new method that includes cardio data
     entries = service.get_readiness_entries_with_cardio(limit=limit)
 
-    # Convert dates and handle serialization
+    # Convert dates and compute derived fields for frontend
     for e in entries:
         if e.get('date'):
             e['date'] = e['date'].strftime('%Y-%m-%d') if hasattr(e['date'], 'strftime') else str(e['date'])
+        
+        # Compute sleep_hours from sleep_minutes for frontend
+        if e.get('sleep_minutes'):
+            e['sleep_hours'] = round(e['sleep_minutes'] / 60, 1)
+        else:
+            e['sleep_hours'] = None
+        
+        # Compute hrv_avg from hrv_low_ms and hrv_high_ms for frontend
+        hrv_low = e.get('hrv_low_ms')
+        hrv_high = e.get('hrv_high_ms')
+        if hrv_low is not None and hrv_high is not None:
+            e['hrv_avg'] = round((hrv_low + hrv_high) / 2)
+        else:
+            e['hrv_avg'] = None
+        
         # Ensure boolean flags are properly typed
         e['rhr_manual_override'] = bool(e.get('rhr_manual_override', False))
         e['hrv_manual_override'] = bool(e.get('hrv_manual_override', False))

@@ -193,29 +193,29 @@
                     </div>
                     <div class="modal-field">
                         <label>HRV Status <span id="editHrvAutoLabel" class="auto-badge" style="display: none;">auto</span></label>
-                        <select id="editReadinessHRV" class="form-select">
+                        <select id="editReadinessHrvStatus" class="form-select">
                             <option value="">--</option>
-                            <option value="-1">↓ Below Baseline</option>
-                            <option value="0">→ Normal</option>
-                            <option value="1">↑ Above Baseline</option>
-                        </select>
-                    </div>
-                    <div class="modal-field">
-                        <label>RHR Status <span id="editRhrAutoLabel" class="auto-badge" style="display: none;">auto</span></label>
-                        <select id="editReadinessRHR" class="form-select">
-                            <option value="">--</option>
-                            <option value="-1">↓ Below Normal (good)</option>
+                            <option value="-1">↓ Below Normal</option>
                             <option value="0">→ Normal</option>
                             <option value="1">↑ Above Normal</option>
                         </select>
                     </div>
                     <div class="modal-field">
-                        <label>Min HR Status</label>
-                        <select id="editReadinessMinHR" class="form-select">
+                        <label>RHR Status <span id="editRhrAutoLabel" class="auto-badge" style="display: none;">auto</span></label>
+                        <select id="editReadinessRhrStatus" class="form-select">
                             <option value="">--</option>
-                            <option value="-1">↓ Lower than usual</option>
+                            <option value="-1">↓ Lower (Good)</option>
                             <option value="0">→ Normal</option>
-                            <option value="1">↑ Higher than usual</option>
+                            <option value="1">↑ Elevated</option>
+                        </select>
+                    </div>
+                    <div class="modal-field">
+                        <label>Min HR Status</label>
+                        <select id="editReadinessMinHrStatus" class="form-select">
+                            <option value="">--</option>
+                            <option value="-1">↓ Lower</option>
+                            <option value="0">→ Normal</option>
+                            <option value="1">↑ Elevated</option>
                         </select>
                     </div>
                     <div class="modal-field modal-field-full">

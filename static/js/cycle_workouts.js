@@ -126,6 +126,7 @@ function initFileUpload() {
                         }
                         
                         // Map canonical values to payload for sleep
+                        // Note: We only use min_hr and max_hr for sleep, not avg_hr
                         if (isSleep && result.canonical_sleep) {
                             const cs = result.canonical_sleep;
                             payload.date = payload.date || cs.date;
@@ -133,7 +134,6 @@ function initFileUpload() {
                             payload.deep_sleep_minutes = payload.deep_sleep_minutes || cs.deep_sleep_minutes;
                             payload.awake_minutes = payload.awake_minutes || cs.awake_minutes;
                             payload.min_heart_rate = payload.min_heart_rate || cs.min_hr;
-                            payload.avg_heart_rate = payload.avg_heart_rate || cs.avg_hr;
                             payload.max_heart_rate = payload.max_heart_rate || cs.max_hr;
                         }
                         
@@ -362,7 +362,6 @@ function formatFieldLabel(field, type) {
         },
         'sleep': {
             'max_heart_rate': 'Max HR (Sleep)',
-            'avg_heart_rate': 'Avg HR (Sleep)',
             'min_heart_rate': 'Min HR (Sleep)'
         }
     };

@@ -53,15 +53,15 @@ function initReadinessForm() {
             symptoms_flag: document.getElementById('symptomsFlag')?.checked || false
         };
 
-        // Add cardio values if present
-        if (manualRhr) data.rhr_bpm = parseInt(manualRhr);
-        if (manualHrvLow) data.hrv_low_ms = parseInt(manualHrvLow);
-        if (manualHrvHigh) data.hrv_high_ms = parseInt(manualHrvHigh);
+        // Add manual cardio values if present (using correct field names for backend)
+        if (manualRhr) data.manual_rhr_bpm = parseInt(manualRhr);
+        if (manualHrvLow) data.manual_hrv_low_ms = parseInt(manualHrvLow);
+        if (manualHrvHigh) data.manual_hrv_high_ms = parseInt(manualHrvHigh);
         
-        // Override values take precedence
-        if (overrideRhr) data.rhr_bpm = parseInt(overrideRhr);
-        if (overrideHrvLow) data.hrv_low_ms = parseInt(overrideHrvLow);
-        if (overrideHrvHigh) data.hrv_high_ms = parseInt(overrideHrvHigh);
+        // Override values take precedence (also using manual_ prefix)
+        if (overrideRhr) data.manual_rhr_bpm = parseInt(overrideRhr);
+        if (overrideHrvLow) data.manual_hrv_low_ms = parseInt(overrideHrvLow);
+        if (overrideHrvHigh) data.manual_hrv_high_ms = parseInt(overrideHrvHigh);
 
         try {
             const response = await fetch('/cycling-readiness/api/readiness', {

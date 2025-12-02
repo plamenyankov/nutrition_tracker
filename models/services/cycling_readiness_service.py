@@ -599,20 +599,22 @@ class CyclingReadinessService:
 
     def get_full_readiness_data(self, date: str) -> Dict:
         """
-        Get full readiness data for a date including cardio metrics.
+        Get full readiness data for a date including cardio metrics and sleep summary.
         Used for populating the Morning Readiness form and Readiness History.
         
         Returns:
-            Dict with readiness entry, cardio metrics, calculated status, and flags
+            Dict with readiness entry, cardio metrics, sleep summary, calculated status, and flags
         """
         readiness = self.get_readiness_by_date(date)
         cardio = self.get_cardio_metrics_for_date(date)
+        sleep = self.get_sleep_summary_by_date(date)
         status = self.calculate_hrv_rhr_status(date)
         
         result = {
             'date': date,
             'has_readiness': readiness is not None,
             'has_cardio': cardio is not None,
+            'has_sleep': sleep is not None,
             'readiness': readiness,
             'cardio': {
                 'rhr_bpm': cardio.get('rhr_bpm') if cardio else None,
@@ -621,6 +623,15 @@ class CyclingReadinessService:
                 'rhr_manual_override': cardio.get('rhr_manual_override', False) if cardio else False,
                 'hrv_manual_override': cardio.get('hrv_manual_override', False) if cardio else False
             },
+            'sleep': {
+                'total_sleep_minutes': sleep.get('total_sleep_minutes') if sleep else None,
+                'deep_sleep_minutes': sleep.get('deep_sleep_minutes') if sleep else None,
+                'awake_minutes': sleep.get('awake_minutes') if sleep else None,
+                'min_heart_rate': sleep.get('min_heart_rate') if sleep else None,
+                'max_heart_rate': sleep.get('max_heart_rate') if sleep else None,
+                'sleep_start_time': sleep.get('sleep_start_time') if sleep else None,
+                'sleep_end_time': sleep.get('sleep_end_time') if sleep else None
+            } if sleep else None,
             'calculated_status': {
                 'hrv_status': status.get('hrv_status'),
                 'rhr_status': status.get('rhr_status'),

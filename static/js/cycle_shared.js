@@ -63,15 +63,24 @@ async function loadDayViewData(date) {
     content.innerHTML = '<div class="text-center" style="padding: 2rem; color: var(--color-muted);"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
     
     try {
-        const response = await fetch(`/cycling-readiness/api/day-data?date=${date}`);
+        // Use correct API endpoint: /api/day-summary
+        const response = await fetch(`/cycling-readiness/api/day-summary?date=${date}`);
         const data = await response.json();
         
         if (data.success) {
-            content.innerHTML = renderDayViewContent(data);
+            // Map backend field names to frontend expected names
+            const mappedData = {
+                workout: data.cycling_workout,
+                readiness: data.readiness_entry,
+                sleep: data.sleep_summary,
+                cardio: data.cardio_metrics
+            };
+            content.innerHTML = renderDayViewContent(mappedData);
         } else {
-            content.innerHTML = `<p class="text-danger">Error: ${data.error}</p>`;
+            content.innerHTML = `<p class="text-danger">Error: ${data.error || 'Failed to load data'}</p>`;
         }
     } catch (err) {
+        console.error('Error loading day data:', err);
         content.innerHTML = `<p class="text-danger">Error loading data</p>`;
     }
 }
@@ -266,7 +275,8 @@ async function saveEditedWorkout() {
 function openEditReadinessModal(entryId, date) {
     showLoading('Loading readiness data...');
     
-    fetch(`/cycling-readiness/api/readiness-with-cardio?date=${date}`)
+    // Use the correct API endpoint
+    fetch(`/cycling-readiness/api/readiness/full?date=${date}`)
         .then(res => res.json())
         .then(data => {
             hideLoading();
@@ -276,11 +286,12 @@ function openEditReadinessModal(entryId, date) {
                 document.getElementById('editReadinessDate').value = date;
                 document.getElementById('editReadinessModal').classList.add('active');
             } else {
-                showToast('Error loading readiness data', 'error');
+                showToast(data.error || 'Error loading readiness data', 'error');
             }
         })
         .catch(err => {
             hideLoading();
+            console.error('Error loading readiness data:', err);
             showToast('Error loading readiness data', 'error');
         });
 }
@@ -291,24 +302,37 @@ function populateEditReadinessModal(readiness, cardio) {
         document.getElementById('editReadinessEnergy').value = readiness.energy || '';
         document.getElementById('editReadinessMood').value = readiness.mood || '';
         document.getElementById('editReadinessFatigue').value = readiness.muscle_fatigue || '';
-        document.getElementById('editReadinessHrvStatus').value = readiness.hrv_status || '';
-        document.getElementById('editReadinessRhrStatus').value = readiness.rhr_status || '';
-        document.getElementById('editReadinessMinHrStatus').value = readiness.min_hr_status || '';
+        document.getElementById('editReadinessHrvStatus').value = readiness.hrv_status ?? '';
+        document.getElementById('editReadinessRhrStatus').value = readiness.rhr_status ?? '';
+        document.getElementById('editReadinessMinHrStatus').value = readiness.min_hr_status ?? '';
         document.getElementById('editReadinessSymptoms').checked = readiness.symptoms_flag || false;
-        document.getElementById('editReadinessNotes').value = readiness.notes || '';
+        // Support both 'notes' and 'evening_note' field names
+        document.getElementById('editReadinessNotes').value = readiness.notes || readiness.evening_note || '';
+    } else {
+        // Clear fields if no readiness data
+        document.getElementById('editReadinessEnergy').value = '';
+        document.getElementById('editReadinessMood').value = '';
+        document.getElementById('editReadinessFatigue').value = '';
+        document.getElementById('editReadinessHrvStatus').value = '';
+        document.getElementById('editReadinessRhrStatus').value = '';
+        document.getElementById('editReadinessMinHrStatus').value = '';
+        document.getElementById('editReadinessSymptoms').checked = false;
+        document.getElementById('editReadinessNotes').value = '';
     }
     
     // Show cardio data if available
     const cardioDisplay = document.getElementById('editCardioDisplay');
-    if (cardio && (cardio.rhr_bpm || cardio.hrv_low_ms)) {
-        cardioDisplay.style.display = 'block';
-        document.getElementById('editDisplayRhr').textContent = cardio.rhr_bpm ? `${cardio.rhr_bpm} bpm` : '--';
-        const hrvAvg = (cardio.hrv_low_ms && cardio.hrv_high_ms) 
-            ? Math.round((cardio.hrv_low_ms + cardio.hrv_high_ms) / 2) 
-            : null;
-        document.getElementById('editDisplayHrv').textContent = hrvAvg ? `${hrvAvg} ms` : '--';
-    } else {
-        cardioDisplay.style.display = 'none';
+    if (cardioDisplay) {
+        if (cardio && (cardio.rhr_bpm || cardio.hrv_low_ms)) {
+            cardioDisplay.style.display = 'block';
+            document.getElementById('editDisplayRhr').textContent = cardio.rhr_bpm ? `${cardio.rhr_bpm} bpm` : '--';
+            const hrvAvg = (cardio.hrv_low_ms && cardio.hrv_high_ms) 
+                ? Math.round((cardio.hrv_low_ms + cardio.hrv_high_ms) / 2) 
+                : null;
+            document.getElementById('editDisplayHrv').textContent = hrvAvg ? `${hrvAvg} ms` : '--';
+        } else {
+            cardioDisplay.style.display = 'none';
+        }
     }
 }
 
@@ -319,15 +343,21 @@ function closeEditReadinessModal() {
 async function saveEditedReadiness() {
     const entryId = document.getElementById('editReadinessId').value;
     
+    // Parse integer values - use null if empty or invalid
+    const parseIntOrNull = (val) => {
+        const parsed = parseInt(val);
+        return isNaN(parsed) ? null : parsed;
+    };
+    
     const data = {
-        energy: parseInt(document.getElementById('editReadinessEnergy').value) || null,
-        mood: parseInt(document.getElementById('editReadinessMood').value) || null,
-        muscle_fatigue: parseInt(document.getElementById('editReadinessFatigue').value) || null,
-        hrv_status: document.getElementById('editReadinessHrvStatus').value || null,
-        rhr_status: document.getElementById('editReadinessRhrStatus').value || null,
-        min_hr_status: document.getElementById('editReadinessMinHrStatus').value || null,
+        energy: parseIntOrNull(document.getElementById('editReadinessEnergy').value),
+        mood: parseIntOrNull(document.getElementById('editReadinessMood').value),
+        muscle_fatigue: parseIntOrNull(document.getElementById('editReadinessFatigue').value),
+        hrv_status: parseIntOrNull(document.getElementById('editReadinessHrvStatus').value),
+        rhr_status: parseIntOrNull(document.getElementById('editReadinessRhrStatus').value),
+        min_hr_status: parseIntOrNull(document.getElementById('editReadinessMinHrStatus').value),
         symptoms_flag: document.getElementById('editReadinessSymptoms').checked,
-        notes: document.getElementById('editReadinessNotes').value || null
+        evening_note: document.getElementById('editReadinessNotes').value || null
     };
     
     try {
@@ -347,6 +377,7 @@ async function saveEditedReadiness() {
             showToast(result.error || 'Error updating readiness entry', 'error');
         }
     } catch (err) {
+        console.error('Error updating readiness entry:', err);
         showToast('Error updating readiness entry', 'error');
     }
 }
