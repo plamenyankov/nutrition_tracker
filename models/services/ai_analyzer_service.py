@@ -55,14 +55,38 @@ class AnalysisCoachComparison:
     plan_type: Optional[str]  # e.g., "endurance_z2", "recovery_z1", "4x4_vo2"
     compliance_score: int  # 0-100: How well did athlete follow the plan
     notes: str  # Comparison notes
+    
+    # Actual planned values from the stored AI Coach recommendation
+    # These come directly from the coach's session_plan, NOT from templates
+    planned_duration_min: Optional[int] = None
+    planned_power_min: Optional[int] = None
+    planned_power_max: Optional[int] = None
+    planned_hr_min: Optional[int] = None
+    planned_hr_max: Optional[int] = None
+    planned_avg_power: Optional[int] = None
+    planned_avg_hr: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             'has_coach_plan': self.has_coach_plan,
             'plan_type': self.plan_type,
             'compliance_score': self.compliance_score,
             'notes': self.notes
         }
+        # Include planned values if coach plan exists
+        if self.has_coach_plan:
+            result['planned_duration_min'] = self.planned_duration_min
+            result['planned_power'] = {
+                'min': self.planned_power_min,
+                'max': self.planned_power_max,
+                'expected_avg': self.planned_avg_power
+            } if self.planned_power_min or self.planned_power_max else None
+            result['planned_hr'] = {
+                'min': self.planned_hr_min,
+                'max': self.planned_hr_max,
+                'expected_avg': self.planned_avg_hr
+            } if self.planned_hr_min or self.planned_hr_max else None
+        return result
 
 
 @dataclass
@@ -537,6 +561,24 @@ def generate_ai_workout_analysis(
         analysis_output = parse_analysis_response(response_text, workout_date_str)
         prompt_version = PROMPT_VERSION
         
+        # CRITICAL: Inject actual planned values from stored coach recommendation
+        # OpenAI doesn't return these - we must get them from the coach's session_plan
+        if coach_rec_dict:
+            session_plan = coach_rec_dict.get('session_plan') or {}
+            analysis_output.coach_comparison.has_coach_plan = True
+            analysis_output.coach_comparison.plan_type = coach_rec_dict.get('day_type')
+            analysis_output.coach_comparison.planned_duration_min = session_plan.get('duration_minutes')
+            analysis_output.coach_comparison.planned_power_min = session_plan.get('session_target_power_w_min')
+            analysis_output.coach_comparison.planned_power_max = session_plan.get('session_target_power_w_max')
+            analysis_output.coach_comparison.planned_avg_power = session_plan.get('expected_avg_power_w')
+            analysis_output.coach_comparison.planned_hr_min = session_plan.get('session_target_hr_bpm_min')
+            analysis_output.coach_comparison.planned_hr_max = session_plan.get('session_target_hr_bpm_max')
+            analysis_output.coach_comparison.planned_avg_hr = session_plan.get('expected_avg_hr_bpm')
+            logger.info(f"[ANALYZER] Injected coach plan: power={analysis_output.coach_comparison.planned_power_min}-{analysis_output.coach_comparison.planned_power_max}W, "
+                       f"HR={analysis_output.coach_comparison.planned_hr_min}-{analysis_output.coach_comparison.planned_hr_max} bpm")
+        else:
+            analysis_output.coach_comparison.has_coach_plan = False
+        
     except Exception as e:
         logger.error(f"[ANALYZER] OpenAI API error: {e}")
         
@@ -548,6 +590,23 @@ def generate_ai_workout_analysis(
         
         # Fall back to dummy analysis
         logger.warning(f"[ANALYZER] Using fallback analysis for workout_id={workout_id}")
+        
+        # Build coach comparison with actual planned values if available
+        session_plan = (coach_rec_dict.get('session_plan') or {}) if coach_rec_dict else {}
+        coach_comparison = AnalysisCoachComparison(
+            has_coach_plan=bool(coach_rec_dict),
+            plan_type=coach_rec_dict.get('day_type') if coach_rec_dict else None,
+            compliance_score=50,
+            notes='Analysis failed - using fallback values',
+            planned_duration_min=session_plan.get('duration_minutes'),
+            planned_power_min=session_plan.get('session_target_power_w_min'),
+            planned_power_max=session_plan.get('session_target_power_w_max'),
+            planned_avg_power=session_plan.get('expected_avg_power_w'),
+            planned_hr_min=session_plan.get('session_target_hr_bpm_min'),
+            planned_hr_max=session_plan.get('session_target_hr_bpm_max'),
+            planned_avg_hr=session_plan.get('expected_avg_hr_bpm')
+        )
+        
         analysis_output = AiAnalysisModelOutput(
             analysis_date=workout_date_str,
             scores=AnalysisScores(
@@ -560,12 +619,7 @@ def generate_ai_workout_analysis(
                 label='ok',
                 fatigue_risk='medium'
             ),
-            coach_comparison=AnalysisCoachComparison(
-                has_coach_plan=bool(coach_rec_dict),
-                plan_type=coach_rec_dict.get('day_type') if coach_rec_dict else None,
-                compliance_score=50,
-                notes='Analysis failed - using fallback values'
-            ),
+            coach_comparison=coach_comparison,
             summary=AnalysisSummary(
                 short_text='Analysis could not be completed.',
                 detailed_text=f'The AI analysis failed due to an error: {str(e)[:100]}. Please try again.'

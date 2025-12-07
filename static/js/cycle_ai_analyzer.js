@@ -25,7 +25,10 @@ const FATIGUE_BADGES = {
     'high': { text: 'High Fatigue Risk', class: 'fatigue-high' }
 };
 
-// Zone mappings for HR and Power ranges (based on typical athlete profile)
+// FALLBACK Zone mappings for HR and Power ranges (generic athlete profile)
+// NOTE: These are ONLY used when the stored AI Coach plan doesn't have specific targets.
+// The primary source for Plan vs Reality comparison is coachComparison.planned_power/planned_hr
+// which come from the actual stored AI Coach recommendation for that date.
 const ZONE_RANGES = {
     'rest': { 
         hr: { min: 0, max: 100 }, 
@@ -908,6 +911,12 @@ function getZoneRanges(planType) {
 
 /**
  * Render the Plan vs Reality micro-charts
+ * 
+ * CRITICAL: Uses actual planned values from the stored AI Coach recommendation,
+ * NOT from hardcoded ZONE_RANGES. The coachComparison object contains:
+ * - planned_duration_min: Duration from coach's session_plan
+ * - planned_power: {min, max, expected_avg} from session_target_power_w_*
+ * - planned_hr: {min, max, expected_avg} from session_target_hr_bpm_*
  */
 function renderPlanVsReality(coachComparison, workoutSummary) {
     if (!elements.planVsRealityCard || !elements.planVsRealityContent) return;
@@ -920,45 +929,66 @@ function renderPlanVsReality(coachComparison, workoutSummary) {
     
     const planType = coachComparison.plan_type;
     const notes = coachComparison.notes || '';
+    
+    // IMPORTANT: Use actual planned values from the stored coach plan
+    // These come from the AI Coach's session_plan, not from templates
+    const plannedPower = coachComparison.planned_power;  // {min, max, expected_avg}
+    const plannedHR = coachComparison.planned_hr;  // {min, max, expected_avg}
+    const plannedDuration = coachComparison.planned_duration_min;
+    
+    // Only fall back to ZONE_RANGES if no stored coach values exist
+    // This should rarely happen for new analyses
     const zoneRanges = getZoneRanges(planType);
     
     const actualDuration = workoutSummary.duration_min;
     const actualPower = workoutSummary.avg_power_w;
     const actualHR = workoutSummary.avg_hr_bpm;
     
+    // Get zone label for display
+    const zoneLabel = zoneRanges ? zoneRanges.label : planType;
+    
     let chartsHtml = '';
     let hasAnyChart = false;
     
-    // Duration chart
-    const plannedDuration = extractPlannedDurationFromNotes(notes, actualDuration) 
+    // Duration chart - use stored planned duration
+    const durationTarget = plannedDuration 
+        || extractPlannedDurationFromNotes(notes, actualDuration) 
         || (zoneRanges ? Math.round((zoneRanges.duration.min + zoneRanges.duration.max) / 2) : null);
     
     if (actualDuration) {
         hasAnyChart = true;
-        const durationDelta = plannedDuration ? calculateDelta(actualDuration, plannedDuration) : null;
-        chartsHtml += renderDurationChart(actualDuration, plannedDuration, durationDelta);
+        const durationDelta = durationTarget ? calculateDelta(actualDuration, durationTarget) : null;
+        chartsHtml += renderDurationChart(actualDuration, durationTarget, durationDelta);
     }
     
-    // Power chart
-    if (actualPower && zoneRanges && zoneRanges.power) {
+    // Power chart - use stored planned power from coach plan (priority) or fallback to ZONE_RANGES
+    const powerRange = plannedPower && (plannedPower.min || plannedPower.max)
+        ? plannedPower 
+        : (zoneRanges && zoneRanges.power ? zoneRanges.power : null);
+    
+    if (actualPower && powerRange && (powerRange.min || powerRange.max)) {
         hasAnyChart = true;
-        const powerStatus = getComparisonStatus(actualPower, zoneRanges.power.min, zoneRanges.power.max);
-        const powerMid = Math.round((zoneRanges.power.min + zoneRanges.power.max) / 2);
+        const powerStatus = getComparisonStatus(actualPower, powerRange.min, powerRange.max);
+        const powerMid = powerRange.expected_avg || Math.round((powerRange.min + powerRange.max) / 2);
         const powerDelta = calculateDelta(actualPower, powerMid);
-        chartsHtml += renderPowerChart(actualPower, zoneRanges.power, zoneRanges.label, powerStatus, powerDelta);
+        chartsHtml += renderPowerChart(actualPower, powerRange, zoneLabel, powerStatus, powerDelta);
     } else if (actualPower) {
         // Show actual power without planned range
         hasAnyChart = true;
         chartsHtml += renderPowerChart(actualPower, null, null, 'unknown', null);
     }
     
-    // HR chart
-    if (actualHR && zoneRanges && zoneRanges.hr) {
+    // HR chart - use stored planned HR from coach plan (priority) or fallback to ZONE_RANGES
+    const hrRange = plannedHR && (plannedHR.min || plannedHR.max)
+        ? plannedHR
+        : (zoneRanges && zoneRanges.hr ? zoneRanges.hr : null);
+    
+    if (actualHR && hrRange && (hrRange.min || hrRange.max)) {
         hasAnyChart = true;
-        const hrStatus = getComparisonStatus(actualHR, zoneRanges.hr.min, zoneRanges.hr.max);
-        const hrMid = Math.round((zoneRanges.hr.min + zoneRanges.hr.max) / 2);
+        const hrStatus = getComparisonStatus(actualHR, hrRange.min, hrRange.max);
+        const hrMid = hrRange.expected_avg || Math.round((hrRange.min + hrRange.max) / 2);
         const hrDelta = calculateDelta(actualHR, hrMid);
-        chartsHtml += renderHRChart(actualHR, zoneRanges.hr, zoneRanges.label, hrStatus, hrDelta);
+        chartsHtml += renderHRChart(actualHR, hrRange, zoneLabel, hrStatus, hrDelta);
     } else if (actualHR) {
         // Show actual HR without planned range
         hasAnyChart = true;

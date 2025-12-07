@@ -2867,12 +2867,18 @@ class CyclingReadinessService:
             date_str = str(date_val) if date_val else None
         
         # Extract coach_comparison from raw_json if available
+        # CRITICAL: Include planned values from the stored coach recommendation
+        # These come from the AI Coach's session_plan, NOT from templates
         coach_comparison_raw = raw_json.get('coach_comparison', {})
         coach_comparison = {
             "has_coach_plan": coach_comparison_raw.get('has_coach_plan', False),
             "plan_type": coach_comparison_raw.get('plan_type'),
             "compliance_score": analysis.get('compliance_score'),
-            "notes": coach_comparison_raw.get('notes', '')
+            "notes": coach_comparison_raw.get('notes', ''),
+            # Actual planned values from the stored AI Coach plan
+            "planned_duration_min": coach_comparison_raw.get('planned_duration_min'),
+            "planned_power": coach_comparison_raw.get('planned_power'),  # {min, max, expected_avg}
+            "planned_hr": coach_comparison_raw.get('planned_hr')  # {min, max, expected_avg}
         }
         
         # Extract physiology and action_items from raw_json
