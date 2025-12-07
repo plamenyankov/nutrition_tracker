@@ -1,0 +1,575 @@
+{% extends 'cycling_readiness/cycle_base.html' %}
+
+{% block page_title %}AI Lab{% endblock %}
+
+{% block page_content %}
+<style>
+/* AI Lab specific styles */
+.ai-lab-header {
+    margin-bottom: 1.5rem;
+}
+
+.ai-lab-header h2 {
+    color: var(--color-green);
+    font-size: 1.5rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ai-lab-header p {
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    margin: 0.25rem 0 0 0;
+}
+
+/* Internal tabs for Coach/Analyzer */
+.ai-lab-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.5rem;
+}
+
+.ai-lab-tab {
+    padding: 0.6rem 1.2rem;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 6px 6px 0 0;
+    color: var(--color-muted);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ai-lab-tab:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.ai-lab-tab.active {
+    background: var(--color-green);
+    color: var(--color-bg);
+    border-color: var(--color-green);
+    font-weight: 600;
+}
+
+.ai-lab-tab i {
+    font-size: 0.85rem;
+}
+
+/* Profiles table */
+.profiles-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.profiles-table th {
+    text-align: left;
+    padding: 0.75rem;
+    background: var(--color-surface);
+    color: var(--color-muted);
+    font-weight: 500;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.profiles-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.profiles-table tr:hover {
+    background: var(--color-surface-hover);
+}
+
+.profiles-table tr.active-row {
+    background: rgba(0, 255, 136, 0.05);
+    border-left: 3px solid var(--color-green);
+}
+
+.profiles-table tr.active-row td:first-child {
+    padding-left: calc(0.75rem - 3px);
+}
+
+/* Badges */
+.badge-active {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.6rem;
+    background: var(--color-green);
+    color: var(--color-bg);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.badge-inactive {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    background: var(--color-surface);
+    color: var(--color-muted);
+    font-size: 0.7rem;
+    border-radius: 4px;
+}
+
+/* Action buttons */
+.btn-action {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 0.25rem;
+}
+
+.btn-action:hover {
+    background: var(--color-surface-hover);
+    border-color: var(--color-green);
+}
+
+.btn-action.btn-set-active {
+    border-color: var(--color-green);
+    color: var(--color-green);
+}
+
+.btn-action.btn-set-active:hover {
+    background: var(--color-green);
+    color: var(--color-bg);
+}
+
+/* Profile content sections */
+.profile-section {
+    display: none;
+}
+
+.profile-section.active {
+    display: block;
+}
+
+/* Editor panel */
+.editor-panel {
+    display: none;
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+
+.editor-panel.active {
+    display: block;
+}
+
+.editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.editor-header h4 {
+    margin: 0;
+    color: var(--color-green);
+    font-size: 1rem;
+}
+
+.editor-close {
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.editor-close:hover {
+    color: var(--color-text);
+}
+
+.editor-field {
+    margin-bottom: 1rem;
+}
+
+.editor-field label {
+    display: block;
+    color: var(--color-muted);
+    font-size: 0.8rem;
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+}
+
+.editor-field input[type="text"] {
+    width: 100%;
+    padding: 0.6rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text);
+    font-size: 0.9rem;
+}
+
+.editor-field input[type="text"]:focus {
+    outline: none;
+    border-color: var(--color-green);
+}
+
+.editor-field textarea {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    color: var(--color-text);
+    font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 150px;
+}
+
+.editor-field textarea:focus {
+    outline: none;
+    border-color: var(--color-green);
+}
+
+.editor-field textarea.tall {
+    min-height: 300px;
+}
+
+.editor-field .field-hint {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    margin-top: 0.25rem;
+}
+
+.editor-field .field-error {
+    font-size: 0.75rem;
+    color: #ff6b6b;
+    margin-top: 0.25rem;
+    display: none;
+}
+
+.editor-field.has-error textarea,
+.editor-field.has-error input {
+    border-color: #ff6b6b;
+}
+
+.editor-field.has-error .field-error {
+    display: block;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+
+.btn-editor {
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-editor-primary {
+    background: var(--color-green);
+    color: var(--color-bg);
+    border: none;
+    font-weight: 600;
+}
+
+.btn-editor-primary:hover {
+    filter: brightness(1.1);
+}
+
+.btn-editor-secondary {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.btn-editor-secondary:hover {
+    background: var(--color-surface-hover);
+}
+
+.btn-editor-set-active {
+    background: transparent;
+    color: var(--color-green);
+    border: 1px solid var(--color-green);
+}
+
+.btn-editor-set-active:hover {
+    background: var(--color-green);
+    color: var(--color-bg);
+}
+
+/* Empty state */
+.empty-profiles {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-muted);
+}
+
+.empty-profiles i {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+/* Character count */
+.char-count {
+    font-size: 0.7rem;
+    color: var(--color-muted);
+    text-align: right;
+    margin-top: 0.25rem;
+}
+</style>
+
+<!-- Header -->
+<div class="ai-lab-header">
+    <h2><i class="fas fa-flask"></i> AI Lab – Prompts & Settings</h2>
+    <p>Configure how AI Coach and AI Analyzer behave internally.</p>
+</div>
+
+<!-- Internal Tabs: Coach / Analyzer -->
+<div class="ai-lab-tabs">
+    <button class="ai-lab-tab active" data-target="coach" onclick="switchAiLabTab('coach')">
+        <i class="fas fa-brain"></i> Coach Settings
+    </button>
+    <button class="ai-lab-tab" data-target="analyzer" onclick="switchAiLabTab('analyzer')">
+        <i class="fas fa-microscope"></i> Analyzer Settings
+    </button>
+</div>
+
+<!-- Coach Profiles Section -->
+<div id="coach-section" class="profile-section active">
+    <div class="section-card">
+        <h3 class="section-title">
+            <i class="fas fa-brain"></i> Coach Profiles
+        </h3>
+        
+        {% if profiles.coach %}
+        <table class="profiles-table">
+            <thead>
+                <tr>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="coach-profiles-tbody">
+                {% for profile in profiles.coach %}
+                <tr class="{{ 'active-row' if profile.is_active else '' }}" data-profile-id="{{ profile.id }}">
+                    <td><strong>{{ profile.version }}</strong></td>
+                    <td>
+                        {% if profile.is_active %}
+                        <span class="badge-active"><i class="fas fa-check"></i> Active</span>
+                        {% else %}
+                        <span class="badge-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ profile.created_at }}</td>
+                    <td>
+                        <button class="btn-action" onclick="editProfile({{ profile.id }}, 'coach')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-action" onclick="duplicateProfile({{ profile.id }}, 'coach')">
+                            <i class="fas fa-copy"></i> Duplicate
+                        </button>
+                        {% if not profile.is_active %}
+                        <button class="btn-action btn-set-active" onclick="setActiveProfile({{ profile.id }}, 'coach')">
+                            <i class="fas fa-star"></i> Set Active
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-profiles">
+            <i class="fas fa-brain"></i>
+            <p>No coach profiles found. Run the seed script to create initial profiles.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Coach Editor Panel -->
+    <div id="coach-editor" class="editor-panel">
+        <div class="editor-header">
+            <h4><i class="fas fa-edit me-2"></i>Edit Coach Profile</h4>
+            <button class="editor-close" onclick="closeEditor('coach')">&times;</button>
+        </div>
+        
+        <input type="hidden" id="coach-profile-id">
+        <input type="hidden" id="coach-profile-name" value="coach">
+        
+        <div class="editor-field">
+            <label>Version</label>
+            <input type="text" id="coach-version" placeholder="e.g., v1, v2_interval_aware">
+            <div class="field-error" id="coach-version-error">Version is required</div>
+        </div>
+        
+        <div class="editor-field">
+            <label>System Prompt</label>
+            <textarea id="coach-system-prompt" class="tall" placeholder="The system prompt that defines the AI's behavior..."></textarea>
+            <div class="char-count"><span id="coach-system-prompt-count">0</span> characters</div>
+        </div>
+        
+        <div class="editor-field">
+            <label>User Prompt Template</label>
+            <textarea id="coach-user-prompt-template" placeholder="Template with {context_json} placeholder..."></textarea>
+            <div class="field-hint">Use {context_json} as placeholder for training context</div>
+        </div>
+        
+        <div class="editor-field">
+            <label>Settings JSON</label>
+            <textarea id="coach-settings-json" placeholder='{"model_name": "gpt-4o", "temperature": 0.3, ...}'></textarea>
+            <div class="field-error" id="coach-settings-json-error">Invalid JSON format</div>
+            <div class="field-hint">Must be valid JSON. Contains model_name, temperature, max_tokens, etc.</div>
+        </div>
+        
+        <div class="editor-actions">
+            <button class="btn-editor btn-editor-primary" onclick="saveProfile('coach')">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+            <button class="btn-editor btn-editor-set-active" id="coach-set-active-btn" onclick="setActiveFromEditor('coach')">
+                <i class="fas fa-star"></i> Set Active
+            </button>
+            <button class="btn-editor btn-editor-secondary" onclick="closeEditor('coach')">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Analyzer Profiles Section -->
+<div id="analyzer-section" class="profile-section">
+    <div class="section-card">
+        <h3 class="section-title">
+            <i class="fas fa-microscope"></i> Analyzer Profiles
+        </h3>
+        
+        {% if profiles.analyzer %}
+        <table class="profiles-table">
+            <thead>
+                <tr>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="analyzer-profiles-tbody">
+                {% for profile in profiles.analyzer %}
+                <tr class="{{ 'active-row' if profile.is_active else '' }}" data-profile-id="{{ profile.id }}">
+                    <td><strong>{{ profile.version }}</strong></td>
+                    <td>
+                        {% if profile.is_active %}
+                        <span class="badge-active"><i class="fas fa-check"></i> Active</span>
+                        {% else %}
+                        <span class="badge-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ profile.created_at }}</td>
+                    <td>
+                        <button class="btn-action" onclick="editProfile({{ profile.id }}, 'analyzer')">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn-action" onclick="duplicateProfile({{ profile.id }}, 'analyzer')">
+                            <i class="fas fa-copy"></i> Duplicate
+                        </button>
+                        {% if not profile.is_active %}
+                        <button class="btn-action btn-set-active" onclick="setActiveProfile({{ profile.id }}, 'analyzer')">
+                            <i class="fas fa-star"></i> Set Active
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-profiles">
+            <i class="fas fa-microscope"></i>
+            <p>No analyzer profiles found. Run the seed script to create initial profiles.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Analyzer Editor Panel -->
+    <div id="analyzer-editor" class="editor-panel">
+        <div class="editor-header">
+            <h4><i class="fas fa-edit me-2"></i>Edit Analyzer Profile</h4>
+            <button class="editor-close" onclick="closeEditor('analyzer')">&times;</button>
+        </div>
+        
+        <input type="hidden" id="analyzer-profile-id">
+        <input type="hidden" id="analyzer-profile-name" value="analyzer">
+        
+        <div class="editor-field">
+            <label>Version</label>
+            <input type="text" id="analyzer-version" placeholder="e.g., v1, v2_detailed">
+            <div class="field-error" id="analyzer-version-error">Version is required</div>
+        </div>
+        
+        <div class="editor-field">
+            <label>System Prompt</label>
+            <textarea id="analyzer-system-prompt" class="tall" placeholder="The system prompt that defines the AI's behavior..."></textarea>
+            <div class="char-count"><span id="analyzer-system-prompt-count">0</span> characters</div>
+        </div>
+        
+        <div class="editor-field">
+            <label>User Prompt Template</label>
+            <textarea id="analyzer-user-prompt-template" placeholder="Template with {context_json} placeholder..."></textarea>
+            <div class="field-hint">Use {context_json} as placeholder for analysis context</div>
+        </div>
+        
+        <div class="editor-field">
+            <label>Settings JSON</label>
+            <textarea id="analyzer-settings-json" placeholder='{"model_name": "gpt-4o", "temperature": 0.3, ...}'></textarea>
+            <div class="field-error" id="analyzer-settings-json-error">Invalid JSON format</div>
+            <div class="field-hint">Must be valid JSON. Contains model_name, temperature, max_tokens, etc.</div>
+        </div>
+        
+        <div class="editor-actions">
+            <button class="btn-editor btn-editor-primary" onclick="saveProfile('analyzer')">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+            <button class="btn-editor btn-editor-set-active" id="analyzer-set-active-btn" onclick="setActiveFromEditor('analyzer')">
+                <i class="fas fa-star"></i> Set Active
+            </button>
+            <button class="btn-editor btn-editor-secondary" onclick="closeEditor('analyzer')">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_scripts %}
+<script src="{{ url_for('static', filename='js/cycle_ai_lab.js') }}"></script>
+{% endblock %}
+

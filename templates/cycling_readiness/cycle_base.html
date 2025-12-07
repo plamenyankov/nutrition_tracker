@@ -316,6 +316,10 @@
            class="cycle-tab {% if current_tab == 'ai_analyzer' %}active{% endif %}">
             <i class="fas fa-microscope"></i>AI Analyzer
         </a>
+        <a href="{{ url_for('cycling_readiness.ai_lab_page') }}" 
+           class="cycle-tab {% if current_tab == 'ai_lab' %}active{% endif %}">
+            <i class="fas fa-flask"></i>AI Lab
+        </a>
     </div>
 
     <!-- Page Content -->

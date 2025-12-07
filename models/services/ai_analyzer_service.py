@@ -510,6 +510,30 @@ def generate_ai_workout_analysis(
     
     logger.info(f"[ANALYZER] Generating NEW analysis for workout_id={workout_id}, date={workout_date_str}")
     
+    # Load prompts and settings from ai_profiles
+    # Falls back to hardcoded prompts if profile not configured
+    from models.blueprints.cycling_readiness.ai_config import get_prompt_bundle, AiProfileNotFoundError
+    
+    try:
+        prompt_bundle = get_prompt_bundle("analyzer", connection_manager)
+        system_prompt = prompt_bundle['system_prompt']
+        user_prompt_template = prompt_bundle['user_prompt_template'] or AI_ANALYZER_USER_PROMPT_TEMPLATE
+        settings = prompt_bundle['settings']
+        model_name = settings.get('model_name', DEFAULT_MODEL_NAME)
+        temperature = settings.get('temperature', 0.3)
+        max_tokens = settings.get('max_tokens', 2000)
+        prompt_version = prompt_bundle['version']
+        logger.info(f"[ANALYZER] Using ai_profile 'analyzer' {prompt_version}")
+    except AiProfileNotFoundError:
+        # Fallback to hardcoded prompts (for backwards compatibility)
+        logger.warning(f"[ANALYZER] AI profile 'analyzer' not found, using hardcoded prompts")
+        system_prompt = AI_ANALYZER_SYSTEM_PROMPT
+        user_prompt_template = AI_ANALYZER_USER_PROMPT_TEMPLATE
+        model_name = DEFAULT_MODEL_NAME
+        temperature = 0.3
+        max_tokens = 2000
+        prompt_version = PROMPT_VERSION
+    
     # Build day context
     try:
         day_context = service.build_training_context_v2_5(workout_date_obj)
@@ -536,22 +560,22 @@ def generate_ai_workout_analysis(
         coach_recommendation=coach_rec_dict
     )
     
-    # Build the prompt
+    # Build the prompt using configured template
     context_json = json.dumps(analysis_context, indent=2, default=str)
-    user_prompt = AI_ANALYZER_USER_PROMPT_TEMPLATE.format(context_json=context_json)
+    user_prompt = user_prompt_template.format(context_json=context_json)
     
-    # Call OpenAI
+    # Call OpenAI with configured model and settings
     try:
         client = get_openai_client()
         
         response = client.chat.completions.create(
-            model=DEFAULT_MODEL_NAME,
+            model=model_name,
             messages=[
-                {"role": "system", "content": AI_ANALYZER_SYSTEM_PROMPT},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.3,
-            max_tokens=2000
+            temperature=temperature,
+            max_tokens=max_tokens
         )
         
         response_text = response.choices[0].message.content
@@ -559,7 +583,6 @@ def generate_ai_workout_analysis(
         
         # Parse the response
         analysis_output = parse_analysis_response(response_text, workout_date_str)
-        prompt_version = PROMPT_VERSION
         
         # CRITICAL: Inject actual planned values from stored coach recommendation
         # OpenAI doesn't return these - we must get them from the coach's session_plan

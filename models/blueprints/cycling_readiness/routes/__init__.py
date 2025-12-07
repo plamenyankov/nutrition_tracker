@@ -9,6 +9,7 @@ split by functional area:
 - analytics: KPIs, trends, efficiency metrics
 - ai_coach: Training recommendations
 - ai_analyzer: Post-workout AI analysis
+- ai_lab: AI profile management UI
 """
 # Import all route modules to register their routes with the blueprint
 from . import workouts  # noqa: F401
@@ -16,3 +17,4 @@ from . import readiness_sleep  # noqa: F401
 from . import analytics  # noqa: F401
 from . import ai_coach  # noqa: F401
 from . import ai_analyzer  # noqa: F401
+from . import ai_lab  # noqa: F401

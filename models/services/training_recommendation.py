@@ -512,6 +512,9 @@ def generate_training_recommendation(
     If force_refresh is False, attempts to return a stored recommendation.
     Otherwise, generates a new one via OpenAI and stores it.
     
+    Loads prompts and settings from ai_profiles table (name="coach").
+    Falls back to hardcoded prompts if profile not configured.
+    
     Args:
         user_id: The user's ID
         target_date: The date to generate recommendation for
@@ -528,6 +531,7 @@ def generate_training_recommendation(
     """
     from models.services.cycling_readiness_service import CyclingReadinessService
     from models.services.openai_extraction import get_openai_client
+    from models.blueprints.cycling_readiness.ai_config import get_prompt_bundle, AiProfileNotFoundError
     
     date_str = target_date.strftime('%Y-%m-%d') if isinstance(target_date, date) else str(target_date)
     
@@ -537,6 +541,28 @@ def generate_training_recommendation(
         if existing:
             logger.info(f"[TRAINING] Returning stored recommendation for {date_str}")
             return existing
+    
+    # Load prompts and settings from ai_profiles
+    # Falls back to hardcoded prompts if profile not configured
+    try:
+        prompt_bundle = get_prompt_bundle("coach", connection_manager)
+        system_prompt = prompt_bundle['system_prompt']
+        user_prompt_template = prompt_bundle['user_prompt_template'] or TRAINING_USER_PROMPT_TEMPLATE
+        settings = prompt_bundle['settings']
+        model_name = settings.get('model_name', DEFAULT_MODEL_NAME)
+        temperature = settings.get('temperature', 0.3)
+        max_tokens = settings.get('max_tokens', 2000)
+        prompt_version = prompt_bundle['version']
+        logger.info(f"[TRAINING] Using ai_profile 'coach' {prompt_version}")
+    except AiProfileNotFoundError:
+        # Fallback to hardcoded prompts (for backwards compatibility)
+        logger.warning(f"[TRAINING] AI profile 'coach' not found, using hardcoded prompts")
+        system_prompt = TRAINING_COACH_SYSTEM_PROMPT_V4
+        user_prompt_template = TRAINING_USER_PROMPT_TEMPLATE
+        model_name = DEFAULT_MODEL_NAME
+        temperature = 0.3
+        max_tokens = 2000
+        prompt_version = "hardcoded_v4"
     
     # Build the training context
     service = CyclingReadinessService(user_id=user_id, connection_manager=connection_manager)
@@ -550,25 +576,24 @@ def generate_training_recommendation(
     
     # Build the user prompt with context (just the JSON)
     context_json = json.dumps(context, indent=2, default=str)
-    user_prompt = TRAINING_USER_PROMPT_TEMPLATE.format(context_json=context_json)
+    user_prompt = user_prompt_template.format(context_json=context_json)
     
     logger.info(f"[TRAINING] Generating NEW recommendation for user={user_id}, date={date_str}")
     logger.debug(f"[TRAINING] Context: evaluation_date={context.get('evaluation_date')}, "
                  f"readiness_score={context.get('day', {}).get('readiness', {}).get('score')}")
     
-    # Call OpenAI with GPT-4o (best available model)
-    model_name = DEFAULT_MODEL_NAME
+    # Call OpenAI with configured model and settings
     try:
         client = get_openai_client()
         
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": TRAINING_COACH_SYSTEM_PROMPT_V4},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.3,  # Slightly creative but mostly deterministic
-            max_tokens=2000   # Increased for longer analysis_text
+            temperature=temperature,
+            max_tokens=max_tokens
         )
         
         response_text = response.choices[0].message.content
