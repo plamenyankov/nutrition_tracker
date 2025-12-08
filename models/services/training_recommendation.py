@@ -774,3 +774,169 @@ DAY_TYPE_INFO = {
 def get_day_type_display(day_type: str) -> Dict[str, str]:
     """Get display info for a day type."""
     return DAY_TYPE_INFO.get(day_type, DAY_TYPE_INFO['other'])
+
+
+# ============== Playground / Debug Helpers ==============
+
+def build_coach_payload(
+    target_date: date,
+    user_id: str,
+    profile: Optional[Dict[str, Any]] = None,
+    connection_manager=None
+) -> Dict[str, Any]:
+    """
+    Build the OpenAI request payload for AI Coach WITHOUT calling the API.
+    
+    This is used by the Playground to preview what would be sent to OpenAI.
+    Reuses the same logic as generate_training_recommendation() but does NOT
+    make any API calls or DB writes.
+    
+    Args:
+        target_date: The date to generate recommendation for
+        user_id: The user's ID
+        profile: Optional profile dict with system_prompt, user_prompt_template, settings.
+                 If None, uses the active coach profile via get_prompt_bundle("coach").
+        connection_manager: Optional database connection manager
+    
+    Returns:
+        Dict with:
+            - model: The model name
+            - system_prompt: The system prompt text
+            - user_prompt: The formatted user prompt with context
+            - input_data: The training context that was embedded
+            - temperature: The temperature setting
+            - max_tokens: The max tokens setting
+    """
+    from models.services.cycling_readiness_service import CyclingReadinessService
+    from models.blueprints.cycling_readiness.ai_config import get_prompt_bundle, AiProfileNotFoundError
+    
+    date_str = target_date.strftime('%Y-%m-%d') if isinstance(target_date, date) else str(target_date)
+    
+    # Load prompts and settings
+    if profile:
+        # Use provided profile
+        system_prompt = profile.get('system_prompt', '')
+        user_prompt_template = profile.get('user_prompt_template') or TRAINING_USER_PROMPT_TEMPLATE
+        settings = profile.get('settings', {})
+        if isinstance(settings, str):
+            import json as json_module
+            settings = json_module.loads(settings)
+        model_name = settings.get('model_name', DEFAULT_MODEL_NAME)
+        temperature = settings.get('temperature', 0.3)
+        max_tokens = settings.get('max_tokens', 2000)
+        profile_version = profile.get('version', 'custom')
+    else:
+        try:
+            prompt_bundle = get_prompt_bundle("coach", connection_manager)
+            system_prompt = prompt_bundle['system_prompt']
+            user_prompt_template = prompt_bundle['user_prompt_template'] or TRAINING_USER_PROMPT_TEMPLATE
+            settings = prompt_bundle['settings']
+            model_name = settings.get('model_name', DEFAULT_MODEL_NAME)
+            temperature = settings.get('temperature', 0.3)
+            max_tokens = settings.get('max_tokens', 2000)
+            profile_version = prompt_bundle['version']
+        except AiProfileNotFoundError:
+            system_prompt = TRAINING_COACH_SYSTEM_PROMPT_V4
+            user_prompt_template = TRAINING_USER_PROMPT_TEMPLATE
+            model_name = DEFAULT_MODEL_NAME
+            temperature = 0.3
+            max_tokens = 2000
+            profile_version = "hardcoded_v4"
+    
+    # Build the training context
+    service = CyclingReadinessService(user_id=user_id, connection_manager=connection_manager)
+    context = service.build_training_context_v2_5(target_date)
+    
+    # Build the user prompt with context
+    context_json = json.dumps(context, indent=2, default=str)
+    user_prompt = user_prompt_template.format(context_json=context_json)
+    
+    return {
+        'model': model_name,
+        'system_prompt': system_prompt,
+        'user_prompt': user_prompt,
+        'input_data': context,
+        'temperature': temperature,
+        'max_tokens': max_tokens,
+        'profile_version': profile_version
+    }
+
+
+def run_coach_dry_run(
+    target_date: date,
+    user_id: str,
+    profile: Optional[Dict[str, Any]] = None,
+    connection_manager=None
+) -> Dict[str, Any]:
+    """
+    Execute a dry-run of the AI Coach: call OpenAI and parse the response,
+    but do NOT save anything to the database.
+    
+    This is used by the Playground to test prompts and see actual AI responses.
+    
+    Args:
+        target_date: The date to generate recommendation for
+        user_id: The user's ID
+        profile: Optional profile dict. If None, uses active coach profile.
+        connection_manager: Optional database connection manager
+    
+    Returns:
+        Dict with:
+            - payload: The request payload (from build_coach_payload)
+            - raw_response: The raw OpenAI response text
+            - parsed_result: The parsed TrainingRecommendation as dict
+            - profile_version: The profile version used
+            - tool_name: "coach"
+            - error: Error message if failed (optional)
+    """
+    from models.services.openai_extraction import get_openai_client
+    
+    date_str = target_date.strftime('%Y-%m-%d') if isinstance(target_date, date) else str(target_date)
+    
+    # Build the payload
+    payload = build_coach_payload(target_date, user_id, profile, connection_manager)
+    
+    result = {
+        'payload': {
+            'model': payload['model'],
+            'system_prompt': payload['system_prompt'],
+            'user_prompt': payload['user_prompt'],
+            'input_data': payload['input_data'],
+            'temperature': payload['temperature'],
+            'max_tokens': payload['max_tokens']
+        },
+        'raw_response': None,
+        'parsed_result': None,
+        'profile_version': payload['profile_version'],
+        'tool_name': 'coach'
+    }
+    
+    try:
+        # Call OpenAI
+        client = get_openai_client()
+        
+        response = client.chat.completions.create(
+            model=payload['model'],
+            messages=[
+                {"role": "system", "content": payload['system_prompt']},
+                {"role": "user", "content": payload['user_prompt']}
+            ],
+            temperature=payload['temperature'],
+            max_tokens=payload['max_tokens']
+        )
+        
+        response_text = response.choices[0].message.content
+        result['raw_response'] = response_text
+        
+        # Parse the response using existing parser
+        recommendation = parse_recommendation_response(response_text, date_str)
+        result['parsed_result'] = recommendation.to_dict()
+        
+        logger.info(f"[PLAYGROUND] Coach dry-run completed: {recommendation.day_type}")
+        
+    except Exception as e:
+        logger.error(f"[PLAYGROUND] Coach dry-run error: {e}")
+        result['error'] = str(e)
+    
+    # NOTE: We do NOT save to database - this is a dry run
+    return result

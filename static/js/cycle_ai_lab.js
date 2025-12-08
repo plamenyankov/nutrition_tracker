@@ -3,12 +3,37 @@
  * 
  * Handles CRUD operations for AI profiles (Coach and Analyzer).
  * Provides UI for editing prompts, settings, and switching active profiles.
+ * Also provides Playground for testing prompts without persisting.
  */
 
 // ============== State ==============
 
 let currentEditingProfile = null;
 let currentTab = 'coach';
+let currentMainSection = 'profiles';
+let workoutsLoaded = false;
+
+
+// ============== Main Section Switching ==============
+
+function switchMainSection(section) {
+    currentMainSection = section;
+    
+    // Update main tab buttons
+    document.querySelectorAll('.ai-lab-main-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.section === section);
+    });
+    
+    // Update main sections
+    document.querySelectorAll('.ai-lab-main-section').forEach(sec => {
+        sec.classList.toggle('active', sec.id === `${section}-section`);
+    });
+    
+    // Load workouts when switching to playground (lazy load)
+    if (section === 'playground' && !workoutsLoaded) {
+        loadWorkoutsForPlayground();
+    }
+}
 
 // ============== Tab Switching ==============
 
@@ -293,6 +318,565 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
+// ============== Playground Functions ==============
+
+async function loadWorkoutsForPlayground() {
+    try {
+        const response = await fetch('/cycling-readiness/api/ai-lab/workouts?limit=30');
+        const data = await response.json();
+        
+        if (!data.success) {
+            console.error('Failed to load workouts:', data.error);
+            return;
+        }
+        
+        const select = document.getElementById('analyzer-playground-workout');
+        if (!select) return;
+        
+        // Clear existing options (except first)
+        select.innerHTML = '<option value="">Select a workout...</option>';
+        
+        // Add workout options
+        data.workouts.forEach(w => {
+            const option = document.createElement('option');
+            option.value = w.id;
+            
+            let label = `${w.date}`;
+            if (w.duration_min) label += ` • ${w.duration_min}min`;
+            if (w.avg_power_w) label += ` • ${w.avg_power_w}W`;
+            if (w.avg_hr_bpm) label += ` • ${w.avg_hr_bpm}bpm`;
+            if (w.tss) label += ` • TSS ${w.tss}`;
+            
+            option.textContent = label;
+            select.appendChild(option);
+        });
+        
+        workoutsLoaded = true;
+        
+    } catch (error) {
+        console.error('Error loading workouts:', error);
+    }
+}
+
+// ---- Coach Playground ----
+
+async function previewCoachPayload() {
+    const dateInput = document.getElementById('coach-playground-date');
+    const profileSelect = document.getElementById('coach-playground-profile');
+    
+    const date = dateInput?.value || new Date().toISOString().split('T')[0];
+    const profileId = profileSelect?.value || '';
+    
+    let url = `/cycling-readiness/api/ai-lab/coach/payload?date=${date}`;
+    if (profileId) url += `&profile_id=${profileId}`;
+    
+    showPlaygroundLoading('coach');
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        hidePlaygroundLoading('coach');
+        
+        if (!data.success) {
+            renderPlaygroundError('coach', data.error);
+            return;
+        }
+        
+        renderCoachPayload(data);
+        
+    } catch (error) {
+        hidePlaygroundLoading('coach');
+        renderPlaygroundError('coach', error.message);
+    }
+}
+
+async function runCoachDryRun() {
+    const dateInput = document.getElementById('coach-playground-date');
+    const profileSelect = document.getElementById('coach-playground-profile');
+    
+    const date = dateInput?.value || new Date().toISOString().split('T')[0];
+    const profileId = profileSelect?.value || null;
+    
+    showPlaygroundLoading('coach');
+    
+    try {
+        const response = await fetch('/cycling-readiness/api/ai-lab/coach/dry-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                date: date,
+                profile_id: profileId ? parseInt(profileId) : null
+            })
+        });
+        
+        const data = await response.json();
+        
+        hidePlaygroundLoading('coach');
+        
+        if (!data.success) {
+            renderPlaygroundError('coach', data.error);
+            return;
+        }
+        
+        renderCoachDryRunResult(data);
+        
+    } catch (error) {
+        hidePlaygroundLoading('coach');
+        renderPlaygroundError('coach', error.message);
+    }
+}
+
+function renderCoachPayload(data) {
+    const output = document.getElementById('coach-playground-output');
+    if (!output) return;
+    
+    const payload = data.payload;
+    
+    output.innerHTML = `
+        <div class="playground-panel">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-cog"></i> Request Details
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <p style="font-size: 0.8rem; color: var(--color-muted); margin: 0 0 0.5rem 0;">
+                    <strong>Model:</strong> ${payload.model} &nbsp;|&nbsp; 
+                    <strong>Temp:</strong> ${payload.temperature} &nbsp;|&nbsp;
+                    <strong>Profile:</strong> ${data.profile.version || 'default'}
+                </p>
+            </div>
+        </div>
+        
+        <div class="playground-panel collapsed">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-robot"></i> System Prompt
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <pre class="playground-json">${escapeHtml(payload.system_prompt)}</pre>
+            </div>
+        </div>
+        
+        <div class="playground-panel collapsed">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-user"></i> User Prompt
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <pre class="playground-json">${escapeHtml(payload.user_prompt)}</pre>
+            </div>
+        </div>
+        
+        <div class="playground-panel">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-database"></i> Input Data (Training Context)
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <pre class="playground-json">${JSON.stringify(payload.input_data, null, 2)}</pre>
+            </div>
+        </div>
+    `;
+}
+
+function renderCoachDryRunResult(data) {
+    const output = document.getElementById('coach-playground-output');
+    if (!output) return;
+    
+    const parsed = data.parsed_result;
+    const hasError = !!data.error;
+    
+    let resultHtml = '';
+    
+    // Error display
+    if (hasError) {
+        resultHtml += `
+            <div class="playground-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>${escapeHtml(data.error)}</span>
+            </div>
+        `;
+    }
+    
+    // Parsed result preview (if available)
+    if (parsed) {
+        const dayType = parsed.day_type || 'unknown';
+        const dayTypeDisplay = dayType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        resultHtml += `
+            <div class="playground-preview-card">
+                <div class="playground-preview-badge">
+                    <i class="fas fa-flask"></i> Preview - Not Saved
+                </div>
+                <div class="playground-preview-type">${dayTypeDisplay}</div>
+                <div class="playground-preview-summary">${escapeHtml(parsed.reason_short || '')}</div>
+                ${parsed.session_plan ? `
+                    <div class="playground-preview-score">
+                        <i class="fas fa-clock"></i> ${parsed.session_plan.duration_minutes || '?'}min
+                    </div>
+                    <div class="playground-preview-score">
+                        <i class="fas fa-heartbeat"></i> ${parsed.session_plan.primary_zone || 'N/A'}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
+    // Parsed result JSON
+    if (parsed) {
+        resultHtml += `
+            <div class="playground-panel">
+                <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                    <div class="playground-panel-title">
+                        <i class="fas fa-check-circle" style="color: var(--color-green);"></i> Parsed Result
+                    </div>
+                    <i class="fas fa-chevron-down playground-panel-toggle"></i>
+                </div>
+                <div class="playground-panel-content">
+                    <pre class="playground-json">${JSON.stringify(parsed, null, 2)}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Raw response
+    if (data.raw_response) {
+        resultHtml += `
+            <div class="playground-panel collapsed">
+                <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                    <div class="playground-panel-title">
+                        <i class="fas fa-code"></i> Raw OpenAI Response
+                    </div>
+                    <i class="fas fa-chevron-down playground-panel-toggle"></i>
+                </div>
+                <div class="playground-panel-content">
+                    <pre class="playground-json">${escapeHtml(data.raw_response)}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Payload
+    if (data.payload) {
+        resultHtml += `
+            <div class="playground-panel collapsed">
+                <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                    <div class="playground-panel-title">
+                        <i class="fas fa-paper-plane"></i> Request Payload
+                    </div>
+                    <i class="fas fa-chevron-down playground-panel-toggle"></i>
+                </div>
+                <div class="playground-panel-content">
+                    <pre class="playground-json">${JSON.stringify(data.payload, null, 2)}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    output.innerHTML = resultHtml;
+}
+
+// ---- Analyzer Playground ----
+
+async function previewAnalyzerPayload() {
+    const workoutSelect = document.getElementById('analyzer-playground-workout');
+    const profileSelect = document.getElementById('analyzer-playground-profile');
+    
+    const workoutId = workoutSelect?.value;
+    if (!workoutId) {
+        showToast('Please select a workout first', 'error');
+        return;
+    }
+    
+    const profileId = profileSelect?.value || '';
+    
+    let url = `/cycling-readiness/api/ai-lab/analyzer/payload?workout_id=${workoutId}`;
+    if (profileId) url += `&profile_id=${profileId}`;
+    
+    showPlaygroundLoading('analyzer');
+    
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        hidePlaygroundLoading('analyzer');
+        
+        if (!data.success) {
+            renderPlaygroundError('analyzer', data.error);
+            return;
+        }
+        
+        renderAnalyzerPayload(data);
+        
+    } catch (error) {
+        hidePlaygroundLoading('analyzer');
+        renderPlaygroundError('analyzer', error.message);
+    }
+}
+
+async function runAnalyzerDryRun() {
+    const workoutSelect = document.getElementById('analyzer-playground-workout');
+    const profileSelect = document.getElementById('analyzer-playground-profile');
+    
+    const workoutId = workoutSelect?.value;
+    if (!workoutId) {
+        showToast('Please select a workout first', 'error');
+        return;
+    }
+    
+    const profileId = profileSelect?.value || null;
+    
+    showPlaygroundLoading('analyzer');
+    
+    try {
+        const response = await fetch('/cycling-readiness/api/ai-lab/analyzer/dry-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                workout_id: parseInt(workoutId),
+                profile_id: profileId ? parseInt(profileId) : null
+            })
+        });
+        
+        const data = await response.json();
+        
+        hidePlaygroundLoading('analyzer');
+        
+        if (!data.success) {
+            renderPlaygroundError('analyzer', data.error);
+            return;
+        }
+        
+        renderAnalyzerDryRunResult(data);
+        
+    } catch (error) {
+        hidePlaygroundLoading('analyzer');
+        renderPlaygroundError('analyzer', error.message);
+    }
+}
+
+function renderAnalyzerPayload(data) {
+    const output = document.getElementById('analyzer-playground-output');
+    if (!output) return;
+    
+    const payload = data.payload;
+    
+    output.innerHTML = `
+        <div class="playground-panel">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-cog"></i> Request Details
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <p style="font-size: 0.8rem; color: var(--color-muted); margin: 0 0 0.5rem 0;">
+                    <strong>Model:</strong> ${payload.model} &nbsp;|&nbsp; 
+                    <strong>Temp:</strong> ${payload.temperature} &nbsp;|&nbsp;
+                    <strong>Profile:</strong> ${data.profile.version || 'default'}
+                </p>
+                <p style="font-size: 0.8rem; color: var(--color-muted); margin: 0;">
+                    <strong>Workout:</strong> ${payload.workout?.date || 'N/A'} &nbsp;|&nbsp;
+                    <strong>Duration:</strong> ${payload.workout?.duration_min || '?'}min &nbsp;|&nbsp;
+                    <strong>Power:</strong> ${payload.workout?.avg_power_w || '?'}W
+                </p>
+            </div>
+        </div>
+        
+        <div class="playground-panel collapsed">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-robot"></i> System Prompt
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <pre class="playground-json">${escapeHtml(payload.system_prompt)}</pre>
+            </div>
+        </div>
+        
+        <div class="playground-panel collapsed">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-user"></i> User Prompt
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <pre class="playground-json">${escapeHtml(payload.user_prompt)}</pre>
+            </div>
+        </div>
+        
+        <div class="playground-panel">
+            <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                <div class="playground-panel-title">
+                    <i class="fas fa-database"></i> Input Data (Analysis Context)
+                </div>
+                <i class="fas fa-chevron-down playground-panel-toggle"></i>
+            </div>
+            <div class="playground-panel-content">
+                <pre class="playground-json">${JSON.stringify(payload.input_data, null, 2)}</pre>
+            </div>
+        </div>
+    `;
+}
+
+function renderAnalyzerDryRunResult(data) {
+    const output = document.getElementById('analyzer-playground-output');
+    if (!output) return;
+    
+    const parsed = data.parsed_result;
+    const hasError = !!data.error;
+    
+    let resultHtml = '';
+    
+    // Error display
+    if (hasError) {
+        resultHtml += `
+            <div class="playground-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>${escapeHtml(data.error)}</span>
+            </div>
+        `;
+    }
+    
+    // Parsed result preview (if available)
+    if (parsed) {
+        const scores = parsed.scores || {};
+        const overallScore = scores.overall_score || 0;
+        const label = scores.label || 'unknown';
+        const labelDisplay = label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        
+        let scoreClass = 'score-medium';
+        if (overallScore >= 80) scoreClass = 'score-good';
+        else if (overallScore < 60) scoreClass = 'score-poor';
+        
+        resultHtml += `
+            <div class="playground-preview-card">
+                <div class="playground-preview-badge">
+                    <i class="fas fa-flask"></i> Preview - Not Saved
+                </div>
+                <div class="playground-preview-type">${labelDisplay}</div>
+                <div class="playground-preview-summary">${escapeHtml(parsed.summary?.short_text || '')}</div>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                    <div class="playground-preview-score ${scoreClass}">
+                        <i class="fas fa-chart-line"></i> Score: ${overallScore}
+                    </div>
+                    <div class="playground-preview-score">
+                        <i class="fas fa-fire"></i> Fatigue: ${scores.fatigue_risk || 'N/A'}
+                    </div>
+                    ${parsed.coach_comparison?.has_coach_plan ? `
+                        <div class="playground-preview-score">
+                            <i class="fas fa-check-double"></i> Compliance: ${parsed.coach_comparison.compliance_score || '?'}%
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Parsed result JSON
+    if (parsed) {
+        resultHtml += `
+            <div class="playground-panel">
+                <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                    <div class="playground-panel-title">
+                        <i class="fas fa-check-circle" style="color: var(--color-green);"></i> Parsed Result
+                    </div>
+                    <i class="fas fa-chevron-down playground-panel-toggle"></i>
+                </div>
+                <div class="playground-panel-content">
+                    <pre class="playground-json">${JSON.stringify(parsed, null, 2)}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Raw response
+    if (data.raw_response) {
+        resultHtml += `
+            <div class="playground-panel collapsed">
+                <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                    <div class="playground-panel-title">
+                        <i class="fas fa-code"></i> Raw OpenAI Response
+                    </div>
+                    <i class="fas fa-chevron-down playground-panel-toggle"></i>
+                </div>
+                <div class="playground-panel-content">
+                    <pre class="playground-json">${escapeHtml(data.raw_response)}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Payload
+    if (data.payload) {
+        resultHtml += `
+            <div class="playground-panel collapsed">
+                <div class="playground-panel-header" onclick="togglePlaygroundPanel(this)">
+                    <div class="playground-panel-title">
+                        <i class="fas fa-paper-plane"></i> Request Payload
+                    </div>
+                    <i class="fas fa-chevron-down playground-panel-toggle"></i>
+                </div>
+                <div class="playground-panel-content">
+                    <pre class="playground-json">${JSON.stringify(data.payload, null, 2)}</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    output.innerHTML = resultHtml;
+}
+
+// ---- Playground UI Helpers ----
+
+function showPlaygroundLoading(type) {
+    const loading = document.getElementById(`${type}-playground-loading`);
+    if (loading) loading.classList.add('active');
+}
+
+function hidePlaygroundLoading(type) {
+    const loading = document.getElementById(`${type}-playground-loading`);
+    if (loading) loading.classList.remove('active');
+}
+
+function renderPlaygroundError(type, message) {
+    const output = document.getElementById(`${type}-playground-output`);
+    if (!output) return;
+    
+    output.innerHTML = `
+        <div class="playground-error">
+            <i class="fas fa-exclamation-triangle"></i>
+            <span>${escapeHtml(message)}</span>
+        </div>
+    `;
+}
+
+function togglePlaygroundPanel(header) {
+    const panel = header.closest('.playground-panel');
+    if (panel) {
+        panel.classList.toggle('collapsed');
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+
 // ============== Event Listeners ==============
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -331,5 +915,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
+    
+    // Set default date for coach playground to today if not set
+    const coachDateInput = document.getElementById('coach-playground-date');
+    if (coachDateInput && !coachDateInput.value) {
+        coachDateInput.value = new Date().toISOString().split('T')[0];
+    }
 });
 

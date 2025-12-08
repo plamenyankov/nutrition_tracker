@@ -673,3 +673,239 @@ def generate_ai_workout_analysis(
     
     return saved_analysis
 
+
+# ============== Playground / Debug Helpers ==============
+
+def build_analyzer_payload(
+    workout_id: int,
+    user_id: str,
+    profile: Optional[Dict[str, Any]] = None,
+    connection_manager=None
+) -> Dict[str, Any]:
+    """
+    Build the OpenAI request payload for AI Analyzer WITHOUT calling the API.
+    
+    This is used by the Playground to preview what would be sent to OpenAI.
+    Reuses the same logic as generate_ai_workout_analysis() but does NOT
+    make any API calls or DB writes.
+    
+    Args:
+        workout_id: The workout ID to analyze
+        user_id: The user's ID
+        profile: Optional profile dict with system_prompt, user_prompt_template, settings.
+                 If None, uses the active analyzer profile via get_prompt_bundle("analyzer").
+        connection_manager: Optional database connection manager
+    
+    Returns:
+        Dict with:
+            - model: The model name
+            - system_prompt: The system prompt text
+            - user_prompt: The formatted user prompt with context
+            - input_data: The analysis context that was embedded
+            - temperature: The temperature setting
+            - max_tokens: The max tokens setting
+            - workout: Basic workout info
+    
+    Raises:
+        ValueError: If workout not found or doesn't belong to user
+    """
+    from models.services.cycling_readiness_service import CyclingReadinessService
+    from models.services.training_recommendation import get_training_recommendation
+    from models.blueprints.cycling_readiness.ai_config import get_prompt_bundle, AiProfileNotFoundError
+    from datetime import datetime as dt
+    
+    # Get the cycling readiness service
+    service = CyclingReadinessService(user_id=user_id, connection_manager=connection_manager)
+    
+    # Fetch the workout
+    workout = service.get_cycling_workout_by_id(workout_id)
+    if not workout:
+        raise ValueError(f"Workout {workout_id} not found")
+    
+    # Verify ownership
+    if workout.get('user_id') != user_id:
+        raise ValueError(f"Workout {workout_id} does not belong to user")
+    
+    # Determine workout date
+    workout_date = workout.get('date')
+    if hasattr(workout_date, 'strftime'):
+        workout_date_obj = workout_date
+        workout_date_str = workout_date.strftime('%Y-%m-%d')
+    else:
+        workout_date_str = str(workout_date)
+        try:
+            workout_date_obj = dt.strptime(workout_date_str, '%Y-%m-%d').date()
+        except:
+            workout_date_obj = dt.now().date()
+            workout_date_str = workout_date_obj.strftime('%Y-%m-%d')
+    
+    # Load prompts and settings
+    if profile:
+        # Use provided profile
+        system_prompt = profile.get('system_prompt', '')
+        user_prompt_template = profile.get('user_prompt_template') or AI_ANALYZER_USER_PROMPT_TEMPLATE
+        settings = profile.get('settings', {})
+        if isinstance(settings, str):
+            settings = json.loads(settings)
+        model_name = settings.get('model_name', DEFAULT_MODEL_NAME)
+        temperature = settings.get('temperature', 0.3)
+        max_tokens = settings.get('max_tokens', 2000)
+        profile_version = profile.get('version', 'custom')
+    else:
+        try:
+            prompt_bundle = get_prompt_bundle("analyzer", connection_manager)
+            system_prompt = prompt_bundle['system_prompt']
+            user_prompt_template = prompt_bundle['user_prompt_template'] or AI_ANALYZER_USER_PROMPT_TEMPLATE
+            settings = prompt_bundle['settings']
+            model_name = settings.get('model_name', DEFAULT_MODEL_NAME)
+            temperature = settings.get('temperature', 0.3)
+            max_tokens = settings.get('max_tokens', 2000)
+            profile_version = prompt_bundle['version']
+        except AiProfileNotFoundError:
+            system_prompt = AI_ANALYZER_SYSTEM_PROMPT
+            user_prompt_template = AI_ANALYZER_USER_PROMPT_TEMPLATE
+            model_name = DEFAULT_MODEL_NAME
+            temperature = 0.3
+            max_tokens = 2000
+            profile_version = PROMPT_VERSION
+    
+    # Build day context
+    try:
+        day_context = service.build_training_context_v2_5(workout_date_obj)
+    except Exception as e:
+        logger.warning(f"[PLAYGROUND] Error building day context: {e}, using minimal context")
+        day_context = {'evaluation_date': workout_date_str, 'error': str(e)}
+    
+    # Try to fetch AI Coach recommendation for that date
+    coach_rec = None
+    coach_rec_dict = None
+    try:
+        coach_rec = get_training_recommendation(user_id, workout_date_obj, connection_manager)
+        if coach_rec:
+            coach_rec_dict = coach_rec.to_dict()
+    except Exception as e:
+        logger.warning(f"[PLAYGROUND] Could not fetch coach recommendation: {e}")
+    
+    # Build analysis context
+    analysis_context = build_analysis_context(
+        workout=workout,
+        day_context=day_context,
+        coach_recommendation=coach_rec_dict
+    )
+    
+    # Build the prompt using configured template
+    context_json = json.dumps(analysis_context, indent=2, default=str)
+    user_prompt = user_prompt_template.format(context_json=context_json)
+    
+    # Prepare workout summary for display
+    workout_summary = {
+        'id': workout.get('id'),
+        'date': workout_date_str,
+        'duration_min': int(workout.get('duration_sec', 0) / 60) if workout.get('duration_sec') else None,
+        'avg_power_w': workout.get('avg_power_w'),
+        'avg_hr_bpm': workout.get('avg_heart_rate'),
+        'tss': workout.get('tss')
+    }
+    
+    return {
+        'model': model_name,
+        'system_prompt': system_prompt,
+        'user_prompt': user_prompt,
+        'input_data': analysis_context,
+        'temperature': temperature,
+        'max_tokens': max_tokens,
+        'profile_version': profile_version,
+        'workout': workout_summary
+    }
+
+
+def run_analyzer_dry_run(
+    workout_id: int,
+    user_id: str,
+    profile: Optional[Dict[str, Any]] = None,
+    connection_manager=None
+) -> Dict[str, Any]:
+    """
+    Execute a dry-run of the AI Analyzer: call OpenAI and parse the response,
+    but do NOT save anything to the database.
+    
+    This is used by the Playground to test prompts and see actual AI responses.
+    
+    Args:
+        workout_id: The workout ID to analyze
+        user_id: The user's ID
+        profile: Optional profile dict. If None, uses active analyzer profile.
+        connection_manager: Optional database connection manager
+    
+    Returns:
+        Dict with:
+            - payload: The request payload (from build_analyzer_payload)
+            - raw_response: The raw OpenAI response text
+            - parsed_result: The parsed analysis result as dict
+            - profile_version: The profile version used
+            - tool_name: "analyzer"
+            - error: Error message if failed (optional)
+    """
+    from models.services.openai_extraction import get_openai_client
+    
+    # Build the payload
+    try:
+        payload = build_analyzer_payload(workout_id, user_id, profile, connection_manager)
+    except ValueError as e:
+        return {
+            'payload': None,
+            'raw_response': None,
+            'parsed_result': None,
+            'profile_version': None,
+            'tool_name': 'analyzer',
+            'error': str(e)
+        }
+    
+    workout_date_str = payload['workout']['date']
+    
+    result = {
+        'payload': {
+            'model': payload['model'],
+            'system_prompt': payload['system_prompt'],
+            'user_prompt': payload['user_prompt'],
+            'input_data': payload['input_data'],
+            'temperature': payload['temperature'],
+            'max_tokens': payload['max_tokens'],
+            'workout': payload['workout']
+        },
+        'raw_response': None,
+        'parsed_result': None,
+        'profile_version': payload['profile_version'],
+        'tool_name': 'analyzer'
+    }
+    
+    try:
+        # Call OpenAI
+        client = get_openai_client()
+        
+        response = client.chat.completions.create(
+            model=payload['model'],
+            messages=[
+                {"role": "system", "content": payload['system_prompt']},
+                {"role": "user", "content": payload['user_prompt']}
+            ],
+            temperature=payload['temperature'],
+            max_tokens=payload['max_tokens']
+        )
+        
+        response_text = response.choices[0].message.content
+        result['raw_response'] = response_text
+        
+        # Parse the response using existing parser
+        analysis_output = parse_analysis_response(response_text, workout_date_str)
+        result['parsed_result'] = analysis_output.to_dict()
+        
+        logger.info(f"[PLAYGROUND] Analyzer dry-run completed: {analysis_output.scores.label}")
+        
+    except Exception as e:
+        logger.error(f"[PLAYGROUND] Analyzer dry-run error: {e}")
+        result['error'] = str(e)
+    
+    # NOTE: We do NOT save to database - this is a dry run
+    return result
+

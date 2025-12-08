@@ -1,17 +1,20 @@
 """
 AI Lab routes for Cycling Readiness feature.
 Provides UI and API for managing AI profiles (prompts + settings).
+Also provides Playground/Debug endpoints for testing prompts without persisting.
 """
 import json
+from datetime import datetime, date
 from flask import render_template, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from .. import cycling_readiness_bp
-from ..ai_config import get_active_profile, list_profiles, AiProfile
+from ..ai_config import get_active_profile, list_profiles, get_profile_by_id, AiProfile
 from .helpers import (
     logger,
     serialize_for_json,
     get_base_context,
+    get_service,
 )
 
 
@@ -72,6 +75,7 @@ def ai_lab_page():
     
     context['profiles'] = profiles_by_name
     context['active_profiles'] = active_profiles
+    context['today_date'] = date.today().strftime('%Y-%m-%d')
     
     return render_template('cycling_readiness/ai_lab.html', **context)
 
@@ -323,4 +327,390 @@ def api_set_active_profile(profile_id):
     except Exception as e:
         logger.error(f"[AI_LAB] Error setting active profile {profile_id}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============== Playground / Debug API Routes ==============
+
+@cycling_readiness_bp.route('/api/ai-lab/coach/payload', methods=['GET'])
+@login_required
+def api_coach_payload():
+    """
+    Preview the payload that would be sent to OpenAI for AI Coach.
+    
+    Query params:
+        - date: ISO date string (YYYY-MM-DD), defaults to today
+        - profile_id: Optional profile ID to use (uses active if omitted)
+    
+    Returns:
+        JSON with tool, profile info, and the complete payload
+    """
+    from models.services.training_recommendation import build_coach_payload
+    
+    # Parse date parameter
+    date_str = request.args.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid date format. Use YYYY-MM-DD.'
+            }), 400
+    else:
+        target_date = date.today()
+    
+    # Parse profile_id parameter
+    profile_id = request.args.get('profile_id', type=int)
+    profile_dict = None
+    profile_info = {'using_active': True, 'id': None, 'version': None}
+    
+    if profile_id:
+        profile = get_profile_by_id(profile_id)
+        if not profile:
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} not found'
+            }), 404
+        if profile.name != 'coach':
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} is not a coach profile'
+            }), 400
+        profile_dict = profile.to_dict()
+        profile_info = {
+            'using_active': False,
+            'id': profile.id,
+            'version': profile.version
+        }
+    else:
+        # Get active profile info for display
+        active = get_active_profile('coach')
+        if active:
+            profile_info = {
+                'using_active': True,
+                'id': active.id,
+                'version': active.version
+            }
+    
+    try:
+        payload = build_coach_payload(
+            target_date=target_date,
+            user_id=current_user.id,
+            profile=profile_dict
+        )
+        
+        return jsonify({
+            'success': True,
+            'tool': 'coach',
+            'date': target_date.strftime('%Y-%m-%d'),
+            'profile': profile_info,
+            'payload': serialize_for_json(payload)
+        })
+        
+    except Exception as e:
+        logger.error(f"[AI_LAB] Error building coach payload: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@cycling_readiness_bp.route('/api/ai-lab/coach/dry-run', methods=['POST'])
+@login_required
+def api_coach_dry_run():
+    """
+    Execute a dry-run of AI Coach: call OpenAI and return the result
+    WITHOUT saving anything to the database.
+    
+    Body:
+        {
+            "date": "YYYY-MM-DD",
+            "profile_id": <optional int>
+        }
+    
+    Returns:
+        JSON with payload, raw_response, parsed_result, profile_version, tool_name
+    """
+    from models.services.training_recommendation import run_coach_dry_run
+    
+    data = request.get_json() or {}
+    
+    # Parse date parameter
+    date_str = data.get('date')
+    if date_str:
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid date format. Use YYYY-MM-DD.'
+            }), 400
+    else:
+        target_date = date.today()
+    
+    # Parse profile_id parameter
+    profile_id = data.get('profile_id')
+    profile_dict = None
+    
+    if profile_id:
+        try:
+            profile_id = int(profile_id)
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'profile_id must be an integer'
+            }), 400
+            
+        profile = get_profile_by_id(profile_id)
+        if not profile:
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} not found'
+            }), 404
+        if profile.name != 'coach':
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} is not a coach profile'
+            }), 400
+        profile_dict = profile.to_dict()
+    
+    try:
+        result = run_coach_dry_run(
+            target_date=target_date,
+            user_id=current_user.id,
+            profile=profile_dict
+        )
+        
+        return jsonify({
+            'success': True,
+            'date': target_date.strftime('%Y-%m-%d'),
+            **serialize_for_json(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"[AI_LAB] Error in coach dry-run: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@cycling_readiness_bp.route('/api/ai-lab/analyzer/payload', methods=['GET'])
+@login_required
+def api_analyzer_payload():
+    """
+    Preview the payload that would be sent to OpenAI for AI Analyzer.
+    
+    Query params:
+        - workout_id: Required workout ID to analyze
+        - profile_id: Optional profile ID to use (uses active if omitted)
+    
+    Returns:
+        JSON with tool, profile info, and the complete payload
+    """
+    from models.services.ai_analyzer_service import build_analyzer_payload
+    
+    # Parse workout_id parameter (required)
+    workout_id = request.args.get('workout_id', type=int)
+    if not workout_id:
+        return jsonify({
+            'success': False,
+            'error': 'workout_id is required'
+        }), 400
+    
+    # Parse profile_id parameter
+    profile_id = request.args.get('profile_id', type=int)
+    profile_dict = None
+    profile_info = {'using_active': True, 'id': None, 'version': None}
+    
+    if profile_id:
+        profile = get_profile_by_id(profile_id)
+        if not profile:
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} not found'
+            }), 404
+        if profile.name != 'analyzer':
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} is not an analyzer profile'
+            }), 400
+        profile_dict = profile.to_dict()
+        profile_info = {
+            'using_active': False,
+            'id': profile.id,
+            'version': profile.version
+        }
+    else:
+        # Get active profile info for display
+        active = get_active_profile('analyzer')
+        if active:
+            profile_info = {
+                'using_active': True,
+                'id': active.id,
+                'version': active.version
+            }
+    
+    try:
+        payload = build_analyzer_payload(
+            workout_id=workout_id,
+            user_id=current_user.id,
+            profile=profile_dict
+        )
+        
+        return jsonify({
+            'success': True,
+            'tool': 'analyzer',
+            'workout_id': workout_id,
+            'profile': profile_info,
+            'payload': serialize_for_json(payload)
+        })
+        
+    except ValueError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 404
+    except Exception as e:
+        logger.error(f"[AI_LAB] Error building analyzer payload: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@cycling_readiness_bp.route('/api/ai-lab/analyzer/dry-run', methods=['POST'])
+@login_required
+def api_analyzer_dry_run():
+    """
+    Execute a dry-run of AI Analyzer: call OpenAI and return the result
+    WITHOUT saving anything to the database.
+    
+    Body:
+        {
+            "workout_id": <int>,
+            "profile_id": <optional int>
+        }
+    
+    Returns:
+        JSON with payload, raw_response, parsed_result, profile_version, tool_name
+    """
+    from models.services.ai_analyzer_service import run_analyzer_dry_run
+    
+    data = request.get_json() or {}
+    
+    # Parse workout_id parameter (required)
+    workout_id = data.get('workout_id')
+    if not workout_id:
+        return jsonify({
+            'success': False,
+            'error': 'workout_id is required'
+        }), 400
+    
+    try:
+        workout_id = int(workout_id)
+    except (ValueError, TypeError):
+        return jsonify({
+            'success': False,
+            'error': 'workout_id must be an integer'
+        }), 400
+    
+    # Parse profile_id parameter
+    profile_id = data.get('profile_id')
+    profile_dict = None
+    
+    if profile_id:
+        try:
+            profile_id = int(profile_id)
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'profile_id must be an integer'
+            }), 400
+            
+        profile = get_profile_by_id(profile_id)
+        if not profile:
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} not found'
+            }), 404
+        if profile.name != 'analyzer':
+            return jsonify({
+                'success': False,
+                'error': f'Profile {profile_id} is not an analyzer profile'
+            }), 400
+        profile_dict = profile.to_dict()
+    
+    try:
+        result = run_analyzer_dry_run(
+            workout_id=workout_id,
+            user_id=current_user.id,
+            profile=profile_dict
+        )
+        
+        return jsonify({
+            'success': True,
+            'workout_id': workout_id,
+            **serialize_for_json(result)
+        })
+        
+    except Exception as e:
+        logger.error(f"[AI_LAB] Error in analyzer dry-run: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@cycling_readiness_bp.route('/api/ai-lab/workouts', methods=['GET'])
+@login_required
+def api_get_recent_workouts():
+    """
+    Get recent workouts for the Playground workout selector.
+    
+    Query params:
+        - limit: Number of workouts to return (default 20)
+    
+    Returns:
+        JSON with list of recent workouts
+    """
+    limit = request.args.get('limit', 20, type=int)
+    
+    try:
+        service = get_service()
+        workouts = service.get_cycling_workouts(limit=limit)
+        
+        # Simplify workout data for dropdown
+        workout_list = []
+        for w in workouts:
+            duration_min = int(w.get('duration_sec', 0) / 60) if w.get('duration_sec') else None
+            workout_list.append({
+                'id': w.get('id'),
+                'date': w.get('date').strftime('%Y-%m-%d') if hasattr(w.get('date'), 'strftime') else str(w.get('date')),
+                'duration_min': duration_min,
+                'avg_power_w': w.get('avg_power_w'),
+                'avg_hr_bpm': w.get('avg_heart_rate'),
+                'tss': w.get('tss'),
+                'source': w.get('source')
+            })
+        
+        return jsonify({
+            'success': True,
+            'workouts': workout_list
+        })
+        
+    except Exception as e:
+        logger.error(f"[AI_LAB] Error fetching workouts: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 

@@ -126,6 +126,70 @@ def get_active_profile(name: str, connection_manager=None) -> Optional[AiProfile
         return None
 
 
+def get_profile_by_id(profile_id: int, connection_manager=None) -> Optional[AiProfile]:
+    """
+    Fetch an AI profile by its database ID.
+    
+    Args:
+        profile_id: The database primary key
+        connection_manager: Optional database connection manager
+    
+    Returns:
+        AiProfile if found, None otherwise
+    """
+    from models.database.connection_manager import get_db_manager
+    
+    db = connection_manager or get_db_manager()
+    
+    try:
+        with db.get_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            
+            cursor.execute('''
+                SELECT id, name, version, is_active, 
+                       system_prompt, user_prompt_template, settings_json
+                FROM ai_profiles
+                WHERE id = %s
+                LIMIT 1
+            ''', (profile_id,))
+            
+            row = cursor.fetchone()
+            
+            if not row:
+                logger.warning(f"[AI_CONFIG] No profile found with id={profile_id}")
+                return None
+            
+            # Parse settings_json
+            settings = {}
+            if row.get('settings_json'):
+                try:
+                    settings_raw = row['settings_json']
+                    if isinstance(settings_raw, str):
+                        settings = json.loads(settings_raw)
+                    elif isinstance(settings_raw, dict):
+                        settings = settings_raw
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"[AI_CONFIG] Failed to parse settings_json for id={profile_id}: {e}")
+                    settings = {}
+            
+            profile = AiProfile(
+                id=row['id'],
+                name=row['name'],
+                version=row['version'],
+                is_active=bool(row['is_active']),
+                system_prompt=row['system_prompt'],
+                user_prompt_template=row.get('user_prompt_template'),
+                settings=settings
+            )
+            
+            logger.debug(f"[AI_CONFIG] Loaded profile by id: {profile_id} -> {profile.name} {profile.version}")
+            return profile
+            
+    except Exception as e:
+        logger.error(f"[AI_CONFIG] Error fetching profile id={profile_id}: {e}")
+        return None
+
+
 def get_prompt_bundle(name: str, connection_manager=None) -> Dict[str, Any]:
     """
     Get a complete prompt bundle for an AI feature.
