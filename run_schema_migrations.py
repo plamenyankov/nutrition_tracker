@@ -67,6 +67,18 @@ def run_all_migrations():
     except ImportError as e:
         logger.warning(f"Could not import add_ai_workout_analyses: {e}")
     
+    try:
+        from migrations.add_ai_profiles import run_migration as migrate_ai_profiles
+        migrations.append(('add_ai_profiles', migrate_ai_profiles))
+    except ImportError as e:
+        logger.warning(f"Could not import add_ai_profiles: {e}")
+    
+    try:
+        from migrations.seed_ai_profiles import seed_profiles as seed_ai_profiles
+        migrations.append(('seed_ai_profiles', seed_ai_profiles))
+    except ImportError as e:
+        logger.warning(f"Could not import seed_ai_profiles: {e}")
+    
     # Run migrations
     logger.info(f"Running {len(migrations)} schema migrations...")
     
